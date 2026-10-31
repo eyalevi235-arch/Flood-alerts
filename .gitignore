@@ -3,3 +3,6 @@
 *.env
 __pycache__/
 .venv/
+
+# Push endpoints stay in the private sheet, never in this repo.
+subscriptions/*.json

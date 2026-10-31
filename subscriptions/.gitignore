@@ -1,0 +1,2 @@
+# Subscription JSON is ignored. The hourly job reads the private Apps Script store.
+*.json

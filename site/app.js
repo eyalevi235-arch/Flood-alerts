@@ -1,70 +1,265 @@
-const _u=new URLSearchParams(location.search).get('uid');if(_u)localStorage.uid=_u;
-const $=s=>document.querySelector(s);let UID=localStorage.uid||(localStorage.uid='u'+Math.random().toString(36).slice(2,10));
-let CFG,PREFS,VPS=[],map,riskL,streamL,vpL;
-const SRC=new URLSearchParams(location.search).get('src')||'live';const api=p=>fetch(p,{cache:'no-cache'}).then(r=>{if(!r.ok)throw r.status;return r.json()});const jget=(p,d)=>api(p).catch(()=>d);
-// static hosting (GitHub Pages): all data are relative JSON files written by the hourly Action; prefs live in localStorage
-const loadPrefs=()=>{try{return Object.assign({points:[],streams:[],threshold:0.3},JSON.parse(localStorage.prefs||'{}'))}catch(e){return{points:[],streams:[],threshold:0.3}}};
-let ALL=null;const allAlerts=async()=>ALL||(ALL=await jget(SRC=='demo'?'data/alerts_demo.json':'data/alerts_latest.json',{issued:null,source:null,stub:true,alerts:[]}));
+const $=s=>document.querySelector(s);
+const SRC=new URLSearchParams(location.search).get('src')==='demo'?'demo':'live';
+let UID=localStorage.uid;
+if(!/^u[a-z0-9]{6,20}$/.test(UID||'')){UID='u'+Math.random().toString(36).slice(2,10);localStorage.uid=UID;}
+let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL;
+const api=p=>fetch(p,{cache:'no-cache'}).then(r=>{if(!r.ok)throw r.status;return r.json()});
+const jget=(p,d)=>api(p).catch(()=>d);
+const PAGES=['map','points','alerts','set'];
+function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n;}
+function clear(n){while(n&&n.firstChild)n.removeChild(n.firstChild);}
+function txt(v,fallback){if(v==null||v==='')return fallback==null?'':String(fallback);return String(v);}
+function num(v){const n=Number(v);return Number.isFinite(n)?n:null;}
+function loadPrefs(){
+ const base={points:[],streams:[],threshold:0.3};
+ try{
+  const raw=JSON.parse(localStorage.prefs||'{}');
+  const points=Array.isArray(raw.points)?raw.points.filter(p=>/^VP\d{2}$/.test(p)).slice(0,40):[];
+  const streams=Array.isArray(raw.streams)?raw.streams.filter(s=>typeof s==='string'&&s.length>=1&&s.length<=40&&!/[\u0000-\u001f<>]/.test(s)).slice(0,12):[];
+  let threshold=Number(raw.threshold);if(!Number.isFinite(threshold)||threshold<0.05||threshold>0.9)threshold=0.3;
+  return {points,streams,threshold};
+ }catch(e){return base;}
+}
+let ALL=null;
+const allAlerts=async()=>ALL||(ALL=await jget(SRC==='demo'?'data/alerts_demo.json':'data/alerts_latest.json',{issued:null,source:null,stub:true,alerts:[]}));
 const norm=x=>String(x||'').replace('נחל ','').trim();
 const col=p=>p==null?'#bbb':p>=.7?'#7b0000':p>=.5?'#d7301f':p>=.3?'#fc8d59':p>=.1?'#fdd835':'#bbb';
 const fmtH=h=>h==null?'—':h<1?'פחות משעה':`~${Math.round(h)} שעות`;
-function show(p){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id=='p-'+p));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p==p));location.hash=p;if(p=='map')setTimeout(()=>map.invalidateSize(),50);if(p=='alerts')loadAlerts();if(p=='set')renderSet();}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.p));
-async function init(){
- CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null});PREFS=loadPrefs();
- map=L.map('map',{zoomControl:false}).setView([30.9,35.0],8);L.control.zoom({position:'bottomleft'}).addTo(map);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:17}).addTo(map);
- $('#date').innerHTML=`<option value="live">תחזית 48 שעות${CFG.live?' ('+CFG.live+')':''}</option>`+CFG.risk_dates.slice().reverse().map(d=>`<option>${d}</option>`).join('');
- $('#date').onchange=loadRisk;$('#per').onchange=loadRisk;
- api('data/streams.geojson').then(g=>{streamL=L.geoJSON(g,{style:{color:'#1565c0',weight:1.2,opacity:.7},interactive:false}).addTo(map)});
- await loadRisk();VPS=await jget('data/viewpoints.json',[]);if(SRC=='demo'){const A=await allAlerts();const m={};A.alerts.forEach(a=>m[a.point]=a);VPS.forEach(v=>v.current=m[v.id]);}drawVP();renderPoints();
- $('#q').oninput=renderPoints;$('#hdr').textContent='עודכן '+new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
- if(location.hash.slice(1))show(location.hash.slice(1));
+function show(p){
+ if(!PAGES.includes(p))p='map';
+ document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='p-'+p));
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+ location.hash=p;
+ if(p==='map'&&map)setTimeout(()=>map.invalidateSize(),50);
+ if(p==='alerts')loadAlerts();
+ if(p==='set')renderSet();
 }
-async function loadRisk(){const d=$('#date').value||'live';const g0=await jget(d=='live'?'data/risk_live.geojson':`data/risk_${d}.geojson`,null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});const g={...g0,features:g0.features.filter(x=>$('#per').checked||!x.properties.perennial)};
+function finiteCoord(lat,lon){
+ lat=Number(lat);lon=Number(lon);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+ if(lat<29||lat>34||lon<34||lon>36.5)return null;
+ return [lat,lon];
+}
+function extLink(href,text){const a=el('a',null,text);a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a;}
+function navLinks(lat,lon){
+ const c=finiteCoord(lat,lon);if(!c)return [];
+ const g=new URL('https://www.google.com/maps/dir/');g.searchParams.set('api','1');g.searchParams.set('destination',c[0]+','+c[1]);
+ const w=new URL('https://waze.com/ul');w.searchParams.set('ll',c[0]+','+c[1]);w.searchParams.set('navigate','yes');
+ return [[g.href,'ניווט 🧭'],[w.href,'Waze']];
+}
+function dateOk(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);}
+async function init(){
+ CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null,subscribe_url:''});
+ PREFS=loadPrefs();
+ map=L.map('map',{zoomControl:false}).setView([30.9,35.0],8);
+ L.control.zoom({position:'bottomleft'}).addTo(map);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:17}).addTo(map);
+ const date=$('#date');clear(date);
+ const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
+ (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
+ date.onchange=loadRisk;$('#per').onchange=loadRisk;
+ api('data/streams.geojson').then(g=>{streamL=L.geoJSON(g,{style:{color:'#1565c0',weight:1.2,opacity:.7},interactive:false}).addTo(map)});
+ await loadRisk();
+ VPS=await jget('data/viewpoints.json',[]);
+ if(!Array.isArray(VPS))VPS=[];
+ if(SRC==='demo'){const A=await allAlerts();const m={};(A.alerts||[]).forEach(a=>{if(a&&a.point)m[a.point]=a;});VPS.forEach(v=>{if(m[v.id])v.current=m[v.id];});}
+ drawVP();renderPoints();renderSet();
+ $('#q').oninput=renderPoints;
+ $('#hdr').textContent='עודכן '+new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+ const hash=location.hash.slice(1);if(PAGES.includes(hash))show(hash);
+}
+async function loadRisk(){
+ const chosen=$('#date').value;
+ const file=chosen==='live'||!dateOk(chosen)?'data/risk_live.geojson':`data/risk_${chosen}.geojson`;
+ const g0=await jget(file,null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
+ const features=(g0&&Array.isArray(g0.features)?g0.features:[]).filter(x=>$('#per').checked||!(x.properties&&x.properties.perennial));
+ const g={...g0,features};
  if(riskL)map.removeLayer(riskL);
- riskL=L.geoJSON(g,{style:f=>{const p=f.properties;return{color:'#333',weight:.4,fillOpacity:p.perennial?.15:.5,fillColor:p.perennial?'#999':col(p.risk??p.risk_raw)}},
-  onEachFeature:(f,l)=>{const p=f.properties;l.bindPopup(`<b>${p.name_he||p.main_nahal||'אגן'}</b><br>סיכוי: ${p.risk!=null?Math.round(p.risk*100)+'%':(p.risk_raw!=null?Math.round(p.risk_raw*100)+'% (גולמי)':'—')}${p.eta_peak_rain?'<br>שיא גשם צפוי: '+p.eta_peak_rain:''}<br>גשם באירוע: ${p.event_rain_mm??'—'} מ"מ<br>שטח: ${Math.round(p.area_dem||0)} קמ"ר${p.perennial?'<br><i>נחל איתן</i>':''}`)}}).addTo(map);riskL.bringToBack();}
-function drawVP(){if(vpL)map.removeLayer(vpL);vpL=L.layerGroup(VPS.map(v=>L.circleMarker([v.lat,v.lon],{radius:7,color:'#fff',weight:2,fillColor:v.current&&v.current.prob>=PREFS.threshold?'#c0392b':'#1e88e5',fillOpacity:1}).bindPopup(()=>cardHTML(v,true)))).addTo(map);}
+ riskL=L.geoJSON(g,{style:f=>{const p=f.properties||{};return{color:'#333',weight:.4,fillOpacity:p.perennial?.15:.5,fillColor:p.perennial?'#999':col(p.risk??p.risk_raw)};},
+  onEachFeature:(f,l)=>l.bindPopup(()=>riskPopup(f.properties||{}))}).addTo(map);
+ riskL.bringToBack();
+}
+function riskPopup(p){
+ const box=el('div');
+ box.appendChild(el('b',null,txt(p.name_he||p.main_nahal,'אגן')));
+ const risk=num(p.risk),raw=num(p.risk_raw);
+ box.appendChild(el('div',null,'סיכוי: '+(risk!=null?Math.round(risk*100)+'%':(raw!=null?Math.round(raw*100)+'% (גולמי)':'—'))));
+ if(p.eta_peak_rain)box.appendChild(el('div',null,'שיא גשם צפוי: '+txt(p.eta_peak_rain)));
+ const rain=num(p.event_rain_mm),area=num(p.area_dem);
+ box.appendChild(el('div',null,'גשם באירוע: '+(rain!=null?String(rain):'—')+' מ"מ'));
+ box.appendChild(el('div',null,'שטח: '+Math.round(area||0)+' קמ"ר'));
+ if(p.perennial)box.appendChild(el('div',null,'נחל איתן'));
+ return box;
+}
+function drawVP(){
+ if(vpL)map.removeLayer(vpL);
+ vpL=L.layerGroup(VPS.filter(v=>finiteCoord(v.lat,v.lon)).map(v=>{
+  const c=finiteCoord(v.lat,v.lon);
+  return L.circleMarker(c,{radius:7,color:'#fff',weight:2,fillColor:v.current&&num(v.current.prob)>=PREFS.threshold?'#c0392b':'#1e88e5',fillOpacity:1}).bindPopup(()=>cardEl(v,true));
+ })).addTo(map);
+}
 const fav=id=>PREFS.points.includes(id);
-function cardHTML(v,short){const c=v.current||{};const fw=(v.first_waves||[]);
- return `<div class="card" style="${short?'box-shadow:none;padding:0':''}"><span class="star ${fav(v.id)?'on':''}" onclick="toggleFav('${v.id}')">★</span>
- <h3>${v.name_he}</h3><div class="muted">${v.nahal} · ${v.region}${v.basin_name?' · אגן: '+v.basin_name:''}${v.upstream_km2?' · '+Math.round(v.upstream_km2)+' קמ"ר':''}</div>
- <p><b>סיכוי כעת:</b> ${c.prob!=null?Math.round(c.prob*100)+'%':'—'} · <b>גל ראשון:</b> ${fmtH(c.hours_until_first_wave)}${c.eta_first_wave?' ('+c.eta_first_wave+')':''}</p>
- <p><b>איך מגיעים:</b> ${v.access||'—'}</p>${v.safety?`<p class="muted">⚠️ ${v.safety}</p>`:''}
- <a href="https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lon}" target="_blank">ניווט 🧭</a> · <a href="https://waze.com/ul?ll=${v.lat},${v.lon}&navigate=yes" target="_blank">Waze</a>
- ${short?'':(fw.length?`<details><summary>זמני גל ראשון היסטוריים (${fw.length})</summary><table><tr><th>תאריך</th><th>מקום</th><th>שעה</th><th>שעות מתחילת גשם</th></tr>${fw.map(f=>`<tr><td>${f.date}</td><td>${f.place}</td><td>${f.time_il}</td><td>${f.lag_from_onset_h===''?'—':f.lag_from_onset_h}</td></tr>`).join('')}</table></details>`:'<div class="muted">אין עדיין זמני גל ראשון מתועדים</div>')}</div>`}
-function renderPoints(){const q=($('#q').value||'').trim();$('#plist').innerHTML=VPS.filter(v=>!q||(v.name_he+v.nahal+v.region).includes(q)).sort((a,b)=>fav(b.id)-fav(a.id)).map(v=>cardHTML(v)).join('');}
-async function savePrefs(){localStorage.prefs=JSON.stringify(PREFS);syncSub();renderPoints();drawVP();renderSet();}
-function toggleFav(id){PREFS.points=fav(id)?PREFS.points.filter(x=>x!=id):[...PREFS.points,id];savePrefs();}
-function addStream(){const s=$('#snew').value.trim();if(s&&!PREFS.streams.includes(s)){PREFS.streams.push(s);savePrefs();}$('#snew').value='';}
-function rmStream(s){PREFS.streams=PREFS.streams.filter(x=>x!=s);savePrefs();}
-function renderSet(){$('#favs').innerHTML=PREFS.points.map(id=>{const v=VPS.find(x=>x.id==id);return `<span class="chip">📍 ${v?v.name_he:id} <a onclick="toggleFav('${id}')">✕</a></span>`}).join('')+PREFS.streams.map(s=>`<span class="chip">〰️ ${s} <a onclick="rmStream('${s}')">✕</a></span>`).join('')||'אין מועדפים עדיין';
- $('#th').value=Math.round(PREFS.threshold*100);$('#thv').textContent=$('#th').value;}
-$('#th').oninput=e=>$('#thv').textContent=e.target.value;$('#th').onchange=e=>{PREFS.threshold=e.target.value/100;savePrefs();};
-async function loadAlerts(){const L=await allAlerts();const st={};PREFS.streams.forEach(s=>st[norm(s)]=s);const mine=[];
- for(const a of L.alerts){let why;if(PREFS.points.includes(a.point))why={via:'point'};else if(st[norm(a.nahal)])why={via:'stream',stream:st[norm(a.nahal)]};else continue;mine.push({...a,alert:a.prob>=PREFS.threshold,...why});}
- const A={...L,alerts:mine.sort((x,y)=>y.prob-x.prob),threshold:PREFS.threshold};
- let h=`<div class="muted">תחזית מ-${A.issued||'—'} · מקור: ${A.source||'—'}${A.stub?' · <b>מצב הדגמה (מנוע התחזית עוד לא זמין)</b>':''}</div>`;
- if(!A.alerts.length)h+=`<div class="card">אין נקודות מועדפות. סמנו ⭐ בנקודות או הוסיפו נחל בהגדרות.</div>`;
- for(const a of A.alerts){const r=a.rain_summary||{};const cls=a.alert?(a.prob>=.5?'hi':'mid'):'';
-  const via=a.via=='stream'&&a.stream?`<div class="muted">במעקב דרך: ${a.stream}</div>`:'';
-  h+=`<div class="card al ${cls}"><h3>${a.alert?`סיכוי גבוה לשיטפון ב${a.nahal}, הגל צפוי להגיע לנקודה "${a.name}" בעוד ${fmtH(a.hours_until_first_wave)}`:`${a.name} – אין התראה`}</h3>${via}
-  <div>סיכוי: <b>${Math.round(a.prob*100)}%</b> (סף ${Math.round(A.threshold*100)}%) · ודאות: ${({low:'נמוכה',medium:'בינונית',high:'גבוהה'})[a.confidence]||'—'}</div>
-  <div>גל ראשון: ${a.eta_first_wave||'—'} · שיא: ${a.eta_peak||'—'}</div>
-  <div class="muted">גשם ממוצע באגן: ${r.basin_mean_mm??'—'} מ"מ · עוצמה מרבית: ${r.max_cell_mm_h??'—'} מ"מ/שעה · ספיקת שיא משוערת: ${r.q_peak_m3s??'—'} מק"ש</div>
-  ${distHTML(r.contributing_by_travel_time)}</div>`}
- $('#alist').innerHTML=h;}
-function distHTML(c){if(!c||typeof c!='object')return'';const e=Array.isArray(c)?c.map((x,i)=>[x.label??i,x.mm??x.value??x]):Object.entries(c);if(!e.length)return'';const m=Math.max(...e.map(x=>+x[1]||0))||1;
- return `<details><summary>פיזור הגשם באגן לפי זמן זרימה לנקודה</summary>${e.map(([k,v])=>`<div style="display:flex;gap:6px;align-items:center;font-size:12px"><span style="width:70px">${k}</span><div class="bar" style="width:${(+v||0)/m*70}%"></div><span>${typeof v=='number'?v.toFixed(1):v}</span></div>`).join('')}</details>`}
-const b64=s=>{const p='='.repeat((4-s.length%4)%4);const r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)))};
-async function enablePush(){try{const reg=await navigator.serviceWorker.ready;if(await Notification.requestPermission()!='granted')throw'לא ניתנה הרשאה';
- if(!CFG.vapid_public)throw'מפתח VAPID ציבורי חסר בהגדרות האתר';
- const s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(CFG.vapid_public)});localStorage.pushsub=JSON.stringify(s.toJSON());await syncSub(true);}catch(e){$('#pst').textContent='שגיאה: '+e}}
-// Subscription record {uid,points,streams,threshold,push}. Needs a free write endpoint (CFG.subscribe_url, e.g. Google Apps Script) - static Pages cannot store it.
-function subRecord(){return{uid:UID,points:PREFS.points,streams:PREFS.streams,threshold:PREFS.threshold,push:localStorage.pushsub?JSON.parse(localStorage.pushsub):null,updated:new Date().toISOString()}}
-async function syncSub(verbose){if(!localStorage.pushsub)return;const rec=subRecord();
- if(CFG.subscribe_url){try{await fetch(CFG.subscribe_url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(rec)});if(verbose)$('#pst').textContent='✔ התראות הופעלו – ההרשמה נשמרה (התראות נשלחות בבדיקה השעתית)';}catch(e){$('#pst').textContent='שגיאה בשמירת ההרשמה: '+e}}
- else if(verbose)$('#pst').innerHTML='✔ ההרשאה ניתנה, אבל עדיין אין שרת הרשמה. העתיקו את הרשומה:<br><textarea style="width:100%;height:70px" readonly>'+JSON.stringify(rec)+'</textarea>';}
-async function testPush(){const reg=await navigator.serviceWorker.ready;reg.showNotification('בדיקת התראה',{body:'כך תיראה התראת שיטפון במכשיר הזה ✔',icon:'./icon-192.png',dir:'rtl',lang:'he'});$('#pst').textContent='הוצגה התראת בדיקה מקומית (התראות אמיתיות נשלחות מהבדיקה השעתית)';}
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');init();
+function cardEl(v,short){
+ const c=v.current||{};const fw=Array.isArray(v.first_waves)?v.first_waves.slice(0,12):[];
+ const root=el('div',short?'card tight':'card');
+ const star=el('button','star'+(fav(v.id)?' on':''),'★');star.type='button';
+ star.addEventListener('click',()=>toggleFav(String(v.id||'')));
+ root.appendChild(star);
+ root.appendChild(el('h3',null,txt(v.name_he,'נקודה')));
+ const bits=[txt(v.nahal),txt(v.region)];
+ if(v.basin_name)bits.push('אגן: '+txt(v.basin_name));
+ const up=num(v.upstream_km2);if(up!=null)bits.push(Math.round(up)+' קמ"ר');
+ root.appendChild(el('div','muted',bits.filter(Boolean).join(' · ')));
+ const prob=num(c.prob);
+ const p1=el('p');
+ p1.appendChild(el('b',null,'סיכוי כעת: '));
+ p1.appendChild(document.createTextNode((prob!=null?Math.round(prob*100)+'%':'—')+' · '));
+ p1.appendChild(el('b',null,'גל ראשון: '));
+ p1.appendChild(document.createTextNode(fmtH(num(c.hours_until_first_wave))+(c.eta_first_wave?' ('+txt(c.eta_first_wave)+')':'')));
+ root.appendChild(p1);
+ root.appendChild(el('p',null,'איך מגיעים: '+txt(v.access,'—')));
+ if(v.safety)root.appendChild(el('p','muted','⚠️ '+txt(v.safety)));
+ const links=navLinks(v.lat,v.lon);
+ if(links.length){
+  const line=el('p');
+  links.forEach((pair,i)=>{if(i)line.appendChild(document.createTextNode(' · '));line.appendChild(extLink(pair[0],pair[1]));});
+  root.appendChild(line);
+ }
+ if(!short){
+  if(fw.length){
+   const det=el('details');det.appendChild(el('summary',null,'זמני גל ראשון היסטוריים ('+fw.length+')'));
+   const table=el('table');const hr=el('tr');['תאריך','מקום','שעה','שעות מתחילת גשם'].forEach(h=>hr.appendChild(el('th',null,h)));table.appendChild(hr);
+   fw.forEach(f=>{const tr=el('tr');[f.date,f.place,f.time_il,f.lag_from_onset_h===''||f.lag_from_onset_h==null?'—':f.lag_from_onset_h].forEach(cell=>tr.appendChild(el('td',null,txt(cell,'—'))));table.appendChild(tr);});
+   det.appendChild(table);root.appendChild(det);
+  }else root.appendChild(el('div','muted','אין עדיין זמני גל ראשון מתועדים'));
+ }
+ return root;
+}
+function renderPoints(){
+ const q=($('#q').value||'').trim();const host=$('#plist');clear(host);
+ VPS.filter(v=>!q||(txt(v.name_he)+txt(v.nahal)+txt(v.region)).includes(q)).sort((a,b)=>fav(b.id)-fav(a.id)).forEach(v=>host.appendChild(cardEl(v,false)));
+}
+function savePrefs(){localStorage.prefs=JSON.stringify(PREFS);syncSub(false);renderPoints();drawVP();renderSet();}
+function toggleFav(id){if(!/^VP\d{2}$/.test(id))return;PREFS.points=fav(id)?PREFS.points.filter(x=>x!==id):[...PREFS.points,id].slice(0,40);savePrefs();}
+function addStream(){
+ const s=$('#snew').value.trim();
+ if(s&&s.length<=40&&!/[\u0000-\u001f<>]/.test(s)&&!PREFS.streams.includes(s)&&PREFS.streams.length<12){PREFS.streams.push(s);savePrefs();}
+ $('#snew').value='';
+}
+function rmStream(s){PREFS.streams=PREFS.streams.filter(x=>x!==s);savePrefs();}
+function renderSet(){
+ const host=$('#favs');if(!host)return;clear(host);
+ if(!PREFS.points.length&&!PREFS.streams.length)host.textContent='אין מועדפים עדיין';
+ PREFS.points.forEach(id=>{const v=VPS.find(x=>x.id===id);const chip=el('span','chip','📍 '+(v?txt(v.name_he):id)+' ');const b=el('button',null,'✕');b.type='button';b.addEventListener('click',()=>toggleFav(id));chip.appendChild(b);host.appendChild(chip);});
+ PREFS.streams.forEach(s=>{const chip=el('span','chip','〰️ '+s+' ');const b=el('button',null,'✕');b.type='button';b.addEventListener('click',()=>rmStream(s));chip.appendChild(b);host.appendChild(chip);});
+ const th=$('#th'),thv=$('#thv');
+ if(th&&thv){th.value=String(Math.round(PREFS.threshold*100));thv.textContent=th.value;}
+}
+function distEl(c){
+ if(!c||typeof c!=='object')return null;
+ const entries=Array.isArray(c)?c.map((x,i)=>[x&&x.label!=null?x.label:i,x&&(x.mm!=null?x.mm:x.value)]):Object.entries(c);
+ const rows=entries.filter(x=>x[0]!=null).slice(0,8);
+ if(!rows.length)return null;
+ const max=Math.max(...rows.map(x=>Number(x[1])||0))||1;
+ const det=el('details');det.appendChild(el('summary',null,'פיזור הגשם באגן לפי זמן זרימה לנקודה'));
+ rows.forEach(([k,v])=>{
+  const row=el('div','dist-row');row.appendChild(el('span','dist-k',txt(k)));
+  const slot=el('span','bar-slot');const bar=el('span','bar bar-w-'+Math.max(0,Math.min(10,Math.round((Number(v)||0)/max*10))));
+  slot.appendChild(bar);row.appendChild(slot);row.appendChild(el('span',null,typeof v==='number'?v.toFixed(1):txt(v)));
+  det.appendChild(row);
+ });
+ return det;
+}
+async function loadAlerts(){
+ const L=await allAlerts();const alerts=Array.isArray(L.alerts)?L.alerts:[];
+ const st={};PREFS.streams.forEach(s=>st[norm(s)]=s);const mine=[];
+ for(const a of alerts){
+  if(!a)continue;
+  let why;if(PREFS.points.includes(a.point))why={via:'point'};else if(st[norm(a.nahal)])why={via:'stream',stream:st[norm(a.nahal)]};else continue;
+  mine.push({...a,alert:num(a.prob)>=PREFS.threshold,...why});
+ }
+ mine.sort((x,y)=>(num(y.prob)||0)-(num(x.prob)||0));
+ const host=$('#alist');clear(host);
+ const head=el('div','muted','תחזית מ-'+txt(L.issued,'—')+' · מקור: '+txt(L.source,'—')+(L.stub?' · מצב הדגמה (מנוע התחזית עוד לא זמין)':''));
+ host.appendChild(head);
+ if(!mine.length){host.appendChild(el('div','card','אין נקודות מועדפות. סמנו ⭐ בנקודות או הוסיפו נחל בהגדרות.'));return;}
+ const conf={low:'נמוכה',medium:'בינונית',high:'גבוהה'};
+ for(const a of mine){
+  const r=a.rain_summary||{};const prob=num(a.prob)||0;const cls=a.alert?(prob>=.5?'hi':'mid'):'';
+  const card=el('div','card al'+(cls?' '+cls:''));
+  const title=a.alert?`סיכוי גבוה לשיטפון ב${txt(a.nahal)}, הגל צפוי להגיע לנקודה "${txt(a.name)}" בעוד ${fmtH(num(a.hours_until_first_wave))}`:`${txt(a.name)} – אין התראה`;
+  card.appendChild(el('h3',null,title));
+  if(a.via==='stream'&&a.stream)card.appendChild(el('div','muted','במעקב דרך: '+txt(a.stream)));
+  card.appendChild(el('div',null,'סיכוי: '+Math.round(prob*100)+'% (סף '+Math.round(PREFS.threshold*100)+'%) · ודאות: '+(conf[a.confidence]||'—')));
+  card.appendChild(el('div',null,'גל ראשון: '+txt(a.eta_first_wave,'—')+' · שיא: '+txt(a.eta_peak,'—')));
+  card.appendChild(el('div','muted','גשם ממוצע באגן: '+txt(r.basin_mean_mm,'—')+' מ"מ · עוצמה מרבית: '+txt(r.max_cell_mm_h,'—')+' מ"מ/שעה · ספיקת שיא משוערת: '+txt(r.q_peak_m3s,'—')+' מק"ש'));
+  const dist=distEl(r.contributing_by_travel_time);if(dist)card.appendChild(dist);
+  host.appendChild(card);
+ }
+}
+function hostOk(endpoint){
+ try{
+  const u=new URL(endpoint);
+  if(u.protocol!=='https:'||u.username||u.password)return false;
+  const h=u.hostname.toLowerCase().replace(/\.$/,'');
+  if(h==='fcm.googleapis.com'||h==='updates.push.services.mozilla.com')return true;
+  if(h.endsWith('.push.apple.com')&&h.length>'.push.apple.com'.length)return true;
+  if(h.endsWith('.notify.windows.com')&&h.length>'.notify.windows.com'.length)return true;
+  return false;
+ }catch(e){return false;}
+}
+function subscribeUrlOk(url){
+ try{const u=new URL(url);return u.protocol==='https:'&&(u.hostname==='script.google.com'||u.hostname==='script.googleusercontent.com');}
+ catch(e){return false;}
+}
+const b64=s=>{const p='='.repeat((4-s.length%4)%4);const r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));};
+function storedPush(){try{const p=JSON.parse(localStorage.pushsub||'null');return p&&hostOk(p.endpoint)?p:null;}catch(e){return null;}}
+function subRecord(){return{action:'register',uid:UID,points:PREFS.points,streams:PREFS.streams,threshold:PREFS.threshold,push:storedPush(),updated:new Date().toISOString()};}
+async function postSub(body){
+ if(!CFG||!subscribeUrlOk(CFG.subscribe_url))return false;
+ await fetch(CFG.subscribe_url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});
+ return true;
+}
+async function enablePush(){
+ const pst=$('#pst');
+ try{
+  const reg=await navigator.serviceWorker.ready;
+  if(await Notification.requestPermission()!=='granted')throw new Error('לא ניתנה הרשאה');
+  if(!CFG.vapid_public)throw new Error('מפתח VAPID ציבורי חסר בהגדרות האתר');
+  const s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(CFG.vapid_public)});
+  const json=s.toJSON();
+  if(!hostOk(json.endpoint))throw new Error('שירות ההתראות של הדפדפן הזה לא נתמך');
+  localStorage.pushsub=JSON.stringify(json);
+  const sent=await postSub(subRecord());
+  pst.textContent=sent?'התראות הופעלו. ההרשמה נשמרה בשרת הפרטי, וההתראות נשלחות מהבדיקה השעתית.':'ההרשאה ניתנה במכשיר, אבל עדיין אין שרת הרשמה. בעל האתר צריך להגדיר כתובת Apps Script. אל תעתיקו את פרטי ההתראה לשום מקום ציבורי.';
+ }catch(e){pst.textContent='שגיאה: '+(e&&e.message?e.message:e);}
+}
+async function disablePush(){
+ const push=storedPush();
+ if(push)await postSub({action:'unregister',push:{endpoint:push.endpoint}});
+ localStorage.removeItem('pushsub');
+ $('#pst').textContent='ההתראות במכשיר הזה כובו. אם שרת ההרשמה מוגדר, הרשומה נמחקה לפיו.';
+}
+async function syncSub(verbose){
+ if(!storedPush())return;
+ const sent=await postSub(subRecord());
+ if(verbose){
+  $('#pst').textContent=sent?'ההעדפות עודכנו בשרת ההרשמה.':'ההעדפות נשמרו במכשיר. שרת ההרשמה עדיין לא מוגדר, ופרטי ה-Push לא נשלחים לשום מקום.';
+ }
+}
+async function testPush(){
+ const reg=await navigator.serviceWorker.ready;
+ reg.showNotification('בדיקת התראה',{body:'כך תיראה התראת שיטפון במכשיר הזה',icon:'./icon-192.png',dir:'rtl',lang:'he'});
+ $('#pst').textContent='הוצגה התראת בדיקה מקומית. התראות אמיתיות נשלחות רק מהבדיקה השעתית.';
+}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.p)));
+$('#gate-ok').addEventListener('click',()=>{localStorage.ack_disclaimer_v1='1';$('#gate').hidden=true;});
+$('#add-stream').addEventListener('click',addStream);
+$('#enable-push').addEventListener('click',()=>enablePush());
+$('#test-push').addEventListener('click',()=>testPush());
+$('#disable-push').addEventListener('click',()=>disablePush());
+$('#th').addEventListener('input',e=>{$('#thv').textContent=e.target.value;});
+$('#th').addEventListener('change',e=>{const v=Number(e.target.value);if(Number.isFinite(v)){PREFS.threshold=Math.min(0.9,Math.max(0.05,v/100));savePrefs();}});
+if(localStorage.ack_disclaimer_v1==='1')$('#gate').hidden=true;
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
+init();
