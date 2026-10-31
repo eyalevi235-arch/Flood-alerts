@@ -131,6 +131,11 @@ function cardEl(v,short){
  const star=el('button','star'+(fav(v.id)?' on':''),'★');star.type='button';
  star.addEventListener('click',()=>toggleFav(String(v.id||'')));
  root.appendChild(star);
+ if(fav(v.id)&&!short){
+  const off=el('button','btn alt','בטל התראות');off.type='button';
+  off.addEventListener('click',()=>cancelPointAlerts(String(v.id||'')));
+  root.appendChild(off);
+ }
  root.appendChild(el('h3',null,txt(v.name_he,'נקודה')));
  const bits=[txt(v.nahal),txt(v.region)];
  if(v.basin_name)bits.push('אגן: '+txt(v.basin_name));
@@ -173,11 +178,47 @@ function addStream(){
  $('#snew').value='';
 }
 function rmStream(s){PREFS.streams=PREFS.streams.filter(x=>x!==s);savePrefs();}
+function confirmUnsub(msg){
+ const pst=$('#pst');if(pst)pst.textContent=msg;
+ const page=$('#unsub-msg');if(page)page.textContent=msg;
+}
+function cancelPointAlerts(id){
+ if(!/^VP\d{2}$/.test(id)||!fav(id))return;
+ PREFS.points=PREFS.points.filter(x=>x!==id);
+ savePrefs();
+ confirmUnsub('ההתראות לנקודה זו בוטלו.');
+}
+function cancelStreamAlerts(s){
+ PREFS.streams=PREFS.streams.filter(x=>x!==s);
+ savePrefs();
+ confirmUnsub('ההתראות לנחל זה בוטלו.');
+}
+async function unsubscribeAll(){
+ const pst=$('#pst');
+ let endpoint='';
+ try{
+  if('serviceWorker' in navigator){
+   const reg=await navigator.serviceWorker.ready;
+   const sub=await reg.pushManager.getSubscription();
+   if(sub){endpoint=sub.endpoint||'';await sub.unsubscribe();}
+  }
+ }catch(e){}
+ if(!endpoint){const saved=storedPush();if(saved)endpoint=saved.endpoint;}
+ if(endpoint&&hostOk(endpoint)){try{await postSub({action:'unsubscribe',push:{endpoint:endpoint}});}catch(e){}}
+ localStorage.removeItem('pushsub');
+ localStorage.removeItem('myPoints');
+ PREFS.points=[];PREFS.streams=[];
+ savePrefs();
+ if(typeof drawMyPoints==='function')drawMyPoints();
+ const msg='כל ההתראות בוטלו. ההרשמה נמחקה מהמכשיר ומהשרת.';
+ if(pst)pst.textContent=msg;
+ const page=$('#unsub-msg');if(page)page.textContent=msg;
+}
 function renderSet(){
  const host=$('#favs');if(!host)return;clear(host);
  if(!PREFS.points.length&&!PREFS.streams.length)host.textContent='אין מועדפים עדיין';
- PREFS.points.forEach(id=>{const v=VPS.find(x=>x.id===id);const chip=el('span','chip','📍 '+(v?txt(v.name_he):id)+' ');const b=el('button',null,'✕');b.type='button';b.addEventListener('click',()=>toggleFav(id));chip.appendChild(b);host.appendChild(chip);});
- PREFS.streams.forEach(s=>{const chip=el('span','chip','〰️ '+s+' ');const b=el('button',null,'✕');b.type='button';b.addEventListener('click',()=>rmStream(s));chip.appendChild(b);host.appendChild(chip);});
+ PREFS.points.forEach(id=>{const v=VPS.find(x=>x.id===id);const chip=el('span','chip','📍 '+(v?txt(v.name_he):id)+' ');const b=el('button','unsub','בטל התראות');b.type='button';b.addEventListener('click',()=>cancelPointAlerts(id));chip.appendChild(b);host.appendChild(chip);});
+ PREFS.streams.forEach(s=>{const chip=el('span','chip','〰️ '+s+' ');const b=el('button','unsub','בטל התראות');b.type='button';b.addEventListener('click',()=>cancelStreamAlerts(s));chip.appendChild(b);host.appendChild(chip);});
  const th=$('#th'),thv=$('#thv');
  if(th&&thv){th.value=String(Math.round(PREFS.threshold*100));thv.textContent=th.value;}
  if(typeof renderMyPointList==='function')renderMyPointList();
@@ -262,12 +303,6 @@ async function enablePush(){
   pst.textContent=sent?'התראות הופעלו. ההרשמה נשמרה בשרת הפרטי, וההתראות נשלחות מהבדיקה השעתית.':'ההרשאה ניתנה במכשיר, אבל עדיין אין שרת הרשמה. בעל האתר צריך להגדיר כתובת Apps Script. אל תעתיקו את פרטי ההתראה לשום מקום ציבורי.';
  }catch(e){pst.textContent='שגיאה: '+(e&&e.message?e.message:e);}
 }
-async function disablePush(){
- const push=storedPush();
- if(push)await postSub({action:'unregister',push:{endpoint:push.endpoint}});
- localStorage.removeItem('pushsub');
- $('#pst').textContent='ההתראות במכשיר הזה כובו. אם שרת ההרשמה מוגדר, הרשומה נמחקה לפיו.';
-}
 async function syncSub(verbose){
  if(!storedPush())return;
  const sent=await postSub(subRecord());
@@ -277,7 +312,7 @@ async function syncSub(verbose){
 }
 async function testPush(){
  const reg=await navigator.serviceWorker.ready;
- reg.showNotification('בדיקת התראה',{body:'כך תיראה התראת שיטפון במכשיר הזה',icon:'./icon-192.png',dir:'rtl',lang:'he'});
+ reg.showNotification('בדיקת התראה',{body:'כך תיראה התראת שיטפון במכשיר הזה',icon:'./icon-192.png',dir:'rtl',lang:'he',actions:[{action:'unsubscribe',title:'בטל התראות'}],data:{url:location.href.split('#')[0]+'#alerts',settings:location.href.split('#')[0]+'#set'}});
  $('#pst').textContent='הוצגה התראת בדיקה מקומית. התראות אמיתיות נשלחות רק מהבדיקה השעתית.';
 }
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.p)));
@@ -285,7 +320,7 @@ $('#gate-ok').addEventListener('click',()=>{localStorage.ack_disclaimer_v1='1';$
 $('#add-stream').addEventListener('click',addStream);
 $('#enable-push').addEventListener('click',()=>enablePush());
 $('#test-push').addEventListener('click',()=>testPush());
-$('#disable-push').addEventListener('click',()=>disablePush());
+$('#unsubscribe-all').addEventListener('click',()=>unsubscribeAll());
 $('#th').addEventListener('input',e=>{$('#thv').textContent=e.target.value;});
 $('#th').addEventListener('change',e=>{const v=Number(e.target.value);if(Number.isFinite(v)){PREFS.threshold=Math.min(0.9,Math.max(0.05,v/100));savePrefs();}});
 if(localStorage.ack_disclaimer_v1==='1')$('#gate').hidden=true;
