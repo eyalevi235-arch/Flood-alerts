@@ -9,12 +9,53 @@ function _ringHas(lat, lon, ring) {
   }
   return inside;
 }
+function _polyHas(lat, lon, coords) {
+  if (!coords || !coords.length || !_ringHas(lat, lon, coords[0])) return false;
+  for (var h = 1; h < coords.length; h++) if (_ringHas(lat, lon, coords[h])) return false;
+  return true;
+}
 function pointInFeature(lat, lon, feature) {
   var g = feature && feature.geometry;
-  if (!g || g.type !== 'Polygon' || !g.coordinates || !g.coordinates.length) return false;
-  if (!_ringHas(lat, lon, g.coordinates[0])) return false;
-  for (var h = 1; h < g.coordinates.length; h++) if (_ringHas(lat, lon, g.coordinates[h])) return false;
-  return true;
+  if (!g || !g.coordinates) return false;
+  if (g.type === 'Polygon') return _polyHas(lat, lon, g.coordinates);
+  if (g.type === 'MultiPolygon') {
+    for (var i = 0; i < g.coordinates.length; i++) if (_polyHas(lat, lon, g.coordinates[i])) return true;
+    return false;
+  }
+  return false;
+}
+// coverage.geojson is a union mask (desert / nondesert), not one polygon per basin.
+function coverageRegion(features, lat, lon) {
+  var list = features || [];
+  for (var i = 0; i < list.length; i++) {
+    if (!pointInFeature(lat, lon, list[i])) continue;
+    var region = (list[i].properties || {}).region;
+    return region ? String(region) : 'covered';
+  }
+  return null;
+}
+// Published station polygons. Bad non-desert polygons (the Kishon/Jordan spills) are not a forecast.
+function basinIsLive(feature, northSids) {
+  var p = (feature && feature.properties) || {};
+  var desert = p.desert === 1 || p.desert === true || p.desert === '1';
+  if (p.status === 'bad_basin' && !desert) return false;
+  if (desert) return true;
+  var sid = p.sid == null ? '' : String(p.sid);
+  return !!(northSids && northSids[sid]);
+}
+function liveBasin(features, lat, lon, northSids) {
+  var hits = [];
+  var list = features || [];
+  for (var i = 0; i < list.length; i++) {
+    if (pointInFeature(lat, lon, list[i]) && basinIsLive(list[i], northSids)) hits.push(list[i]);
+  }
+  if (!hits.length) return null;
+  hits.sort(function (a, b) {
+    var aa = Number((a.properties || {}).area_dem), bb = Number((b.properties || {}).area_dem);
+    return (isFinite(aa) ? aa : 1e12) - (isFinite(bb) ? bb : 1e12);
+  });
+  for (var j = 0; j < hits.length; j++) if (isFinite(Number((hits[j].properties || {}).risk))) return hits[j];
+  return hits[0];
 }
 function _hav(lat1, lon1, lat2, lon2) {
   var p = Math.PI / 180, R = 6371;
