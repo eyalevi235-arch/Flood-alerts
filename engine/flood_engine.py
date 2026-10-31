@@ -155,11 +155,155 @@ def scale_arrival(eta_outlet,now,tt_med_h,along):
     lead=(eta-now).total_seconds()/3600.0
     if lead<0: lead=0.0
     return eta,round(lead,1)
+def cap_segment_prob(p, area_km2):
+    """The basin model was not fit on slivers. Below 10 km² the probability shrinks with area, and below 5 km² it also cannot exceed half the area ratio."""
+    p=max(0.0, float(p)); a=max(0.0, float(area_km2))
+    if a>=10: return p
+    scaled=p*(a/10.0)
+    if a<5: scaled=min(scaled, 0.5*(a/5.0))
+    return scaled
+_CHAN=None
+_SEG_BY_ID={}
+def channel_table():
+    global _CHAN
+    if _CHAN is None:
+        import gzip
+        with gzip.open(f'{ROOT}/data/channel_segments.json.gz','rt') as f: _CHAN=json.load(f)
+    return _CHAN
+def segment_title(seg):
+    name=seg.get('name')
+    if isinstance(name, str) and name.strip():
+        name=name.strip()
+        return name if name.startswith('נחל') else 'נחל '+name
+    meta=basin_meta(seg.get('basin'))
+    nahal=(meta.get('nahal') or '').strip()
+    if nahal and not nahal.startswith('נחל'): nahal='נחל '+nahal
+    return 'יובל של '+nahal if nahal else 'יובל'
+def _seg_arrays(segs):
+    n=len(segs); maxc=max(len(s['cells']) for s in segs)
+    R=np.zeros((n,maxc),np.int16); C=np.zeros((n,maxc),np.int16); use=np.zeros((n,maxc),bool)
+    W=np.zeros((n,maxc),np.float64); near=np.zeros((n,maxc),bool); frac=np.zeros((n,maxc),np.float64)
+    for i,s in enumerate(segs):
+        cells=s['cells']; m=len(cells)
+        rr=np.array([int(x[0]) for x in cells]); cc=np.array([int(x[1]) for x in cells]); fr=np.array([float(x[2]) for x in cells])
+        R[i,:m]=rr; C[i,:m]=cc; use[i,:m]=True; frac[i,:m]=fr/max(fr.sum(),1e-12)
+        ly,lx=cell_ll(rr,cc); d=np.hypot((lx-float(s['lon']))*np.cos(np.radians(float(s['lat']))), ly-float(s['lat']))*111.0
+        med=max(float(np.median(d)),1.0); w=1.0/(1.0+d/med); W[i,:m]=w/w.sum(); near[i,:m]=d<=float(np.median(d))
+    return R,C,use,W,near,frac
+def _cell_take(grid, R, C, use):
+    v=grid[R,C]
+    return np.where(use, v, 0.0)
+def score_channel_segments(g, now, horizon_h=48):
+    """Same LightGBM + SCS routing as the basins, on each segment's own upstream cells. Fills _SEG_BY_ID."""
+    global _SEG_BY_ID
+    blob=channel_table(); segs=blob['segments']; n=len(segs)
+    T1=now+pd.Timedelta(hours=horizon_h); Ts=g.t[(g.t>=now)&(g.t<=T1)]
+    if not len(Ts):
+        _SEG_BY_ID={}; return []
+    R,C,use,W,near,frac=_seg_arrays(segs)
+    ncell=np.maximum(use.sum(1),1)
+    hours=(1,3,6,12,24,72,168); keys=('r1','r3','r6','r12','r24','r72','ante7d')
+    nH=len(g.t); Precip=np.diff(g.cs,axis=0)
+    Hmean=np.zeros((n,nH),np.float64)
+    for k in range(nH):
+        Hmean[:,k]=_cell_take(Precip[k],R,C,use).sum(1)/ncell
+    step=g.step; n24=max(int(24/step),1)
+    win={}
+    for h,key in zip(hours,keys):
+        acc=np.zeros((n,len(Ts)),np.float64)
+        for j,T in enumerate(Ts):
+            grid=g.wsum(T,h)
+            acc[:,j]=0 if grid is None else _cell_take(grid,R,C,use).sum(1)/ncell
+        win[key]=acc
+    r24g=np.zeros((n,len(Ts)),np.float64); up24=np.zeros_like(r24g); cmax=np.zeros_like(r24g); f5=np.zeros_like(r24g); f10=np.zeros_like(r24g); f20=np.zeros_like(r24g); rw=np.zeros_like(r24g); nr=np.zeros_like(r24g); imax=np.zeros_like(r24g)
+    for j,T in enumerate(Ts):
+        grid=g.wsum(T,24)
+        if grid is None: continue
+        v=_cell_take(grid,R,C,use)
+        r24g[:,j]=v.sum(1)/ncell; up24[:,j]=(v*frac).sum(1); cmax[:,j]=np.max(np.where(use,v,-1e9),axis=1)
+        f5[:,j]=((v>5)&use).sum(1)/ncell; f10[:,j]=((v>10)&use).sum(1)/ncell; f20[:,j]=((v>20)&use).sum(1)/ncell
+        rw[:,j]=(v*W).sum(1)
+        nv=np.where(near,v,0.0); nr[:,j]=nv.sum(1)/np.maximum(near.sum(1),1)
+        b=int(g.t.searchsorted(T,'right')); sl=Hmean[:,max(0,b-n24):b]
+        imax[:,j]=(sl.max(1)/step) if sl.shape[1] else 0
+    area=np.array([float(s['area_km2']) for s in segs]); elev=np.array([float(s['elev_end']) for s in segs])
+    relief=np.array([float(s['relief']) for s in segs]); lat=np.array([float(s['lat']) for s in segs]); lon=np.array([float(s['lon']) for s in segs])
+    doy=np.array([T.dayofyear for T in Ts]); doys=np.sin(2*np.pi*doy/365); doyc=np.cos(2*np.pi*doy/365)
+    cols={
+        'pd_r1':win['r1'],'pd_r3':win['r3'],'pd_r6':win['r6'],'pd_r12':win['r12'],'pd_r24':win['r24'],'pd_r72':win['r72'],'pd_ante7d':win['ante7d'],
+        'pd_imax':imax,'pd_cmax24':cmax,'pd_f5':f5,'pd_f10':f10,'pd_f20':f20,'pd_rw24':rw,'pd_near24':nr,
+        'area':np.repeat(area[:,None],len(Ts),1),'elev':np.repeat(elev[:,None],len(Ts),1),'relief':np.repeat(relief[:,None],len(Ts),1),
+        'lat':np.repeat(lat[:,None],len(Ts),1),'lon':np.repeat(lon[:,None],len(Ts),1),
+        'doy_s':np.repeat(doys[None,:],n,0),'doy_c':np.repeat(doyc[None,:],n,0),
+    }
+    X=np.column_stack([cols[name].reshape(-1) for name in FEAT])
+    raw=platt(BOOST.predict(X)).reshape(n,len(Ts)); pick=np.argmax(raw,axis=1); base=raw[np.arange(n),pick]; r24=win['r24'][np.arange(n),pick]; Tp=Ts[pick]
+    out=[]; by={}
+    for i,s in enumerate(segs):
+        routed=route_segment(g,s,now-pd.Timedelta(hours=24),T1)
+        rain_route=routed['rain_mm'] if routed else 0.0
+        rain=float(up24[i,pick[i]])
+        p=max(float(base[i]),0)*min(1.0,max(float(r24[i]),rain_route)/DRY_MM)
+        p=cap_segment_prob(p,s['area_km2'])
+        eta=routed['first'] if routed else None
+        if eta is None and p>=0.05: eta=Tp[i]+pd.Timedelta(seconds=float(s['tt_p10_s']))
+        if p<0.05: eta=None
+        lead=(eta-now).total_seconds()/3600.0 if eta is not None else None
+        if lead is not None and lead<0: lead=0.0
+        title=segment_title(s); meta=basin_meta(s.get('basin'))
+        rec=dict(id=int(s['id']),prob=round(float(p),3),rain=round(float(rain),1),eta=eta,lead=None if lead is None else round(float(lead),1),
+            tt_p10_s=int(s['tt_p10_s']),tt_med_s=int(s['tt_med_s']),area=round(float(s['area_km2']),2),
+            name=title,nahal=meta.get('nahal') or title,qpeak=round(float(routed['qpeak']),2) if routed else 0.0,basin=str(s.get('basin') or ''))
+        out.append(rec); by[rec['id']]=rec
+    _SEG_BY_ID=by
+    return out
+def route_segment(g, seg, t0, t1):
+    """Lumped SCS-CN hydrograph. Rain is the area-fraction mix of the segment's cells. lagh is km² per 10-minute bin."""
+    cells=seg['cells']
+    if not cells: return None
+    r=np.array([int(x[0]) for x in cells]); c=np.array([int(x[1]) for x in cells]); frac=np.array([float(x[2]) for x in cells])
+    frac=frac/max(float(frac.sum()),1e-12)
+    a=g.t.searchsorted(pd.Timestamp(t0)); b=g.t.searchsorted(pd.Timestamp(t1),'right'); T=g.t[a:b]
+    if len(T)==0: return None
+    rain_cells=np.diff(g.cs[a:b+1][:,r,c],axis=0); rain=(rain_cells*frac).sum(1)
+    step=g.step; rate=rain/step; cn=float(seg.get('cn') or 90)
+    if not np.isfinite(cn) or cn<=1 or cn>100: cn=90.0
+    Pc=np.zeros_like(rain); acc=0.0; dry=0.0; p=P
+    for i in range(len(rain)):
+        dry=0.0 if rain[i]>0.1 else dry+step
+        acc=(0.0 if dry>=p['DRY_RESET'] else acc)+rain[i]; Pc[i]=acc
+    Q=scs(Pc,cn,p['LAMBDA']); dQ=np.diff(np.r_[0.0,Q]); dQ=np.maximum(dQ,0)*np.clip((rate-p['I0'])/(p['I1']-p['I0']),0,1)
+    nsub=int(step*60/p['DT_MIN']); lagh=np.asarray(seg.get('lagh') or [0.0],dtype=float); lag0=int(seg.get('lag0') or 0)
+    lh=np.r_[np.zeros(max(lag0,0)),lagh]; exs=np.repeat(dQ/nsub,nsub)
+    H=np.convolve(exs,lh) if len(lh) else exs; Qs=H*1000.0/(p['DT_MIN']*60.0)
+    pk=int(np.argmax(Qs)) if len(Qs) else 0; qpeak=float(Qs[pk]) if len(Qs) else 0.0
+    times=T[0]-pd.Timedelta(hours=step)+pd.to_timedelta(np.arange(len(Qs))*p['DT_MIN'],'min')
+    thr=max(p['QMIN'],p['QREL']*qpeak)
+    first=times[int(np.argmax(Qs>=thr))] if qpeak>=p['QMIN'] else None
+    return dict(first=first,qpeak=qpeak,rain_mm=float(rain.sum()),imax_cell=float(rate.max()) if len(rate) else 0.0)
+def nearest_segment_id(lat, lon, segs=None):
+    segs=segs if segs is not None else channel_table()['segments']
+    lat=float(lat); lon=float(lon); best=None; best_d=1e18
+    kx=111320*np.cos(np.radians(lat)); ky=110540
+    for s in segs:
+        coords=s.get('coords') or []
+        for k in range(1,len(coords)):
+            ax,ay=coords[k-1][0]*kx,coords[k-1][1]*ky; bx,by=coords[k][0]*kx,coords[k][1]*ky; px,py=lon*kx,lat*ky
+            dx,dy=bx-ax,by-ay; L2=dx*dx+dy*dy; t=0 if L2==0 else max(0,min(1,((px-ax)*dx+(py-ay)*dy)/L2))
+            d=(px-(ax+t*dx))**2+(py-(ay+t*dy))**2
+            if d<best_d: best_d=d; best=int(s['id'])
+    return best
 def custom_point_alert(g,now,c):
-    fc=evaluate_basin(g,now,c.get('sid'))
-    if not fc: return None
-    eta,lead=scale_arrival(fc['eta'],now,fc['tt_med_h'],c.get('along',1))
-    if fc['prob']<0.05: lead=None; eta=None
-    return dict(point=c['id'],name='הנקודה שלי · '+(fc['name'] or ''),nahal=fc['nahal'] or 'נחל',prob=fc['prob'],
+    if not _SEG_BY_ID: return None
+    seg=c.get('seg')
+    try: seg=int(seg)
+    except (TypeError,ValueError): seg=None
+    if seg not in _SEG_BY_ID and c.get('lat') is not None:
+        seg=nearest_segment_id(c.get('lat'),c.get('lon'))
+    rec=_SEG_BY_ID.get(seg)
+    if not rec: return None
+    eta,lead=rec['eta'],rec['lead']
+    if rec['prob']<0.05: eta,lead=None,None
+    return dict(point=c['id'],name='הנקודה שלי · '+rec['name'],nahal=rec['nahal'] or 'נחל',prob=rec['prob'],
         eta_first_wave=il(eta),eta_peak=None,hours_until_first_wave=lead,
-        rain_summary=dict(basin_mean_mm=fc['rain'],max_cell_mm_h=None),confidence='low',estimate=True,source='custom_point')
+        rain_summary=dict(basin_mean_mm=rec['rain'],max_cell_mm_h=None),confidence='low',estimate=True,channel=True,source='channel_segment')

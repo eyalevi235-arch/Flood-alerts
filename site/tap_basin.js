@@ -100,6 +100,25 @@ function nearestStreams(lines, lat, lon, tolM, limit) {
   hits.sort(function (a, b) { return a.distM - b.distM; });
   return hits.slice(0, limit || 6);
 }
+function closestStreams(lines, lat, lon, limit) {
+  var best = [], n = Math.min(lines.length, 20000), keep = limit || 4;
+  for (var i = 0; i < n; i++) {
+    var coords = lines[i].coords;
+    if (!coords || coords.length < 2) continue;
+    var hit = null;
+    for (var k = 1; k < coords.length; k++) {
+      var c = closestOnSegment(lat, lon, coords[k - 1][1], coords[k - 1][0], coords[k][1], coords[k][0]);
+      if (!hit || c.distM < hit.distM) hit = c;
+    }
+    if (!hit) continue;
+    var item = {lat: hit.lat, lon: hit.lon, distM: hit.distM, index: i};
+    if (best.length < keep) best.push(item);
+    else if (item.distM < best[best.length - 1].distM) best[best.length - 1] = item;
+    else continue;
+    best.sort(function (a, b) { return a.distM - b.distM; });
+  }
+  return best;
+}
 function travelHours(tt, sid, along) {
   var row = tt && tt[String(sid)];
   if (!row || !isFinite(row.med)) return null;

@@ -28,6 +28,18 @@ def main():
         out=dict(issued=dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%d %H:%M UTC'),source=f'stub ({type(err).__name__})',stub=True,alerts=[]); jsave(f'{SITE}/alerts_latest.json',out); return 1
     print(f'grid {g.name} {g.t[0]}..{g.t[-1]} max cell total {float(g.cs[-1].max()):.1f} mm ({time.time()-t0:.0f}s)')
     A=fe.evaluate_points(g,now); out=dict(issued=fe.il(now),source=f'flood_engine/{g.name}',stub=False,alerts=A); jsave(f'{SITE}/alerts_latest.json',out,1)
+    try:
+        segs=fe.score_channel_segments(g,now)
+        t0s=int(pd.Timestamp(now).timestamp())
+        compact=dict(v=1,t0=t0s,issued=fe.il(now),
+            p=[round(s['prob'],3) for s in segs],rain=[s['rain'] for s in segs],
+            lead=[s['lead'] if s['lead'] is not None else None for s in segs],
+            em=[int(round((s['eta']-now).total_seconds()/60)) if s['eta'] is not None else -1 for s in segs],
+            tp=[int(round(s['tt_p10_s']/60)) for s in segs],tm=[int(round(s['tt_med_s']/60)) for s in segs])
+        jsave(f'{SITE}/segment_risk.json',compact)
+        print(f'segments: {len(segs)} scored, {sum(s["prob"]>=0.3 for s in segs)} with prob>=0.3 ({time.time()-t0:.0f}s)')
+    except Exception:
+        traceback.print_exc(); print('segment scoring failed')
     R,n=fe.live_risk(g,now,f'{ROOT}/data/basins_simplified.geojson'); jsave(f'{SITE}/risk_live.geojson',R)
     # static viewpoints.json = viewpoints.csv + historical first waves + current alert (replaces /api/viewpoints)
     vp=pd.read_csv(f'{ROOT}/data/viewpoints.csv').fillna(''); fw=pd.read_csv(f'{ROOT}/data/first_wave_times.csv').fillna(''); al={a['point']:a for a in A}; V=[]
@@ -78,10 +90,18 @@ def clean_sub(s):
     for c in (s.get('custom') or [])[:8]:
         if not isinstance(c,dict): continue
         if not isinstance(c.get('id'),str) or not re.fullmatch(r'M[a-z0-9]{6,16}',c['id']): continue
-        if not isinstance(c.get('sid'),str) or not re.fullmatch(r'\d{3,8}',str(c['sid'])): continue
-        try: along=float(c.get('along')); lat=float(c.get('lat')); lon=float(c.get('lon'))
+        try: lat=float(c.get('lat')); lon=float(c.get('lon'))
         except (TypeError,ValueError): continue
-        if not (0<=along<=1 and 29.3<=lat<=33.5 and 34.1<=lon<=36.0): continue
+        if not (29.3<=lat<=33.5 and 34.1<=lon<=36.0): continue
+        seg=c.get('seg')
+        try: seg=int(seg)
+        except (TypeError,ValueError): seg=None
+        if seg is not None and 0<=seg<=20000:
+            custom.append(dict(id=c['id'],seg=seg,sid=str(c.get('sid') or ''),lat=round(lat,5),lon=round(lon,5)))
+            continue
+        try: along=float(c.get('along'))
+        except (TypeError,ValueError): continue
+        if not (isinstance(c.get('sid'),str) and re.fullmatch(r'\d{3,8}',str(c['sid'])) and 0<=along<=1): continue
         custom.append(dict(id=c['id'],sid=str(c['sid']),along=round(along,3),lat=round(lat,5),lon=round(lon,5)))
     return dict(uid=uid,points=pts,streams=streams,threshold=thr,custom=custom,push=dict(endpoint=push['endpoint'],keys=dict(p256dh=keys['p256dh'],auth=keys['auth'])))
 def _store_url():
@@ -118,7 +138,9 @@ def push_payload(a):
     when=f"בעוד ~{_clip(h,8)} שעות" if h is not None else 'בלי שעת הגעה'
     rain=_clip(rs.get('basin_mean_mm'),8) or '?'; intensity=_clip(rs.get('max_cell_mm_h'),8) or '?'
     title=_clip(('הערכה: ' if a.get('estimate') else '')+f"סיכוי גבוה לשיטפון ב{nahal} ({pct}%)",120)
-    body=_clip(('הערכה בלבד. ' if a.get('estimate') else '')+f"הגל צפוי להגיע לנקודה {name} {when} · גשם ממוצע באגן {rain} מ\"מ, עוצמה מרבית {intensity} מ\"מ/שעה",240)
+    where='גשם במעלה הערוץ' if a.get('channel') else 'גשם ממוצע באגן'
+    extra='' if a.get('channel') else f", עוצמה מרבית {intensity} מ\"מ/שעה"
+    body=_clip(('הערכה בלבד. ' if a.get('estimate') else '')+f"הגל צפוי להגיע לנקודה {name} {when} · {where} {rain} מ\"מ{extra}",240)
     return dict(title=title,body=body,url='./#alerts')
 def prune_remote(endpoints):
     u=_store_url(); token=os.environ.get('SUBSCRIPTIONS_TOKEN','').strip()
