@@ -53,7 +53,7 @@ function raiseOverlays(){
  if(riskL&&map.hasLayer(riskL))riskL.bringToFront();
  if(streamL)streamL.bringToFront();
  if(northL)northL.bringToFront();
- if(vpL)vpL.bringToFront();
+ if(vpL)vpL.eachLayer(l=>{if(l.bringToFront)l.bringToFront();});
  if(typeof myLayer!=='undefined'&&myLayer)myLayer.bringToFront();
 }
 function applyBasinsVisibility(){
@@ -168,6 +168,7 @@ async function init(){
  const hash=location.hash.slice(1);if(PAGES.includes(hash))show(hash);
  if(typeof bindTap==='function')bindTap(map);
  if(typeof drawMyPoints==='function')drawMyPoints();
+ if(typeof resnapNorthPoints==='function')resnapNorthPoints();
 }
 async function loadRisk(){
  const chosen=$('#date').value;

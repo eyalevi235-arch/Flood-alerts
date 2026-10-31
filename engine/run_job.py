@@ -70,9 +70,59 @@ def main():
     jsave(f'{SITE}/viewpoints.json',V)
     dates=sorted(os.path.basename(p)[5:15] for p in glob.glob(f'{SITE}/risk_20*.geojson'))
     pub=vapid_public()
-    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat()),1)
+    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3b'),1)
     nal=sum(a['prob']>=0.3 for a in A); print(f'alerts: {len(A)} points, {nal} with prob>=0.3; risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
     notify(A,g,now); return 0
+# Same 60 m cap as site/tap_basin.js NORTH_RESNAP_M / snapToleranceMeters. No zoom on the server.
+NORTH_SNAP_M=60
+_NORTH_SEGS=None
+_NORTH_ID_MAP=None
+def north_segments():
+    global _NORTH_SEGS
+    if _NORTH_SEGS is None:
+        import gzip
+        with gzip.open(f'{ROOT}/data/channel_segments_nondesert.json.gz','rt') as f:
+            _NORTH_SEGS=json.load(f).get('segments') or []
+    return _NORTH_SEGS
+def north_id_map():
+    global _NORTH_ID_MAP
+    if _NORTH_ID_MAP is None:
+        raw=jload(f'{ROOT}/data/id_map_nondesert_v2_to_v3b.json',{})
+        _NORTH_ID_MAP=raw if isinstance(raw,dict) else {}
+    return _NORTH_ID_MAP
+def _seg_dist_m(lat,lon,coords):
+    import math
+    kx=111320*math.cos(math.radians(lat)); ky=110540
+    px,py=lon*kx, lat*ky
+    best=1e18
+    for k in range(1,len(coords)):
+        ax,ay=coords[k-1][0]*kx, coords[k-1][1]*ky
+        bx,by=coords[k][0]*kx, coords[k][1]*ky
+        dx,dy=bx-ax, by-ay
+        L2=dx*dx+dy*dy
+        t=0 if L2==0 else max(0.0,min(1.0,((px-ax)*dx+(py-ay)*dy)/L2))
+        d=math.hypot(px-(ax+t*dx), py-(ay+t*dy))
+        if d<best: best=d
+    return best
+def resolve_north_segment(lat,lon,old_seg=None):
+    """Nearest current north/center segment within 60 m. A v2->v3b id is used only if that segment is inside the radius."""
+    mapped=None
+    if old_seg is not None:
+        raw=north_id_map().get(str(int(old_seg)))
+        if raw is not None:
+            try: mapped=int(raw)
+            except (TypeError,ValueError): mapped=None
+    nearest=None
+    mapped_d=None
+    for s in north_segments():
+        coords=s.get('coords') or []
+        if len(coords)<2: continue
+        d=_seg_dist_m(lat,lon,coords)
+        sid=int(s['id'])
+        if mapped is not None and sid==mapped: mapped_d=d
+        if d<=NORTH_SNAP_M and (nearest is None or d<nearest[0]): nearest=(d,sid)
+    if mapped is not None and mapped_d is not None and mapped_d<=NORTH_SNAP_M: return mapped
+    return None if nearest is None else nearest[1]
 _PUSH_HOSTS=frozenset({'fcm.googleapis.com','updates.push.services.mozilla.com'})
 _PUSH_SUFFIXES=('.push.apple.com','.notify.windows.com')
 def push_endpoint_ok(url):
@@ -113,6 +163,13 @@ def clean_sub(s):
         try: lat=float(c.get('lat')); lon=float(c.get('lon'))
         except (TypeError,ValueError): continue
         if not (29.3<=lat<=33.5 and 34.1<=lon<=36.0): continue
+        if c.get('region')=='north_center':
+            try: old_seg=int(c.get('seg'))
+            except (TypeError,ValueError): old_seg=None
+            new_seg=resolve_north_segment(lat,lon,old_seg)
+            if new_seg is None: continue
+            custom.append(dict(id=c['id'],seg=new_seg,sid=str(c.get('sid') or ''),lat=round(lat,5),lon=round(lon,5),region='north_center'))
+            continue
         seg=c.get('seg')
         try: seg=int(seg)
         except (TypeError,ValueError): seg=None

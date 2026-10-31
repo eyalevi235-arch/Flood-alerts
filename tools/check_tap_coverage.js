@@ -48,7 +48,7 @@ assert(app.indexOf('wheelPxPerZoomLevel:120') !== -1 && app.indexOf('zoomSnap:0.
 assert(app.indexOf('fillOpacity:perennial?0.08:0.1') !== -1, 'basin fill stays light');
 assert(app.indexOf('map.removeLayer(northL)') !== -1 && app.indexOf("id=\"north\"") !== -1 || html.indexOf('id="north"') !== -1, 'north toggle removes the layer');
 assert(html.indexOf('id="basins"') !== -1 && app.indexOf('basins_layer') !== -1, 'basin polygon toggle is wired');
-assert(sw.indexOf("const C='flood-v13'") !== -1, 'service worker cache bumped');
+assert(Number((sw.match(/const C='flood-v(\d+)'/)||[])[1]) >= 13, 'service worker cache bumped');
 assert(ctx.snapToleranceMeters(32.5, 8) <= 60 && ctx.snapToleranceMeters(32.5, 16) <= 60, 'snap radius never exceeds 60 m');
 
 // Gilboa / Jenin. Inside coverage v2. The published polygons do not contain a Bezeq basin.

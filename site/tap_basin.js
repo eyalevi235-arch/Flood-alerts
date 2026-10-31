@@ -114,6 +114,47 @@ function snapToleranceMeters(lat, zoom) {
   var screenM = 25 * metersPerPixel(lat, zoom);
   return Math.min(60, screenM);
 }
+// Geometry stamp for north/center segment ids. Migration uses the 60 m cap, not the zoom-dependent screen cap.
+var ND_GEOM_VERSION = 'v3b';
+var NORTH_RESNAP_M = 60;
+// idMap: old segment id -> new id, or null when that old id was removed. Coordinates win.
+// A mapped id is used only when that new segment is itself inside the snap radius.
+function resnapNorthPoint(point, lines, idMap, version) {
+  if (!point || point.region !== 'north_center') return {point: point, changed: false, kind: 'kept'};
+  var ver = version || ND_GEOM_VERSION;
+  if (point.nd_geom_version === ver && !point.out_of_coverage) return {point: point, changed: false, kind: 'current'};
+  var lat = Number(point.lat), lon = Number(point.lon);
+  var ranked = closestStreams(lines || [], lat, lon, 6);
+  var within = [];
+  for (var i = 0; i < ranked.length; i++) if (ranked[i].distM <= NORTH_RESNAP_M) within.push(ranked[i]);
+  var chosen = null;
+  var oldSeg = parseInt(point.seg, 10);
+  var mapped = (idMap && isFinite(oldSeg)) ? idMap[String(oldSeg)] : null;
+  if (mapped != null && mapped !== '') {
+    var want = parseInt(mapped, 10);
+    for (var j = 0; j < within.length; j++) {
+      var cand = lines[within[j].index];
+      if (cand && cand.id === want) { chosen = within[j]; break; }
+    }
+  }
+  if (!chosen && within.length) chosen = within[0];
+  var next = {};
+  for (var k in point) next[k] = point[k];
+  next.nd_geom_version = ver;
+  next.region = 'north_center';
+  if (!chosen) {
+    next.out_of_coverage = true;
+    return {point: next, changed: true, kind: 'out', distM: ranked.length ? ranked[0].distM : null};
+  }
+  var line = lines[chosen.index];
+  next.seg = line.id;
+  next.sid = line.basin || point.sid || '';
+  next.lat = Math.round(chosen.lat * 1e5) / 1e5;
+  next.lon = Math.round(chosen.lon * 1e5) / 1e5;
+  if (line.name) next.name = line.name;
+  next.out_of_coverage = false;
+  return {point: next, changed: true, kind: 'snapped', distM: chosen.distM};
+}
 function _toXY(lat, lon, lat0) {
   var kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
   return [lon * kx, lat * ky];
