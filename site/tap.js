@@ -58,7 +58,7 @@ function loadTapData() {
       if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2) return;
       var id = parseInt(p.id, 10);
       if (!isFinite(id)) return;
-      lines.push({coords: g.coordinates, id: id, name: p.name || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'desert', perennial: false});
+      lines.push({coords: g.coordinates, id: id, name: p.name || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'desert', perennial: false});
     });
     var northLines = [];
     (pair[3].features || []).forEach(function (f) {
@@ -66,7 +66,7 @@ function loadTapData() {
       if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2) return;
       var id = parseInt(p.id, 10);
       if (!isFinite(id)) return;
-      northLines.push({coords: g.coordinates, id: id, name: p.name || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.p === 1 || p.p === true});
+      northLines.push({coords: g.coordinates, id: id, name: p.name || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.p === 1 || p.p === true});
     });
     var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3b');
     return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], idMap: pair[5] || {}, ndGeomVersion: geomVersion};
@@ -78,6 +78,32 @@ function segmentLabel(line, nahal) {
   var n = nahal[line.basin] || '';
   if (!n) return 'יובל';
   return 'יובל של ' + (String(n).indexOf('נחל') === 0 ? n : 'נחל ' + n);
+}
+function bareStream(value) {
+  return String(value || '').replace(/^נחל\s+/, '').trim();
+}
+function placeName(value) {
+  var s = String(value || '').replace(/[\u0000-\u001f<>]/g, '').trim();
+  if (!s) return '';
+  if (s.indexOf('נחל ') === 0) return s;
+  var body = s.replace(/^ה/, '');
+  if (/^(ים|מפרץ)(\s|$)/.test(s) || /^(ים|מפרץ)(\s|$)/.test(body)) return s;
+  return 'נחל ' + s;
+}
+// Named segment: "נחל X" or "נחל X, יובל של נחל Y", plus "נשפך אל: Z" when it adds a place.
+function segmentTitle(line) {
+  var name = String(line.name || '').trim();
+  if (!name) return null;
+  var main = String(line.mainNahal || '').trim();
+  var flows = String(line.flowsInto || '').trim();
+  var title = (main && bareStream(name) !== bareStream(main))
+    ? placeName(name) + ', יובל של ' + placeName(main)
+    : placeName(name);
+  var flowsLine = '';
+  if (flows && bareStream(flows) !== bareStream(name) && (!main || bareStream(flows) !== bareStream(main))) {
+    flowsLine = 'נשפך אל: ' + placeName(flows);
+  }
+  return {title: title, flowsLine: flowsLine};
 }
 function distLabel(m) {
   if (m >= 1000) return (m / 1000).toFixed(1) + ' ק"מ';
@@ -130,10 +156,11 @@ function nameSegmentHits(hits, lines, nahal) {
     if (seen[key]) return;
     seen[key] = 1;
     var area = isFinite(line.area) ? line.area : null;
-    var label = line.region === 'north'
-      ? ((line.perennial ? 'צפון/מרכז – נחל איתן' : 'צפון/מרכז – נחל אכזב') + (line.name ? ' · ' + streamTitle(line.name) : ''))
-      : segmentLabel(line, nahal || {});
-    named.push({name: label, stream: line.name || '', lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin, region: line.region || 'desert', perennial: !!line.perennial});
+    var titled = segmentTitle(line);
+    var label = titled ? titled.title : (line.region === 'north'
+      ? (line.perennial ? 'צפון/מרכז – נחל איתן' : 'צפון/מרכז – נחל אכזב')
+      : segmentLabel(line, nahal || {}));
+    named.push({name: label, flowsLine: titled ? titled.flowsLine : '', stream: line.name || '', lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin, region: line.region || 'desert', perennial: !!line.perennial});
   });
   return named;
 }
@@ -247,6 +274,7 @@ function paintTap(box, tapLat, tapLon, picked, choices, data, lat, lon, tol) {
 function fillSegment(root, hit, data, tol) {
   var risk = segRisk(data, hit.seg, hit.region);
   root.appendChild(el('b', null, hit.name));
+  if (hit.flowsLine) root.appendChild(el('div', null, hit.flowsLine));
   root.appendChild(el('div', 'muted', 'נצמד לערוץ, ' + distLabel(hit.distM) + ' מההקשה.'));
   if (hit.region === 'north') {
     root.appendChild(el('div', 'muted', 'מודל צפון/מרכז — פחות מדויק, מבוסס תחנות הידרומטריות'));

@@ -15,6 +15,17 @@ function addBasemap(target,kind){
  layer.bringToBack();
  return layer;
 }
+function addNameAttribution(target){
+ if(!target)return;
+ if(!target.attributionControl){
+  L.control.attribution({position:'bottomleft',prefix:false}).addTo(target);
+ }
+ var box=target.attributionControl;
+ if(box._names)return;
+ box._names=1;
+ box.addAttribution('<a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
+ box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
+}
 function northOn(){const n=$('#north');return !n||n.checked;}
 function northColor(p){if(p>0.6)return '#08306b';if(p>=0.3)return '#2171b5';if(p>=0.1)return '#6baed6';return '#c6dbef';}
 function northWeight(a,p){
@@ -96,8 +107,10 @@ function dateOk(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);}
 async function init(){
  CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null,subscribe_url:''});
  PREFS=loadPrefs();
- map=L.map('map',{zoomControl:false}).setView([30.9,35.0],8);
+ map=L.map('map',{zoomControl:false,attributionControl:false}).setView([30.9,35.0],8);
  L.control.zoom({position:'bottomleft'}).addTo(map);
+ L.control.attribution({position:'bottomleft',prefix:false}).addTo(map);
+ addNameAttribution(map);
  setMainBase('topo');
  $('#base').onchange=()=>setMainBase($('#base').value);
  const date=$('#date');clear(date);
