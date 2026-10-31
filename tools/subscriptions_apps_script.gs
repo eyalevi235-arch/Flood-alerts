@@ -136,7 +136,9 @@ function cleanRecord_(r) {
       if (!inIsrael_(lat, lon)) continue;
       var seg = parseInt(c.seg, 10);
       if (isFinite(seg) && seg >= 0 && seg <= 20000) {
-        custom.push({id: c.id, seg: seg, sid: /^\d{3,8}$/.test(String(c.sid)) ? String(c.sid) : '', lat: lat, lon: lon});
+        var item = {id: c.id, seg: seg, sid: /^\d{3,8}$/.test(String(c.sid)) ? String(c.sid) : '', lat: lat, lon: lon};
+        if (c.region === 'north_center') item.region = 'north_center';
+        custom.push(item);
         continue;
       }
       if (!/^\d{3,8}$/.test(String(c.sid))) continue;

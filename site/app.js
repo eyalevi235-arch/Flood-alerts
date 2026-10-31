@@ -15,6 +15,29 @@ function addBasemap(target,kind){
  layer.bringToBack();
  return layer;
 }
+function northOn(){const n=$('#north');return !n||n.checked;}
+function northColor(p){if(p>0.6)return '#08306b';if(p>=0.3)return '#2171b5';if(p>=0.1)return '#6baed6';return '#c6dbef';}
+function northWeight(a,p){
+ let w=1;
+ if(a>=500)w=4;else if(a>20)w=1+3*(Math.log(a/20)/Math.log(500/20));
+ if(p>0.6)w=Math.min(5,w+0.8);
+ return w;
+}
+let northL=null;
+async function loadNorth(){
+ if(!map)return;
+ if(northL){map.removeLayer(northL);northL=null;}
+ if(!northOn())return;
+ const gj=await jget('data/channel_segments_nondesert.geojson',null);
+ if(!gj||!Array.isArray(gj.features))return;
+ const risk=await jget('data/segment_risk_nondesert.json',null);
+ const probs=risk&&Array.isArray(risk.p)?risk.p:[];
+ northL=L.geoJSON(gj,{interactive:false,style:f=>{
+  const pr=f.properties||{};const id=Number(pr.id);const prob=Number.isFinite(probs[id])?Number(probs[id]):0;const a=Number(pr.a)||0;
+  return {color:northColor(prob),weight:northWeight(a,prob),opacity:.95,dashArray:pr.p?null:'6 5',interactive:false};
+ }}).addTo(map);
+ if(vpL)vpL.bringToFront();
+}
 function setMainBase(kind){
  if(!BASEMAPS[kind])kind='topo';
  if(baseL)map.removeLayer(baseL);
@@ -82,6 +105,12 @@ async function init(){
  (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
  date.onchange=loadRisk;$('#per').onchange=loadRisk;
  api('data/channel_segments.geojson').then(g=>{streamL=L.geoJSON(g,{style:{color:'#1565c0',weight:1.6,opacity:.85},interactive:false}).addTo(map)});
+ const north=$('#north');
+ if(north){
+  if(localStorage.north_layer==='0')north.checked=false;
+  north.onchange=()=>{localStorage.north_layer=north.checked?'1':'0';loadNorth();};
+ }
+ loadNorth();
  await loadRisk();
  VPS=await jget('data/viewpoints.json',[]);
  if(!Array.isArray(VPS))VPS=[];

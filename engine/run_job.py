@@ -41,6 +41,26 @@ def main():
     except Exception:
         traceback.print_exc(); print('segment scoring failed')
     R,n=fe.live_risk(g,now,f'{ROOT}/data/basins_simplified.geojson'); jsave(f'{SITE}/risk_live.geojson',R)
+    nd_dt=None
+    try:
+        import nondesert as nd
+        t_nd=time.time()
+        gN=fe.openmeteo_grid(m, past_days=31)
+        info=nd.score_all(gN, now)
+        geo, compact=nd.write_outputs(info, fe.il(now), now)
+        compact['t0']=int(pd.Timestamp(now).tz_localize('UTC').timestamp())
+        jsave(f'{SITE}/risk_nondesert.geojson', geo)
+        jsave(f'{SITE}/segment_risk_nondesert.json', compact)
+        for b in info['basins'].values():
+            if not b['alert']: continue
+            A.append(dict(point='ND'+b['sid'], name=b['name'], nahal=b['name'], region='north_center',
+                prob=b['p'], eta_first_wave=None, hours_until_first_wave=None,
+                rain_summary=dict(basin_mean_mm=b['rain']), confidence='low', estimate=True, source='nondesert_flow'))
+        jsave(f'{SITE}/alerts_latest.json', out, 1)
+        nd_dt=time.time()-t_nd
+        print(f'nondesert: {info["n_basins"]} basins, {info["n_segs"]} segments, {info["n_alert"]} over threshold, grid {gN.t[0]}..{gN.t[-1]} ({nd_dt:.0f}s, job {time.time()-t0:.0f}s)')
+    except Exception:
+        traceback.print_exc(); print('nondesert scoring failed')
     # static viewpoints.json = viewpoints.csv + historical first waves + current alert (replaces /api/viewpoints)
     vp=pd.read_csv(f'{ROOT}/data/viewpoints.csv').fillna(''); fw=pd.read_csv(f'{ROOT}/data/first_wave_times.csv').fillna(''); al={a['point']:a for a in A}; V=[]
     for _,v in vp.iterrows():
@@ -97,7 +117,9 @@ def clean_sub(s):
         try: seg=int(seg)
         except (TypeError,ValueError): seg=None
         if seg is not None and 0<=seg<=20000:
-            custom.append(dict(id=c['id'],seg=seg,sid=str(c.get('sid') or ''),lat=round(lat,5),lon=round(lon,5)))
+            item=dict(id=c['id'],seg=seg,sid=str(c.get('sid') or ''),lat=round(lat,5),lon=round(lon,5))
+            if c.get('region')=='north_center': item['region']='north_center'
+            custom.append(item)
             continue
         try: along=float(c.get('along'))
         except (TypeError,ValueError): continue

@@ -1,0 +1,165 @@
+{
+ "split": "2020-10-01 00:00:00",
+ "features": [
+  "dur_h",
+  "total",
+  "max1",
+  "max3",
+  "max6",
+  "max12",
+  "max24",
+  "ante3",
+  "ante7",
+  "ante30",
+  "area",
+  "elev",
+  "relief",
+  "lat",
+  "lon",
+  "doy_s",
+  "doy_c",
+  "perennial",
+  "cn_mean",
+  "f_built",
+  "f_crop",
+  "f_veg",
+  "f_rock",
+  "f_hsgAB",
+  "f_hsgD",
+  "clay_mean",
+  "sand_mean",
+  "summer_flow_frac"
+ ],
+ "stations": 177,
+ "gauged_stations": 97,
+ "results": {
+  "nondesert_flow": {
+   "train_n": 27791,
+   "train_pos": 0.289,
+   "thr": 0.1827,
+   "platt_a": 0.6928,
+   "platt_b": 0.4716,
+   "all": {
+    "n": 4364,
+    "pos": 0.419,
+    "roc": 0.888,
+    "pr": 0.838,
+    "hit": 0.879,
+    "fa": 0.284,
+    "fa_at_70pct_hit": 0.121
+   },
+   "gauge": {
+    "n": 4276,
+    "pos": 0.408,
+    "roc": 0.9,
+    "pr": 0.845,
+    "hit": 0.904,
+    "fa": 0.284,
+    "fa_at_70pct_hit": 0.112
+   },
+   "perennial": {
+    "n": 3996,
+    "pos": 0.416,
+    "roc": 0.89,
+    "pr": 0.839,
+    "hit": 0.888,
+    "fa": 0.289,
+    "fa_at_70pct_hit": 0.123
+   },
+   "non_perennial": {
+    "n": 368,
+    "pos": 0.446,
+    "roc": 0.863,
+    "pr": 0.847,
+    "hit": 0.78,
+    "fa": 0.235,
+    "fa_at_70pct_hit": 0.137
+   },
+   "fb": {
+    "n": 88,
+    "pos": 0.966,
+    "roc": 0.694,
+    "pr": 0.985,
+    "hit": 0.365,
+    "fa": 0.333,
+    "fa_at_70pct_hit": 0.333
+   },
+   "baseline_total_roc": 0.772,
+   "baseline_max24_roc": 0.754,
+   "top_features": [
+    "total",
+    "lon",
+    "summer_flow_frac",
+    "doy_s",
+    "ante30",
+    "lat",
+    "f_built",
+    "max24"
+   ]
+  },
+  "nondesert_sig": {
+   "train_n": 27791,
+   "train_pos": 0.164,
+   "thr": 0.052,
+   "platt_a": 0.667,
+   "platt_b": 0.3944,
+   "all": {
+    "n": 4364,
+    "pos": 0.272,
+    "roc": 0.892,
+    "pr": 0.753,
+    "hit": 0.931,
+    "fa": 0.353,
+    "fa_at_70pct_hit": 0.125
+   },
+   "gauge": {
+    "n": 4276,
+    "pos": 0.257,
+    "roc": 0.909,
+    "pr": 0.765,
+    "hit": 0.963,
+    "fa": 0.353,
+    "fa_at_70pct_hit": 0.109
+   },
+   "perennial": {
+    "n": 3996,
+    "pos": 0.272,
+    "roc": 0.895,
+    "pr": 0.758,
+    "hit": 0.938,
+    "fa": 0.359,
+    "fa_at_70pct_hit": 0.125
+   },
+   "non_perennial": {
+    "n": 368,
+    "pos": 0.264,
+    "roc": 0.874,
+    "pr": 0.725,
+    "hit": 0.856,
+    "fa": 0.292,
+    "fa_at_70pct_hit": 0.129
+   },
+   "fb": {
+    "n": 88,
+    "pos": 0.966,
+    "roc": 0.678,
+    "pr": 0.985,
+    "hit": 0.518,
+    "fa": 0.333,
+    "fa_at_70pct_hit": 0.667
+   },
+   "baseline_total_roc": 0.805,
+   "baseline_max24_roc": 0.784,
+   "top_features": [
+    "total",
+    "lon",
+    "area",
+    "doy_s",
+    "lat",
+    "ante30",
+    "f_veg",
+    "summer_flow_frac"
+   ]
+  }
+ }
+}

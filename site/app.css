@@ -30,6 +30,7 @@ td,th{border-bottom:1px solid #eee;padding:3px;text-align:right}
 .sw-10{background:#fdd835}
 .sw-low{background:#bbb}
 .sw-pt{background:#1e88e5}
+.sw-north{background:#2171b5}
 .ctl{position:absolute;top:10px;right:10px;z-index:500;background:#fffe;padding:6px 8px;border-radius:8px;font-size:13px}
 .btn{background:#0b4f6c;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:14px;margin:4px 0}
 .btn.alt{background:#567}
