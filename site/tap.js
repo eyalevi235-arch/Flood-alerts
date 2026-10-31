@@ -308,9 +308,12 @@ function renderMyPointList() {
   if (!list.length) { host.textContent = 'הקישו על המפה ושמרו נקודה. היא תיכנס להתראות.'; return; }
   list.forEach(function (p) {
     var chip = el('span', 'chip', '📌 ' + txt(p.name, 'נקודה') + ' ');
-    var b = el('button', null, '✕');
+    var b = el('button', 'unsub', 'בטל התראות');
     b.type = 'button';
-    b.addEventListener('click', function () { storeMyPoints(loadMyPoints().filter(function (x) { return x.id !== p.id; })); });
+    b.addEventListener('click', function () {
+      storeMyPoints(loadMyPoints().filter(function (x) { return x.id !== p.id; }));
+      if (typeof confirmUnsub === 'function') confirmUnsub('ההתראות לנקודה זו בוטלו.');
+    });
     chip.appendChild(b);
     host.appendChild(chip);
   });

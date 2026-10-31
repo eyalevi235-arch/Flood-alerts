@@ -23,14 +23,14 @@
 <section id="p-map" class="page on"><div id="map"></div>
  <div class="ctl">רקע: <select id="base"><option value="topo">טופוגרפיה</option><option value="street">רחובות</option><option value="sat">לוויין</option></select><br>שכבה: <select id="date"></select><br><label><input type="checkbox" id="per"> הצג נחלי איתן</label><div class="muted">הצמדה לערוץ רק עד 60 מ׳ (ולא יותר מ־25 פיקסלים). רחוק מזה נשארת הנקודה, לפי האגן</div></div>
  <div class="legend"><b>סיכוי לשיטפון</b><br><i class="sw sw-70"></i>≥70%<br><i class="sw sw-50"></i>50–70%<br><i class="sw sw-30"></i>30–50%<br><i class="sw sw-10"></i>10–30%<br><i class="sw sw-low"></i>&lt;10%<br><i class="sw sw-pt"></i>נקודת תצפית</div></section>
-<section id="p-points" class="page"><input id="q" class="search" placeholder="חיפוש נקודה או נחל…"><div id="plist"></div></section>
+<section id="p-points" class="page"><input id="q" class="search" placeholder="חיפוש נקודה או נחל…"><div id="unsub-msg" class="muted"></div><div id="plist"></div></section>
 <section id="p-alerts" class="page"><div id="alist"></div></section>
 <section id="p-set" class="page">
  <div class="card"><h3>הנקודות שלי</h3><div id="mypoints" class="muted">הקישו על המפה ושמרו נקודה. היא תיכנס להתראות.</div></div>
  <div class="card"><h3>מועדפים</h3><div id="favs" class="muted"></div><div class="muted">מוסיפים מועדפים בכוכב ⭐ בכרטיס הנקודה.</div>
  <p>הוספת נחל שלם: <input id="snew" class="stream-input" placeholder="למשל: נחל צין"> <button type="button" class="btn" id="add-stream">הוסף</button></p></div>
  <div class="card"><h3>סף התראה: <span id="thv"></span>%</h3><input type="range" id="th" min="5" max="90" step="5"><div class="muted">התראה תישלח כשהסיכוי לשיטפון בנקודה מועדפת עובר את הסף.</div></div>
- <div class="card"><h3>התראות לטלפון</h3><button type="button" class="btn" id="enable-push">הפעל התראות במכשיר הזה</button> <button type="button" class="btn alt" id="test-push">שלח בדיקה</button> <button type="button" class="btn alt" id="disable-push">כבה התראות</button><div id="pst" class="muted"></div>
+ <div class="card"><h3>התראות לטלפון</h3><button type="button" class="btn" id="enable-push">הפעל התראות במכשיר הזה</button> <button type="button" class="btn alt" id="test-push">שלח בדיקה</button> <button type="button" class="btn alt" id="unsubscribe-all">בטל את כל ההתראות</button><div id="pst" class="muted"></div>
  <div class="muted">באייפון: יש להוסיף קודם את האתר למסך הבית (שיתוף ← "הוסף למסך הבית").</div>
  <p class="muted">פרטיות: נשמרים הרשמת ה-Push, הנקודות או הנחלים שנבחרו, וסף ההתראה. דיווח שומר מיקום, שעה ותמונה אצל בעל האתר בלבד. התמונות עשויות לשמש לשיפור המודל. אין חובה למסור שם או טלפון.</p></div>
 </section>

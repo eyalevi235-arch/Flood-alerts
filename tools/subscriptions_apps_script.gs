@@ -2,7 +2,7 @@
 // Deploy: Extensions > Apps Script, paste this file, Script property TOKEN = a long random string,
 // Deploy > Web app (execute as me, access: Anyone). The project must use the V8 runtime.
 //
-// Public callers may only register or unregister their own push endpoint,
+// Public callers may only register, unsubscribe, or unregister their own push endpoint,
 // or submit a flood report / forecast feedback. There is no action that sends a notification.
 // Reports and feedback go to sheets named "reports" and "feedback", and photos go to the
 // Drive folder in script property FOLDER_ID. They are never written back to the public repo.
@@ -39,7 +39,7 @@ function doPost(e) {
     if (raw.length > MAX_BODY) return text_('bad');
     if (limited_('rl:g', MAX_GLOBAL_HOUR)) return text_('limited');
     if (r.action === 'prune') return handlePrune_(r);
-    if (r.action === 'unregister') return handleUnregister_(r);
+    if (r.action === 'unsubscribe' || r.action === 'unregister') return handleUnregister_(r);
     if (r.action && r.action !== 'register') return text_('bad');
     return handleRegister_(r);
   } catch (err) {

@@ -36,8 +36,8 @@ td,th{border-bottom:1px solid #eee;padding:3px;text-align:right}
 .search{width:100%;padding:9px;border-radius:8px;border:1px solid #bbc;margin-bottom:8px}
 .stream-input{padding:6px}
 input[type=range]{width:100%}
-.chip{display:inline-block;background:#e4eef3;border-radius:12px;padding:3px 9px;margin:2px;font-size:13px}
-.chip button{border:0;background:none;cursor:pointer;color:inherit;font:inherit}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#e4eef3;border-radius:12px;padding:3px 9px;margin:2px;font-size:13px}
+.chip button.unsub{border:0;background:#fff;color:#0b4f6c;border-radius:8px;padding:2px 8px;cursor:pointer;font:inherit}
 .dist-row{display:flex;gap:6px;align-items:center;font-size:12px}
 .dist-k{width:70px;flex:none}
 .bar-slot{flex:1}
