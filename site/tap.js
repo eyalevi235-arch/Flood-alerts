@@ -32,8 +32,9 @@ function loadTapData() {
 function fmtHours(h) {
   if (h == null || !isFinite(h)) return null;
   if (h < 0.25) return 'פחות מרבע שעה';
-  if (h < 1) return 'כשעה';
-  return 'כ-' + Math.round(h) + ' שעות';
+  var n = Math.round(h);
+  if (n <= 1) return 'כשעה';
+  return 'כ-' + n + ' שעות';
 }
 function parseIsrael(s) {
   var m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(String(s || ''));
