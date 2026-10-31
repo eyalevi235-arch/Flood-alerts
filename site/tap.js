@@ -23,7 +23,11 @@ function myPointsPayload() {
   return loadMyPoints().map(function (p) {
     var lat = Math.round(Number(p.lat) * 1e5) / 1e5, lon = Math.round(Number(p.lon) * 1e5) / 1e5;
     var seg = parseInt(p.seg, 10);
-    if (isFinite(seg) && seg >= 0 && seg <= 20000) return {id: p.id, seg: seg, sid: String(p.sid || ''), lat: lat, lon: lon};
+    if (isFinite(seg) && seg >= 0 && seg <= 20000) {
+      var row = {id: p.id, seg: seg, sid: String(p.sid || ''), lat: lat, lon: lon};
+      if (p.region === 'north_center') row.region = 'north_center';
+      return row;
+    }
     return {id: p.id, sid: String(p.sid), along: Math.round(Number(p.along) * 1000) / 1000, lat: lat, lon: lon};
   });
 }
@@ -33,7 +37,9 @@ function loadTapData() {
   tapCache = Promise.all([
     geo('data/risk_live.geojson'),
     geo('data/channel_segments.geojson'),
-    fetch('data/segment_risk.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    fetch('data/segment_risk.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    geo('data/channel_segments_nondesert.geojson'),
+    fetch('data/segment_risk_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
   ]).then(function (pair) {
     var nahal = {};
     (pair[0].features || []).forEach(function (f) {
@@ -46,9 +52,17 @@ function loadTapData() {
       if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2) return;
       var id = parseInt(p.id, 10);
       if (!isFinite(id)) return;
-      lines.push({coords: g.coordinates, id: id, name: p.name || '', area: Number(p.a), basin: p.b != null ? String(p.b) : ''});
+      lines.push({coords: g.coordinates, id: id, name: p.name || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'desert', perennial: false});
     });
-    return {nahal: nahal, lines: lines, risk: pair[2], fc: pair[0]};
+    var northLines = [];
+    (pair[3].features || []).forEach(function (f) {
+      var g = f.geometry, p = f.properties || {};
+      if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2) return;
+      var id = parseInt(p.id, 10);
+      if (!isFinite(id)) return;
+      northLines.push({coords: g.coordinates, id: id, name: p.name || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.p === 1 || p.p === true});
+    });
+    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0]};
   });
   return tapCache;
 }
@@ -91,14 +105,28 @@ function showSnapGfx(tapLat, tapLon, markLat, markLon, onDragEnd) {
   });
   snapGfx = {group: group, line: line || null, marker: marker, tapLat: tapLat, tapLon: tapLon};
 }
-function nameSegmentHits(hits, data) {
+function northEnabled() {
+  var box = document.getElementById('north');
+  return !box || box.checked;
+}
+function linesForSnap(data) {
+  var lines = data.lines || [];
+  if (northEnabled() && data.northLines && data.northLines.length) return lines.concat(data.northLines);
+  return lines;
+}
+function nameSegmentHits(hits, lines, nahal) {
   var named = [], seen = {};
   hits.forEach(function (h) {
-    var line = data.lines[h.index];
-    if (!line || seen[line.id]) return;
-    seen[line.id] = 1;
+    var line = lines[h.index];
+    if (!line) return;
+    var key = (line.region || 'desert') + ':' + line.id;
+    if (seen[key]) return;
+    seen[key] = 1;
     var area = isFinite(line.area) ? line.area : null;
-    named.push({name: segmentLabel(line, data.nahal), lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin});
+    var label = line.region === 'north'
+      ? ((line.perennial ? 'צפון/מרכז – נחל איתן' : 'צפון/מרכז – נחל אכזב') + (line.name ? ' · ' + streamTitle(line.name) : ''))
+      : segmentLabel(line, nahal || {});
+    named.push({name: label, stream: line.name || '', lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin, region: line.region || 'desert', perennial: !!line.perennial});
   });
   return named;
 }
@@ -137,11 +165,12 @@ function openTap(lat, lon) {
   });
 }
 function hitsWithin(data, lat, lon) {
+  var lines = linesForSnap(data);
   var tol = snapToleranceMeters(lat, map.getZoom());
-  var ranked = closestStreams(data.lines || [], lat, lon, 4);
+  var ranked = closestStreams(lines, lat, lon, 4);
   var within = [];
   for (var i = 0; i < ranked.length; i++) if (ranked[i].distM <= tol) within.push(ranked[i]);
-  return {tol: tol, ranked: ranked, choices: nameSegmentHits(within, data)};
+  return {tol: tol, lines: lines, ranked: ranked, choices: nameSegmentHits(within, lines, data.nahal)};
 }
 function resolveTap(box, tapLat, tapLon, lat, lon, data, fresh) {
   var hit = hitsWithin(data, lat, lon);
@@ -170,15 +199,17 @@ function resolveTap(box, tapLat, tapLon, lat, lon, data, fresh) {
     if (snapGfx.marker) snapGfx.marker.setLatLng([lat, lon]);
     if (snapGfx.line) snapGfx.line.setStyle({opacity: 0});
   }
+  data._snapLines = hit.lines;
   paintBasin(box, lat, lon, data, hit.ranked[0] || null);
 }
-function segRisk(data, seg) {
-  var r = data.risk;
+function segRisk(data, seg, region) {
+  var north = region === 'north' || region === 'north_center';
+  var r = north ? data.northRisk : data.risk;
   if (!r || !r.p || seg < 0 || seg >= r.p.length) return null;
   var em = r.em ? r.em[seg] : -1;
   var when = null;
   if (em != null && em !== -1 && r.t0) when = new Date((r.t0 + em * 60) * 1000);
-  return {p: Number(r.p[seg]), rain: r.rain ? Number(r.rain[seg]) : null, lead: r.lead ? r.lead[seg] : null, tp: r.tp ? r.tp[seg] : null, tm: r.tm ? r.tm[seg] : null, when: when};
+  return {p: Number(r.p[seg]), rain: r.rain ? Number(r.rain[seg]) : null, lead: r.lead ? r.lead[seg] : null, tp: r.tp ? r.tp[seg] : null, tm: r.tm ? r.tm[seg] : null, when: when, strong: r.strong ? r.strong[seg] : 0};
 }
 function paintTap(box, tapLat, tapLon, picked, choices, data, lat, lon, tol) {
   while (box.firstChild) box.removeChild(box.firstChild);
@@ -207,9 +238,13 @@ function paintTap(box, tapLat, tapLon, picked, choices, data, lat, lon, tol) {
   if (map._popup) map._popup.update();
 }
 function fillSegment(root, hit, data, tol) {
-  var risk = segRisk(data, hit.seg);
+  var risk = segRisk(data, hit.seg, hit.region);
   root.appendChild(el('b', null, hit.name));
   root.appendChild(el('div', 'muted', 'נצמד לערוץ, ' + distLabel(hit.distM) + ' מההקשה.'));
+  if (hit.region === 'north') {
+    root.appendChild(el('div', 'muted', 'מודל צפון/מרכז — פחות מדויק, מבוסס תחנות הידרומטריות'));
+    root.appendChild(el('div', 'muted', 'במודל צפון ומרכז האתראה מתייחסת לעליית ספיקה חריגה בתחנת המדידה, לא לבטיחות חצייה'));
+  }
   var areaTxt = hit.area == null ? '—' : (hit.area < 10 ? hit.area.toFixed(1) : String(Math.round(hit.area)));
   root.appendChild(el('div', null, 'שטח מעלה: ' + areaTxt + ' קמ"ר'));
   if (hit.area != null && hit.area < 10) root.appendChild(el('div', 'muted', 'שטח המעלה קטן, לכן הסיכוי מוגבל.'));
@@ -226,6 +261,7 @@ function fillSegment(root, hit, data, tol) {
       line += '.';
       root.appendChild(el('div', null, line));
     }
+    if (hit.region === 'north' && risk.strong) root.appendChild(el('div', null, 'יש גם סימן לשיטפון חזק יותר בתחנה.'));
     if (prob >= 0.05 && risk.when) {
       var until = risk.lead != null ? risk.lead : (risk.when.getTime() - Date.now()) / 3600000;
       var when = until < 0 ? 'לפי ההערכה הגל כבר אמור היה להגיע או לעבור.' : ('הגל הראשון משוער בסביבות ' + ilClock(risk.when) + ' (' + fmtHours(Math.max(0, until)) + ').');
@@ -234,13 +270,16 @@ function fillSegment(root, hit, data, tol) {
       root.appendChild(el('div', 'muted', 'אין כרגע סיכוי ממשי לגל בנקודה הזו.'));
     }
   }
-  var saved = loadMyPoints().some(function (x) { return x.seg === hit.seg; });
+  var regionKey = hit.region === 'north' ? 'north_center' : '';
+  var saved = loadMyPoints().some(function (x) { return parseInt(x.seg, 10) === hit.seg && (x.region || '') === regionKey; });
   var btn = el('button', 'btn', saved ? 'הערוץ הזה כבר שמור' : 'שמור כנקודה שלי');
   btn.type = 'button';
   if (!saved) btn.addEventListener('click', function () {
     var id = 'M' + Math.random().toString(36).slice(2, 10);
-    var list = loadMyPoints().filter(function (x) { return x.seg !== hit.seg; });
-    list.unshift({id: id, lat: Math.round(hit.lat * 1e5) / 1e5, lon: Math.round(hit.lon * 1e5) / 1e5, seg: hit.seg, sid: hit.basin || '', name: hit.name});
+    var list = loadMyPoints().filter(function (x) { return !(parseInt(x.seg, 10) === hit.seg && (x.region || '') === regionKey); });
+    var savedPoint = {id: id, lat: Math.round(hit.lat * 1e5) / 1e5, lon: Math.round(hit.lon * 1e5) / 1e5, seg: hit.seg, sid: hit.basin || '', name: hit.stream || hit.name};
+    if (hit.region === 'north') savedPoint.region = 'north_center';
+    list.unshift(savedPoint);
     storeMyPoints(list);
     btn.textContent = 'נשמרה. ההתראות יכללו את הערוץ.';
   });
@@ -261,7 +300,7 @@ function paintBasin(box, lat, lon, data, nearest) {
   while (box.firstChild) box.removeChild(box.firstChild);
   if (map._popup) map._popup.setLatLng([lat, lon]);
   var feature = containingBasin((data.fc && data.fc.features) || [], lat, lon);
-  var near = nearest ? nameSegmentHits([nearest], data)[0] : null;
+  var near = nearest && data._snapLines ? nameSegmentHits([nearest], data._snapLines, data.nahal)[0] : null;
   if (!feature) {
     box.appendChild(el('b', null, 'מחוץ לאגנים במודל'));
     box.appendChild(el('div', 'muted', 'הנקודה אינה על ערוץ מסומן — מוצג לפי האגן'));
@@ -327,13 +366,13 @@ async function appendMyPointAlerts(host) {
   ((data.fc && data.fc.features) || []).forEach(function (f) { if (f.properties) bySid[String(f.properties.sid)] = f.properties; });
   list.forEach(function (p) {
     var onChannel = isFinite(parseInt(p.seg, 10));
-    var risk = onChannel ? (segRisk(data, p.seg) || {p: 0, rain: null, tm: null}) : null;
+    var risk = onChannel ? (segRisk(data, p.seg, p.region) || {p: 0, rain: null, tm: null}) : null;
     var prop = onChannel ? null : (bySid[String(p.sid)] || {});
     var prob = onChannel ? (isFinite(risk.p) ? risk.p : 0) : Number(prop.risk);
     if (!isFinite(prob)) prob = 0;
     var card = el('div', 'card al' + (prob >= 0.5 ? ' hi' : prob >= 0.3 ? ' mid' : ''));
     card.appendChild(el('h3', null, txt(p.name, 'הנקודה שלי') + (prob >= (PREFS && PREFS.threshold || 0.3) ? ' · סיכוי מעל הסף' : '')));
-    card.appendChild(el('div', 'muted', onChannel ? 'נקודה על ערוץ. ההגעה היא הערכה לקצה המקטע.' : 'נקודה שאינה על ערוץ מסומן. ההערכה היא לפי האגן.'));
+    card.appendChild(el('div', 'muted', onChannel ? (p.region === 'north_center' ? 'מודל צפון/מרכז — פחות מדויק, מבוסס תחנות הידרומטריות' : 'נקודה על ערוץ. ההגעה היא הערכה לקצה המקטע.') : 'נקודה שאינה על ערוץ מסומן. ההערכה היא לפי האגן.'));
     card.appendChild(el('div', null, (onChannel ? 'סיכוי בנקודה: ' : 'סיכוי באגן: ') + Math.round(prob * 100) + '% · ' + riskClass(prob)));
     var rain = onChannel ? risk.rain : prop.event_rain_mm;
     card.appendChild(el('div', null, (onChannel ? 'גשם חזוי במעלה: ' : 'גשם חזוי באגן: ') + (rain == null || rain === '' || !isFinite(Number(rain)) && rain !== 0 ? '—' : rain) + ' מ"מ'));

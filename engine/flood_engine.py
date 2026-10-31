@@ -27,10 +27,10 @@ def _get(url,params,tries=4):
         except requests.RequestException: pass
         time.sleep(5*(k+1))
     r.raise_for_status()
-def openmeteo_grid(model='icon_seamless',days=3,chunk=150):
+def openmeteo_grid(model='icon_seamless',days=3,chunk=150,past_days=1):
     la,lo=np.meshgrid(LAT,LON,indexing='ij'); la=la.ravel(); lo=lo.ravel(); out=[]
     for i in range(0,len(la),chunk):
-        p=dict(latitude=','.join(map(str,la[i:i+chunk])),longitude=','.join(map(str,lo[i:i+chunk])),hourly='precipitation',models=model,timezone='GMT',forecast_days=days,past_days=1)
+        p=dict(latitude=','.join(map(str,la[i:i+chunk])),longitude=','.join(map(str,lo[i:i+chunk])),hourly='precipitation',models=model,timezone='GMT',forecast_days=days,past_days=int(past_days))
         j=_get('https://api.open-meteo.com/v1/forecast',p); j=j if isinstance(j,list) else [j]
         out+=[np.array([np.nan if v is None else v for v in x['hourly']['precipitation']],dtype='float32') for x in j]; t=pd.to_datetime(j[0]['hourly']['time'])
     R=np.stack(out,1).reshape(len(t),len(LAT),len(LON)); R[~np.isfinite(R)]=0
@@ -295,6 +295,16 @@ def nearest_segment_id(lat, lon, segs=None):
     return best
 def custom_point_alert(g,now,c):
     seg=c.get('seg', None)
+    if str(c.get('region') or '')=='north_center' and seg not in (None, ''):
+        import nondesert as nd
+        try: rec=nd.lookup(int(seg))
+        except (TypeError, ValueError): rec=None
+        if not rec: return None
+        eta,lead=rec['eta'],rec['lead']
+        if rec['prob']<0.05: eta,lead=None,None
+        return dict(point=c['id'],name='הנקודה שלי · '+(rec.get('name') or 'צפון/מרכז'),nahal=rec.get('nahal') or 'נחל',prob=rec['prob'],
+            eta_first_wave=il(eta),eta_peak=None,hours_until_first_wave=lead,region='north_center',
+            rain_summary=dict(basin_mean_mm=rec['rain'],max_cell_mm_h=None),confidence='low',estimate=True,channel=True,source='nondesert_flow')
     if seg is None or seg=='':
         fc=evaluate_basin(g,now,c.get('sid'))
         if not fc: return None
