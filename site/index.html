@@ -1,43 +1,38 @@
 <!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://tile.openstreetmap.org; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
 <title>שיטפון בדרך</title><link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#0b4f6c">
 <link rel="icon" href="./favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="./icon-192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="./vendor/leaflet.css">
+<link rel="stylesheet" href="./app.css">
 <script src="./vendor/leaflet.js"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,"Segoe UI",Arial,sans-serif;background:#f3f6f8;color:#123}
-header{background:#0b4f6c;color:#fff;padding:10px 14px;font-weight:700;font-size:18px;display:flex;justify-content:space-between}
-header small{font-weight:400;opacity:.8;font-size:12px}
-main{position:absolute;top:44px;bottom:58px;left:0;right:0;overflow:auto}
-#map{position:absolute;inset:0}.page{display:none;padding:12px}.page.on{display:block}#p-map.on{padding:0}
-nav{position:fixed;bottom:0;left:0;right:0;height:58px;background:#fff;border-top:1px solid #ccd;display:flex}
-nav button{flex:1;border:0;background:none;font-size:13px;color:#456}nav button.on{color:#0b4f6c;font-weight:700;border-top:3px solid #0b4f6c}
-nav b{display:block;font-size:20px}
-.card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px #0002}
-.card h3{margin:0 0 6px;font-size:16px}.muted{color:#678;font-size:13px}.star{float:left;font-size:22px;cursor:pointer;color:#bbb}.star.on{color:#f5a400}
-.al{border-right:6px solid #999}.al.hi{border-color:#c0392b;background:#fff4f2}.al.mid{border-color:#e67e22}
-table{border-collapse:collapse;font-size:12px;width:100%}td,th{border-bottom:1px solid #eee;padding:3px;text-align:right}
-.legend{position:absolute;bottom:10px;right:10px;z-index:500;background:#fffe;padding:8px;border-radius:8px;font-size:12px}
-.legend i{display:inline-block;width:12px;height:12px;margin-left:4px;vertical-align:middle}
-.ctl{position:absolute;top:10px;right:10px;z-index:500;background:#fffe;padding:6px 8px;border-radius:8px;font-size:13px}
-.btn{background:#0b4f6c;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:14px;margin:4px 0}
-input[type=range]{width:100%}.chip{display:inline-block;background:#e4eef3;border-radius:12px;padding:3px 9px;margin:2px;font-size:13px}
-.bar{height:8px;background:#e67e22;border-radius:4px}
-</style></head><body>
+</head><body>
+<div id="gate" class="gate">
+ <div class="card">
+  <h2>לפני שמשתמשים</h2>
+  <p>זהו כלי עזר ניסיוני. הוא אינו מערכת התרעה רשמית, ואינו מחליף הנחיות של פיקוד העורף, רשות הטבע והגנים או השירות המטאורולוגי.</p>
+  <p>אין להיכנס לנחל כשיש בו זרימה. ההתראות עלולות להיות שגויות או חסרות.</p>
+  <p class="muted">פרטיות: במכשיר נשמרים הנקודות והנחלים שבחרתם וסף ההתראה. אם מפעילים התראות, נשמרת גם הרשמת ה-Push (כתובת השירות והמפתחות שלה). הרשאת ה-Push נשמרת בגיליון פרטי של בעל האתר, לא במאגר הציבורי.</p>
+  <button type="button" class="btn" id="gate-ok">הבנתי, זה כלי עזר בלבד</button>
+ </div>
+</div>
 <header><span>🌊 שיטפון בדרך</span><small id="hdr"></small></header>
 <main>
 <section id="p-map" class="page on"><div id="map"></div>
  <div class="ctl">שכבה: <select id="date"></select><br><label><input type="checkbox" id="per"> הצג נחלי איתן</label></div>
- <div class="legend"><b>סיכוי לשיטפון</b><br><i style="background:#7b0000"></i>≥70%<br><i style="background:#d7301f"></i>50–70%<br><i style="background:#fc8d59"></i>30–50%<br><i style="background:#fdd835"></i>10–30%<br><i style="background:#bbb"></i>&lt;10%<br><i style="background:#1e88e5"></i>נקודת תצפית</div></section>
-<section id="p-points" class="page"><input id="q" placeholder="חיפוש נקודה או נחל…" style="width:100%;padding:9px;border-radius:8px;border:1px solid #bbc;margin-bottom:8px"><div id="plist"></div></section>
+ <div class="legend"><b>סיכוי לשיטפון</b><br><i class="sw sw-70"></i>≥70%<br><i class="sw sw-50"></i>50–70%<br><i class="sw sw-30"></i>30–50%<br><i class="sw sw-10"></i>10–30%<br><i class="sw sw-low"></i>&lt;10%<br><i class="sw sw-pt"></i>נקודת תצפית</div></section>
+<section id="p-points" class="page"><input id="q" class="search" placeholder="חיפוש נקודה או נחל…"><div id="plist"></div></section>
 <section id="p-alerts" class="page"><div id="alist"></div></section>
 <section id="p-set" class="page">
  <div class="card"><h3>מועדפים</h3><div id="favs" class="muted"></div><div class="muted">מוסיפים מועדפים בכוכב ⭐ בכרטיס הנקודה.</div>
- <p>הוספת נחל שלם: <input id="snew" placeholder="למשל: נחל צין" style="padding:6px"> <button class="btn" onclick="addStream()">הוסף</button></p></div>
+ <p>הוספת נחל שלם: <input id="snew" class="stream-input" placeholder="למשל: נחל צין"> <button type="button" class="btn" id="add-stream">הוסף</button></p></div>
  <div class="card"><h3>סף התראה: <span id="thv"></span>%</h3><input type="range" id="th" min="5" max="90" step="5"><div class="muted">התראה תישלח כשהסיכוי לשיטפון בנקודה מועדפת עובר את הסף.</div></div>
- <div class="card"><h3>התראות לטלפון</h3><button class="btn" onclick="enablePush()">הפעל התראות במכשיר הזה</button> <button class="btn" style="background:#567" onclick="testPush()">שלח בדיקה</button><div id="pst" class="muted"></div>
- <div class="muted">באייפון: יש להוסיף קודם את האתר למסך הבית (שיתוף ← "הוסף למסך הבית").</div></div>
+ <div class="card"><h3>התראות לטלפון</h3><button type="button" class="btn" id="enable-push">הפעל התראות במכשיר הזה</button> <button type="button" class="btn alt" id="test-push">שלח בדיקה</button> <button type="button" class="btn alt" id="disable-push">כבה התראות</button><div id="pst" class="muted"></div>
+ <div class="muted">באייפון: יש להוסיף קודם את האתר למסך הבית (שיתוף ← "הוסף למסך הבית").</div>
+ <p class="muted">פרטיות: נשמרים רק הרשמת ה-Push, הנקודות או הנחלים שנבחרו, וסף ההתראה. אין חשבון משתמש ואין שמירה במאגר הציבורי.</p></div>
 </section></main>
-<nav><button data-p="map" class="on"><b>🗺️</b>מפה</button><button data-p="points"><b>📍</b>נקודות</button><button data-p="alerts"><b>🔔</b>התראות</button><button data-p="set"><b>⚙️</b>הגדרות</button></nav>
+<footer class="legal">כלי עזר ניסיוני, לא התרעה רשמית של פיקוד העורף, רשות הטבע והגנים או השירות המטאורולוגי. אין להיכנס לנחל בזרימה. ההתראות עלולות לטעות או לחסור.</footer>
+<nav><button type="button" data-p="map" class="on"><b>🗺️</b>מפה</button><button type="button" data-p="points"><b>📍</b>נקודות</button><button type="button" data-p="alerts"><b>🔔</b>התראות</button><button type="button" data-p="set"><b>⚙️</b>הגדרות</button></nav>
 <script src="./app.js"></script></body></html>
