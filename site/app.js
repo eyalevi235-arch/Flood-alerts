@@ -90,6 +90,8 @@ async function init(){
  $('#q').oninput=renderPoints;
  $('#hdr').textContent='עודכן '+new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
  const hash=location.hash.slice(1);if(PAGES.includes(hash))show(hash);
+ if(typeof bindTap==='function')bindTap(map);
+ if(typeof drawMyPoints==='function')drawMyPoints();
 }
 async function loadRisk(){
  const chosen=$('#date').value;
@@ -118,7 +120,9 @@ function drawVP(){
  if(vpL)map.removeLayer(vpL);
  vpL=L.layerGroup(VPS.filter(v=>finiteCoord(v.lat,v.lon)).map(v=>{
   const c=finiteCoord(v.lat,v.lon);
-  return L.circleMarker(c,{radius:7,color:'#fff',weight:2,fillColor:v.current&&num(v.current.prob)>=PREFS.threshold?'#c0392b':'#1e88e5',fillOpacity:1}).bindPopup(()=>cardEl(v,true));
+  const mk=L.circleMarker(c,{radius:7,color:'#fff',weight:2,fillColor:v.current&&num(v.current.prob)>=PREFS.threshold?'#c0392b':'#1e88e5',fillOpacity:1}).bindPopup(()=>cardEl(v,true));
+  mk.on('click',ev=>{if(ev.originalEvent)ev.originalEvent.__vp=1;});
+  return mk;
  })).addTo(map);
 }
 const fav=id=>PREFS.points.includes(id);
@@ -177,6 +181,7 @@ function renderSet(){
  PREFS.streams.forEach(s=>{const chip=el('span','chip','〰️ '+s+' ');const b=el('button',null,'✕');b.type='button';b.addEventListener('click',()=>rmStream(s));chip.appendChild(b);host.appendChild(chip);});
  const th=$('#th'),thv=$('#thv');
  if(th&&thv){th.value=String(Math.round(PREFS.threshold*100));thv.textContent=th.value;}
+ if(typeof renderMyPointList==='function')renderMyPointList();
 }
 function distEl(c){
  if(!c||typeof c!=='object')return null;
@@ -205,7 +210,7 @@ async function loadAlerts(){
  const host=$('#alist');clear(host);
  const head=el('div','muted','תחזית מ-'+txt(L.issued,'—')+' · מקור: '+txt(L.source,'—')+(L.stub?' · מצב הדגמה (מנוע התחזית עוד לא זמין)':''));
  host.appendChild(head);
- if(!mine.length){host.appendChild(el('div','card','אין נקודות מועדפות. סמנו ⭐ בנקודות או הוסיפו נחל בהגדרות.'));return;}
+ if(!mine.length && !(typeof loadMyPoints==='function' && loadMyPoints().length)){host.appendChild(el('div','card','אין נקודות מועדפות. סמנו ⭐ בנקודות, הוסיפו נחל, או הקישו על המפה ושמרו נקודה.'));return;}
  const conf={low:'נמוכה',medium:'בינונית',high:'גבוהה'};
  for(const a of mine){
   const r=a.rain_summary||{};const prob=num(a.prob)||0;const cls=a.alert?(prob>=.5?'hi':'mid'):'';
@@ -219,6 +224,7 @@ async function loadAlerts(){
   const dist=distEl(r.contributing_by_travel_time);if(dist)card.appendChild(dist);
   host.appendChild(card);
  }
+ if(typeof appendMyPointAlerts==='function') await appendMyPointAlerts(host);
 }
 function hostOk(endpoint){
  try{
@@ -237,7 +243,7 @@ function subscribeUrlOk(url){
 }
 const b64=s=>{const p='='.repeat((4-s.length%4)%4);const r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));};
 function storedPush(){try{const p=JSON.parse(localStorage.pushsub||'null');return p&&hostOk(p.endpoint)?p:null;}catch(e){return null;}}
-function subRecord(){return{action:'register',uid:UID,points:PREFS.points,streams:PREFS.streams,threshold:PREFS.threshold,push:storedPush(),updated:new Date().toISOString()};}
+function subRecord(){return{action:'register',uid:UID,points:PREFS.points,streams:PREFS.streams,threshold:PREFS.threshold,custom:(typeof myPointsPayload==='function')?myPointsPayload():[],push:storedPush(),updated:new Date().toISOString()};}
 async function postSub(body){
  if(!CFG||!subscribeUrlOk(CFG.subscribe_url))return false;
  await fetch(CFG.subscribe_url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});

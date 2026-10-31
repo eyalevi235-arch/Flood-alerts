@@ -127,11 +127,23 @@ function cleanRecord_(r) {
   var thr = Number(r.threshold);
   if (!isFinite(thr) || thr < 0.05 || thr > 0.9) thr = 0.3;
   var uid = (typeof r.uid === 'string' && /^u[a-z0-9]{6,20}$/.test(r.uid)) ? r.uid : ('e' + digest_(endpoint).slice(0, 12));
+  var custom = [];
+  if (Array.isArray(r.custom)) {
+    for (var k = 0; k < r.custom.length && custom.length < 8; k++) {
+      var c = r.custom[k];
+      if (!c || typeof c.id !== 'string' || !/^M[a-z0-9]{6,16}$/.test(c.id)) continue;
+      if (!/^\d{3,8}$/.test(String(c.sid))) continue;
+      var along = Number(c.along), lat = Number(c.lat), lon = Number(c.lon);
+      if (!isFinite(along) || along < 0 || along > 1 || !inIsrael_(lat, lon)) continue;
+      custom.push({id: c.id, sid: String(c.sid), along: Math.round(along * 1000) / 1000, lat: lat, lon: lon});
+    }
+  }
   return {
     uid: uid,
     points: points,
     streams: streams,
     threshold: thr,
+    custom: custom,
     push: {endpoint: endpoint, expirationTime: null, keys: {p256dh: keys.p256dh, auth: keys.auth}},
     updated: new Date().toISOString()
   };
