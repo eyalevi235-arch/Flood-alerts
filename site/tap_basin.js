@@ -65,6 +65,41 @@ function riskClass(p) {
   if (p >= 0.1) return 'נמוך';
   return 'נמוך מאוד';
 }
+function metersPerPixel(lat, zoom) {
+  return 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
+}
+function snapToleranceMeters(lat, zoom) {
+  var px = 40 * metersPerPixel(lat, zoom);
+  return Math.max(80, Math.min(px, 2500));
+}
+function _toXY(lat, lon, lat0) {
+  var kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+  return [lon * kx, lat * ky];
+}
+function closestOnSegment(lat, lon, aLat, aLon, bLat, bLon) {
+  var A = _toXY(aLat, aLon, lat), B = _toXY(bLat, bLon, lat), P = _toXY(lat, lon, lat);
+  var dx = B[0] - A[0], dy = B[1] - A[1], len2 = dx * dx + dy * dy;
+  var t = len2 ? ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / len2 : 0;
+  if (t < 0) t = 0; else if (t > 1) t = 1;
+  var sx = A[0] + t * dx, sy = A[1] + t * dy;
+  return {distM: Math.hypot(P[0] - sx, P[1] - sy), lat: sy / 110540, lon: sx / (111320 * Math.cos(lat * Math.PI / 180))};
+}
+// lines: [{coords:[[lon,lat],...], acc:number|null}]. Returns the closest point on each line within tolM.
+function nearestStreams(lines, lat, lon, tolM, limit) {
+  var hits = [], n = Math.min(lines.length, 20000);
+  for (var i = 0; i < n; i++) {
+    var coords = lines[i].coords;
+    if (!coords || coords.length < 2) continue;
+    var best = null;
+    for (var k = 1; k < coords.length; k++) {
+      var c = closestOnSegment(lat, lon, coords[k - 1][1], coords[k - 1][0], coords[k][1], coords[k][0]);
+      if (!best || c.distM < best.distM) best = c;
+    }
+    if (best && best.distM <= tolM) hits.push({lat: best.lat, lon: best.lon, distM: best.distM, acc: lines[i].acc, index: i});
+  }
+  hits.sort(function (a, b) { return a.distM - b.distM; });
+  return hits.slice(0, limit || 6);
+}
 function travelHours(tt, sid, along) {
   var row = tt && tt[String(sid)];
   if (!row || !isFinite(row.med)) return null;

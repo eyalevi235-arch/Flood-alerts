@@ -58,3 +58,5 @@ fieldset{border:1px solid #ccd;border-radius:8px;margin:8px 0;padding:8px}
 #photo-preview{display:none;width:100%;max-height:180px;border-radius:8px;margin-top:6px;background:#eee}
 #photo-preview.on{display:block}
 .pin{background:#c0392b;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #c0392b}
+.leaflet-popup-content{direction:rtl;text-align:right}
+.leaflet-popup-content .btn.alt{display:block;width:100%;white-space:normal;text-align:right}
