@@ -40,7 +40,7 @@ def main():
     pub=vapid_public()
     jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat()),1)
     nal=sum(a['prob']>=0.3 for a in A); print(f'alerts: {len(A)} points, {nal} with prob>=0.3; risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
-    notify(A); return 0
+    notify(A,g,now); return 0
 _PUSH_HOSTS=frozenset({'fcm.googleapis.com','updates.push.services.mozilla.com'})
 _PUSH_SUFFIXES=('.push.apple.com','.notify.windows.com')
 def push_endpoint_ok(url):
@@ -74,7 +74,16 @@ def clean_sub(s):
     if not (0.05<=thr<=0.9): thr=0.3
     uid=s.get('uid')
     if not isinstance(uid,str) or not re.fullmatch(r'u[a-z0-9]{6,20}',uid): uid='anon'
-    return dict(uid=uid,points=pts,streams=streams,threshold=thr,push=dict(endpoint=push['endpoint'],keys=dict(p256dh=keys['p256dh'],auth=keys['auth'])))
+    custom=[]
+    for c in (s.get('custom') or [])[:8]:
+        if not isinstance(c,dict): continue
+        if not isinstance(c.get('id'),str) or not re.fullmatch(r'M[a-z0-9]{6,16}',c['id']): continue
+        if not isinstance(c.get('sid'),str) or not re.fullmatch(r'\d{3,8}',str(c['sid'])): continue
+        try: along=float(c.get('along')); lat=float(c.get('lat')); lon=float(c.get('lon'))
+        except (TypeError,ValueError): continue
+        if not (0<=along<=1 and 29.3<=lat<=33.5 and 34.1<=lon<=36.0): continue
+        custom.append(dict(id=c['id'],sid=str(c['sid']),along=round(along,3),lat=round(lat,5),lon=round(lon,5)))
+    return dict(uid=uid,points=pts,streams=streams,threshold=thr,custom=custom,push=dict(endpoint=push['endpoint'],keys=dict(p256dh=keys['p256dh'],auth=keys['auth'])))
 def _store_url():
     u=os.environ.get('SUBSCRIPTIONS_URL','').strip()
     if not u: return ''
@@ -100,7 +109,7 @@ def load_subs():
     return out
 def push_payload(a):
     """Notification text comes only from this job's alert record, trimmed and single-line."""
-    if not isinstance(a,dict) or not isinstance(a.get('point'),str) or not re.fullmatch(r'VP\d{2}',a['point']): return None
+    if not isinstance(a,dict) or not isinstance(a.get('point'),str) or not re.fullmatch(r'(VP\d{2}|M[a-z0-9]{6,16})',a['point']): return None
     try: pct=int(round(float(a.get('prob'))*100))
     except (TypeError,ValueError): return None
     if pct<0 or pct>100: return None
@@ -108,8 +117,8 @@ def push_payload(a):
     h=a.get('hours_until_first_wave'); rs=a.get('rain_summary') if isinstance(a.get('rain_summary'),dict) else {}
     when=f"בעוד ~{_clip(h,8)} שעות" if h is not None else 'בלי שעת הגעה'
     rain=_clip(rs.get('basin_mean_mm'),8) or '?'; intensity=_clip(rs.get('max_cell_mm_h'),8) or '?'
-    title=_clip(f"סיכוי גבוה לשיטפון ב{nahal} ({pct}%)",120)
-    body=_clip(f"הגל צפוי להגיע לנקודה {name} {when} · גשם ממוצע באגן {rain} מ\"מ, עוצמה מרבית {intensity} מ\"מ/שעה",240)
+    title=_clip(('הערכה: ' if a.get('estimate') else '')+f"סיכוי גבוה לשיטפון ב{nahal} ({pct}%)",120)
+    body=_clip(('הערכה בלבד. ' if a.get('estimate') else '')+f"הגל צפוי להגיע לנקודה {name} {when} · גשם ממוצע באגן {rain} מ\"מ, עוצמה מרבית {intensity} מ\"מ/שעה",240)
     return dict(title=title,body=body,url='./#alerts')
 def prune_remote(endpoints):
     u=_store_url(); token=os.environ.get('SUBSCRIPTIONS_TOKEN','').strip()
@@ -121,10 +130,23 @@ def prune_remote(endpoints):
         print('prune http',r.status_code,'n',len(endpoints[:100]))
     except Exception as e:
         print('prune failed',type(e).__name__)
-def notify(A):
+def _push_one(s,a,key,sent,dead):
+    payload=push_payload(a)
+    if not payload: return 0
+    k=f"{s['uid']}|{a['point']}|{_clip(a.get('eta_first_wave'),13)}"
+    if k in sent: return 0
+    from pywebpush import webpush,WebPushException
+    try:
+        webpush(s['push'],json.dumps(payload,ensure_ascii=False),vapid_private_key=key,vapid_claims={'sub':os.environ.get('VAPID_SUB','mailto:flood-app@example.invalid')}); sent[k]=time.time(); return 1
+    except WebPushException as e:
+        code=getattr(getattr(e,'response',None),'status_code',None)
+        print('push failed',code)
+        if code in (404,410): dead.append(s['push']['endpoint'])
+    except Exception as e: print('push error',type(e).__name__)
+    return 0
+def notify(A,g=None,now=None):
     key=os.environ.get('VAPID_PRIVATE_KEY'); subs=load_subs()
     if not key or not subs: print(f'push: skipped (key={"set" if key else "missing"}, subscriptions={len(subs)})'); return
-    from pywebpush import webpush,WebPushException
     pem=None
     if '-----BEGIN' in key:   # PEM secret -> temp file (pywebpush accepts a path or base64url DER)
         import tempfile; fd,pem=tempfile.mkstemp(suffix='.pem'); os.write(fd,key.replace('\\n','\n').encode()); os.close(fd); os.chmod(pem,0o600); key=pem
@@ -135,17 +157,12 @@ def notify(A):
             for a in A:
                 via=a.get('point') in pts or norm(a.get('nahal')) in st
                 if not via or not isinstance(a.get('prob'),(int,float)) or a['prob']<thr: continue
-                payload=push_payload(a)
-                if not payload: continue
-                k=f"{s['uid']}|{a['point']}|{_clip(a.get('eta_first_wave'),13)}"
-                if k in sent: continue
-                try:
-                    webpush(s['push'],json.dumps(payload,ensure_ascii=False),vapid_private_key=key,vapid_claims={'sub':os.environ.get('VAPID_SUB','mailto:flood-app@example.invalid')}); n+=1; sent[k]=time.time()
-                except WebPushException as e:
-                    code=getattr(getattr(e,'response',None),'status_code',None)
-                    print('push failed',code)
-                    if code in (404,410): dead.append(s['push']['endpoint'])
-                except Exception as e: print('push error',type(e).__name__)
+                n+=_push_one(s,a,key,sent,dead)
+            for c in s.get('custom') or []:
+                if g is None or now is None: break
+                ca=fe.custom_point_alert(g,now,c)
+                if not ca or not isinstance(ca.get('prob'),(int,float)) or ca['prob']<thr: continue
+                n+=_push_one(s,ca,key,sent,dead)
     finally:
         if pem:
             try: os.remove(pem)

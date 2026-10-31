@@ -114,3 +114,52 @@ def live_risk(g,now,basins_geojson,hours=48):
             except Exception as e: q['error']=type(e).__name__
         feats.append(dict(f,properties=q))
     return dict(type='FeatureCollection',issued=il(now),hours=hours,source=g.name,features=feats),n
+_BASIN_META=None
+_FCACHE={}
+def basin_meta(sid):
+    global _BASIN_META
+    if _BASIN_META is None:
+        B=json.load(open(f'{ROOT}/data/basins_simplified.geojson'))
+        _BASIN_META={}
+        for f in B['features']:
+            p=f['properties']
+            _BASIN_META[str(p.get('sid'))]=dict(name=p.get('name_he') or '',nahal=p.get('main_nahal') or '',olat=p.get('olat'),olon=p.get('olon'))
+    return _BASIN_META.get(str(sid),{})
+def evaluate_basin(g,now,sid,horizon_h=72):
+    """One modeled basin, memoized. eta is the outlet arrival (Timestamp or None)."""
+    sid=str(sid)
+    if sid in _FCACHE: return _FCACHE[sid]
+    z=CAT['basins'].get(sid)
+    if z is None:
+        _FCACHE[sid]=None; return None
+    meta=basin_meta(sid)
+    try:
+        lat,lon=float(meta.get('olat') or 0),float(meta.get('olon') or 0)
+        T1=now+pd.Timedelta(hours=horizon_h)
+        p,Tp,row=model_prob(g,z,lat,lon,now,T1)
+        r=route(g,z,now-pd.Timedelta(hours=24),T1)
+        p=max(p,0)*min(1.0,max(row['pd_r24'] if row else 0,r['rain_mm'] if r else 0)/DRY_MM)
+        eta=r['first'] if r else None
+        if eta is None and p>=0.05 and Tp is not None: eta=Tp+pd.Timedelta(seconds=z['tt_p10_s'])
+        rain=round(r['rain_mm'],1) if r else None
+    except Exception:
+        _FCACHE[sid]=None; return None
+    out=dict(prob=round(float(p),2),eta=eta,tt_med_h=float(z['tt_med_s'])/3600.0,rain=rain,name=meta.get('name') or sid,nahal=meta.get('nahal') or '')
+    _FCACHE[sid]=out
+    return out
+def scale_arrival(eta_outlet,now,tt_med_h,along):
+    """along is 0 at the divide and 1 at the outlet. The outlet wave is earlier upstream by the remaining travel."""
+    along=min(1.0,max(0.0,float(along)))
+    if eta_outlet is None: return None,None
+    eta=eta_outlet-pd.Timedelta(hours=tt_med_h*(1.0-along))
+    lead=(eta-now).total_seconds()/3600.0
+    if lead<0: lead=0.0
+    return eta,round(lead,1)
+def custom_point_alert(g,now,c):
+    fc=evaluate_basin(g,now,c.get('sid'))
+    if not fc: return None
+    eta,lead=scale_arrival(fc['eta'],now,fc['tt_med_h'],c.get('along',1))
+    if fc['prob']<0.05: lead=None; eta=None
+    return dict(point=c['id'],name='הנקודה שלי · '+(fc['name'] or ''),nahal=fc['nahal'] or 'נחל',prob=fc['prob'],
+        eta_first_wave=il(eta),eta_peak=None,hours_until_first_wave=lead,
+        rain_summary=dict(basin_mean_mm=fc['rain'],max_cell_mm_h=None),confidence='low',estimate=True,source='custom_point')
