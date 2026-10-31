@@ -135,6 +135,8 @@ rm -f /tmp/flood-vapid/private_key.pem /tmp/flood-vapid/public_key.pem
 5. ב-[משתני Actions](https://github.com/eyalevi235-arch/Flood-alerts/settings/variables/actions) ודאו ש-`SUBSCRIBE_URL` הוא אותה כתובת שמסתיימת ב-`/exec`. אין משתנה נוסף. אם שיניתם כתובת, הריצו פעם אחת את `hourly-forecast`.
 6. באפליקציה פתחו «דיווח» או «משוב». העוזר קורא את הלשוניות `reports` ו-`feedback` בגיליון, ואת התמונות בתיקיית Drive. הלשוניות נוצרות לבד בשליחה הראשונה.
 
+בלי `FOLDER_ID` השרת דוחה דיווח עם תמונה. הטלפון לא רואה את התשובה, לכן השלב הזה חובה לפני שמפיצים את האפליקציה.
+
 בלי רשת הדיווח נשמר במכשיר ונשלח כשהחיבור חוזר.
 
 ## מגבלות
