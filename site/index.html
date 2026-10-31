@@ -14,7 +14,7 @@
   <h2>לפני שמשתמשים</h2>
   <p>זהו כלי עזר ניסיוני. הוא אינו מערכת התרעה רשמית, ואינו מחליף הנחיות של פיקוד העורף, רשות הטבע והגנים או השירות המטאורולוגי.</p>
   <p>אין להיכנס לנחל כשיש בו זרימה. ההתראות עלולות להיות שגויות או חסרות.</p>
-  <p class="muted">פרטיות: במכשיר נשמרים הנקודות והנחלים שבחרתם וסף ההתראה. אם מפעילים התראות, נשמרת גם הרשמת ה-Push (כתובת השירות והמפתחות שלה). הרשאת ה-Push נשמרת בגיליון פרטי של בעל האתר, לא במאגר הציבורי.</p>
+  <p class="muted">פרטיות: במכשיר נשמרים הנקודות והנחלים שבחרתם וסף ההתראה. אם מפעילים התראות, נשמרת גם הרשמת ה-Push. דיווח שיטפון שולח מיקום, שעת דיווח ותמונה לגיליון פרטי של בעל האתר (לא למאגר הציבורי). התמונות עשויות לשמש לשיפור המודל. שם וטלפון לא נדרשים.</p>
   <button type="button" class="btn" id="gate-ok">הבנתי, זה כלי עזר בלבד</button>
  </div>
 </div>
@@ -31,8 +31,82 @@
  <div class="card"><h3>סף התראה: <span id="thv"></span>%</h3><input type="range" id="th" min="5" max="90" step="5"><div class="muted">התראה תישלח כשהסיכוי לשיטפון בנקודה מועדפת עובר את הסף.</div></div>
  <div class="card"><h3>התראות לטלפון</h3><button type="button" class="btn" id="enable-push">הפעל התראות במכשיר הזה</button> <button type="button" class="btn alt" id="test-push">שלח בדיקה</button> <button type="button" class="btn alt" id="disable-push">כבה התראות</button><div id="pst" class="muted"></div>
  <div class="muted">באייפון: יש להוסיף קודם את האתר למסך הבית (שיתוף ← "הוסף למסך הבית").</div>
- <p class="muted">פרטיות: נשמרים רק הרשמת ה-Push, הנקודות או הנחלים שנבחרו, וסף ההתראה. אין חשבון משתמש ואין שמירה במאגר הציבורי.</p></div>
+ <p class="muted">פרטיות: נשמרים הרשמת ה-Push, הנקודות או הנחלים שנבחרו, וסף ההתראה. דיווח שומר מיקום, שעה ותמונה אצל בעל האתר בלבד. התמונות עשויות לשמש לשיפור המודל. אין חובה למסור שם או טלפון.</p></div>
+</section>
+<section id="p-report" class="page">
+ <div class="card">
+  <h3>דיווח שיטפון</h3>
+  <p class="muted">המיקום, השעה והתמונה נשמרים בגיליון פרטי, לא באתר הציבורי. התמונות עשויות לשמש לשיפור המודל.</p>
+  <button type="button" class="btn" id="gps-btn">אתרו אותי שוב</button>
+  <div id="gps-status" class="muted"></div>
+  <div id="report-map"></div>
+  <p id="near-label" class="muted"></p>
+  <label class="field">נקודה או נחל קרובים
+   <select id="near-vp"></select>
+  </label>
+  <label class="field">תמונה מהמצלמה
+   <input id="report-photo" type="file" accept="image/*" capture="environment">
+  </label>
+  <canvas id="photo-preview" width="320" height="180"></canvas>
+  <div id="photo-status" class="muted"></div>
+  <fieldset>
+   <legend>מה קורה בנחל?</legend>
+   <label class="choice"><input type="radio" name="wave" value="first_now"> גל ראשון עכשיו</label>
+   <label class="choice"><input type="radio" name="wave" value="already_flowing"> הנחל כבר זורם (אחרי הגל הראשון)</label>
+  </fieldset>
+  <div id="first-wave-box" hidden>
+   <label class="field">מתי הגיע הגל הראשון? (שעון ישראל)
+    <input id="first-wave-time" type="datetime-local">
+   </label>
+   <label class="choice"><input id="first-wave-unknown" type="checkbox"> לא ידוע</label>
+  </div>
+  <label class="field">עוצמת הזרימה (רשות)
+   <select id="flow">
+    <option value="">לא צוין</option>
+    <option value="weak">חלש</option>
+    <option value="medium">בינוני</option>
+    <option value="strong">חזק</option>
+   </select>
+  </label>
+  <label class="field">הערה (רשות)
+   <textarea id="report-note" maxlength="500"></textarea>
+  </label>
+  <button type="button" class="btn" id="report-send">שליחת דיווח</button>
+  <div id="report-status" class="muted"></div>
+ </div>
+</section>
+<section id="p-feedback" class="page">
+ <div class="card">
+  <h3>משוב על התחזית</h3>
+  <p class="muted">המשוב נשמר בגיליון פרטי. אין חובה להשאיר שם או טלפון.</p>
+  <label class="choice"><input type="radio" name="fb-kind" value="forecast" checked> על התחזית בנקודה</label>
+  <label class="choice"><input type="radio" name="fb-kind" value="app"> משוב כללי על האפליקציה</label>
+  <div id="fb-forecast">
+   <label class="field">נקודה (רשות)
+    <select id="fb-point"></select>
+   </label>
+   <label class="field">מה קרה?
+    <select id="fb-rating">
+     <option value="">בחרו</option>
+     <option value="correct">ההתרעה הייתה נכונה</option>
+     <option value="false_alarm">התרעת שווא</option>
+     <option value="missed">שיטפון ללא התרעה</option>
+     <option value="eta_wrong">זמן ההגעה לא מדויק</option>
+     <option value="other">אחר</option>
+    </select>
+   </label>
+  </div>
+  <label class="field">פירוט
+   <textarea id="fb-text" maxlength="500"></textarea>
+  </label>
+  <label class="choice"><input id="fb-contact-ok" type="checkbox"> אפשר ליצור איתי קשר (לא חובה)</label>
+  <input id="fb-contact" type="text" maxlength="80" placeholder="אימייל או טלפון" hidden>
+  <button type="button" class="btn" id="fb-send">שליחת משוב</button>
+  <div id="fb-status" class="muted"></div>
+ </div>
 </section></main>
 <footer class="legal">כלי עזר ניסיוני, לא התרעה רשמית של פיקוד העורף, רשות הטבע והגנים או השירות המטאורולוגי. אין להיכנס לנחל בזרימה. ההתראות עלולות לטעות או לחסור.</footer>
-<nav><button type="button" data-p="map" class="on"><b>🗺️</b>מפה</button><button type="button" data-p="points"><b>📍</b>נקודות</button><button type="button" data-p="alerts"><b>🔔</b>התראות</button><button type="button" data-p="set"><b>⚙️</b>הגדרות</button></nav>
-<script src="./app.js"></script></body></html>
+<nav><button type="button" data-p="map" class="on"><b>🗺️</b>מפה</button><button type="button" data-p="points"><b>📍</b>נקודות</button><button type="button" data-p="alerts"><b>🔔</b>התראות</button><button type="button" data-p="report"><b>📷</b>דיווח</button><button type="button" data-p="feedback"><b>💬</b>משוב</button><button type="button" data-p="set"><b>⚙️</b>הגדרות</button></nav>
+<script src="./report_rules.js"></script>
+<script src="./app.js"></script>
+<script src="./reports.js"></script></body></html>

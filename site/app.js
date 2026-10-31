@@ -5,7 +5,7 @@ if(!/^u[a-z0-9]{6,20}$/.test(UID||'')){UID='u'+Math.random().toString(36).slice(
 let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL;
 const api=p=>fetch(p,{cache:'no-cache'}).then(r=>{if(!r.ok)throw r.status;return r.json()});
 const jget=(p,d)=>api(p).catch(()=>d);
-const PAGES=['map','points','alerts','set'];
+const PAGES=['map','points','alerts','report','feedback','set'];
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n;}
 function clear(n){while(n&&n.firstChild)n.removeChild(n.firstChild);}
 function txt(v,fallback){if(v==null||v==='')return fallback==null?'':String(fallback);return String(v);}
@@ -33,6 +33,8 @@ function show(p){
  if(p==='map'&&map)setTimeout(()=>map.invalidateSize(),50);
  if(p==='alerts')loadAlerts();
  if(p==='set')renderSet();
+ if(p==='report'&&typeof openReport==='function')openReport();
+ if(p==='feedback'&&typeof openFeedback==='function')openFeedback();
 }
 function finiteCoord(lat,lon){
  lat=Number(lat);lon=Number(lon);

@@ -8,9 +8,9 @@ main{position:absolute;top:44px;bottom:112px;left:0;right:0;overflow:auto}
 .page.on{display:block}
 #p-map.on{padding:0}
 nav{position:fixed;bottom:0;left:0;right:0;height:58px;background:#fff;border-top:1px solid #ccd;display:flex;z-index:700}
-nav button{flex:1;border:0;background:none;font-size:13px;color:#456}
+nav button{flex:1;border:0;background:none;font-size:11px;color:#456;padding:4px 0}
 nav button.on{color:#0b4f6c;font-weight:700;border-top:3px solid #0b4f6c}
-nav b{display:block;font-size:20px}
+nav b{display:block;font-size:16px}
 .card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px #0002}
 .card.tight{box-shadow:none;padding:0;margin:0}
 .card h2,.card h3{margin:0 0 6px;font-size:16px}
@@ -49,3 +49,12 @@ input[type=range]{width:100%}
 .gate[hidden]{display:none}
 .gate .card{max-width:520px;margin:0}
 .gate h2{font-size:20px}
+#report-map{height:200px;border-radius:8px;margin:8px 0}
+.choice{display:block;margin:6px 0}
+.field{display:block;margin:8px 0}
+textarea,select,.field input[type="datetime-local"],.field input[type="text"]{width:100%;padding:8px;border:1px solid #bbc;border-radius:8px;font:inherit}
+textarea{min-height:72px}
+fieldset{border:1px solid #ccd;border-radius:8px;margin:8px 0;padding:8px}
+#photo-preview{display:none;width:100%;max-height:180px;border-radius:8px;margin-top:6px;background:#eee}
+#photo-preview.on{display:block}
+.pin{background:#c0392b;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #c0392b}
