@@ -294,12 +294,18 @@ def nearest_segment_id(lat, lon, segs=None):
             if d<best_d: best_d=d; best=int(s['id'])
     return best
 def custom_point_alert(g,now,c):
+    seg=c.get('seg', None)
+    if seg is None or seg=='':
+        fc=evaluate_basin(g,now,c.get('sid'))
+        if not fc: return None
+        eta,lead=scale_arrival(fc['eta'],now,fc['tt_med_h'],c.get('along',1))
+        if fc['prob']<0.05: eta,lead=None,None
+        return dict(point=c['id'],name='הנקודה שלי · '+(fc['name'] or ''),nahal=fc['nahal'] or 'נחל',prob=fc['prob'],
+            eta_first_wave=il(eta),eta_peak=None,hours_until_first_wave=lead,
+            rain_summary=dict(basin_mean_mm=fc['rain'],max_cell_mm_h=None),confidence='low',estimate=True,source='basin_point')
     if not _SEG_BY_ID: return None
-    seg=c.get('seg')
     try: seg=int(seg)
-    except (TypeError,ValueError): seg=None
-    if seg not in _SEG_BY_ID and c.get('lat') is not None:
-        seg=nearest_segment_id(c.get('lat'),c.get('lon'))
+    except (TypeError,ValueError): return None
     rec=_SEG_BY_ID.get(seg)
     if not rec: return None
     eta,lead=rec['eta'],rec['lead']

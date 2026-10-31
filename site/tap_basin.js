@@ -69,8 +69,9 @@ function metersPerPixel(lat, zoom) {
   return 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
 }
 function snapToleranceMeters(lat, zoom) {
-  var px = 40 * metersPerPixel(lat, zoom);
-  return Math.max(80, Math.min(px, 2500));
+  // Snap only when the channel is within 60 m and within 25 px (the 20–30 px cap). The smaller distance wins.
+  var screenM = 25 * metersPerPixel(lat, zoom);
+  return Math.min(60, screenM);
 }
 function _toXY(lat, lon, lat0) {
   var kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
