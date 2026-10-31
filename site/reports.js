@@ -79,6 +79,7 @@ function ensureReportMap() {
   var host = document.getElementById('report-map');
   if (!host || typeof L === 'undefined') return;
   reportMap = L.map(host, {zoomControl: false, attributionControl: true, zoomSnap: 0.5, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, scrollWheelZoom: true}).setView([30.9, 35.0], 7);
+  if (typeof addNameAttribution === 'function') addNameAttribution(reportMap);
   if (typeof addBasemap === 'function') addBasemap(reportMap, 'topo');
   setTimeout(function () { reportMap.invalidateSize(); }, 60);
 }

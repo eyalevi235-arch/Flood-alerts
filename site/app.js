@@ -18,6 +18,17 @@ function addBasemap(target,kind){
  layer.bringToBack();
  return layer;
 }
+function addNameAttribution(target){
+ if(!target)return;
+ if(!target.attributionControl){
+  L.control.attribution({position:'bottomleft',prefix:false}).addTo(target);
+ }
+ var box=target.attributionControl;
+ if(box._names)return;
+ box._names=1;
+ box.addAttribution('<a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
+ box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
+}
 function northOn(){const n=$('#north');return !n||n.checked;}
 function basinsOn(){const n=$('#basins');return !n||n.checked;}
 // Zero risk stays a visible medium blue. The ramp only gets darker, never near-white.
@@ -135,8 +146,10 @@ function dateOk(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);}
 async function init(){
  CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null,subscribe_url:''});
  PREFS=loadPrefs();
- map=L.map('map',{zoomControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:120,scrollWheelZoom:true}).setView([30.9,35.0],8);
+ map=L.map('map',{zoomControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:120,scrollWheelZoom:true,attributionControl:false}).setView([30.9,35.0],8);
  L.control.zoom({position:'bottomleft'}).addTo(map);
+ L.control.attribution({position:'bottomleft',prefix:false}).addTo(map);
+ addNameAttribution(map);
  map.on('zoomend',()=>{if(northL)northL.setStyle(northStyle);});
  let savedBase='topo';
  try{savedBase=localStorage.basemap||'topo';}catch(e){}
