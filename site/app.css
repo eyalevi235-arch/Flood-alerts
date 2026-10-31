@@ -30,7 +30,7 @@ td,th{border-bottom:1px solid #eee;padding:3px;text-align:right}
 .sw-10{background:#fdd835}
 .sw-low{background:#bbb}
 .sw-pt{background:#1e88e5}
-.sw-north{background:#2171b5}
+.sw-north{background:#2b6cb0}
 .ctl{position:absolute;top:10px;right:10px;z-index:500;background:#fffe;padding:6px 8px;border-radius:8px;font-size:13px}
 .btn{background:#0b4f6c;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:14px;margin:4px 0}
 .btn.alt{background:#567}
@@ -61,3 +61,12 @@ fieldset{border:1px solid #ccd;border-radius:8px;margin:8px 0;padding:8px}
 .pin{background:#c0392b;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #c0392b}
 .leaflet-popup-content{direction:rtl;text-align:right}
 .leaflet-popup-content .btn.alt{display:block;width:100%;white-space:normal;text-align:right}
+.coverage-note{color:#8aa;font-size:12px;font-weight:400;margin-top:8px}
+@media (max-width:480px){
+ .ctl{left:8px;right:8px;top:8px;max-height:30vh;overflow:auto;font-size:12px}
+ .legend{left:8px;right:8px;bottom:8px;max-height:none;font-size:11px;line-height:1.25;padding:6px 8px}
+ .leaflet-popup-content{max-height:32vh;overflow:auto}
+ .leaflet-popup{max-width:calc(100vw - 28px)}
+ .leaflet-control-attribution{max-width:62%;font-size:9px;line-height:1.2}
+ .leaflet-bottom.leaflet-left .leaflet-control-zoom{margin-bottom:8px}
+}
