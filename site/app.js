@@ -81,7 +81,7 @@ async function init(){
  const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
  (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
  date.onchange=loadRisk;$('#per').onchange=loadRisk;
- api('data/streams.geojson').then(g=>{streamL=L.geoJSON(g,{style:{color:'#1565c0',weight:1.2,opacity:.7},interactive:false}).addTo(map)});
+ api('data/channel_segments.geojson').then(g=>{streamL=L.geoJSON(g,{style:{color:'#1565c0',weight:1.6,opacity:.85},interactive:false}).addTo(map)});
  await loadRisk();
  VPS=await jget('data/viewpoints.json',[]);
  if(!Array.isArray(VPS))VPS=[];
@@ -100,8 +100,7 @@ async function loadRisk(){
  const features=(g0&&Array.isArray(g0.features)?g0.features:[]).filter(x=>$('#per').checked||!(x.properties&&x.properties.perennial));
  const g={...g0,features};
  if(riskL)map.removeLayer(riskL);
- riskL=L.geoJSON(g,{style:f=>{const p=f.properties||{};return{color:'#333',weight:.4,fillOpacity:p.perennial?.15:.5,fillColor:p.perennial?'#999':col(p.risk??p.risk_raw)};},
-  onEachFeature:(f,l)=>l.bindPopup(()=>riskPopup(f.properties||{}))}).addTo(map);
+ riskL=L.geoJSON(g,{interactive:false,style:f=>{const p=f.properties||{};return{color:'#333',weight:.4,fillOpacity:p.perennial?.15:.5,fillColor:p.perennial?'#999':col(p.risk??p.risk_raw),interactive:false};}}).addTo(map);
  riskL.bringToBack();
 }
 function riskPopup(p){

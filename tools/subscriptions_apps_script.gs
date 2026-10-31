@@ -132,9 +132,16 @@ function cleanRecord_(r) {
     for (var k = 0; k < r.custom.length && custom.length < 8; k++) {
       var c = r.custom[k];
       if (!c || typeof c.id !== 'string' || !/^M[a-z0-9]{6,16}$/.test(c.id)) continue;
+      var lat = Number(c.lat), lon = Number(c.lon);
+      if (!inIsrael_(lat, lon)) continue;
+      var seg = parseInt(c.seg, 10);
+      if (isFinite(seg) && seg >= 0 && seg <= 20000) {
+        custom.push({id: c.id, seg: seg, sid: /^\d{3,8}$/.test(String(c.sid)) ? String(c.sid) : '', lat: lat, lon: lon});
+        continue;
+      }
       if (!/^\d{3,8}$/.test(String(c.sid))) continue;
-      var along = Number(c.along), lat = Number(c.lat), lon = Number(c.lon);
-      if (!isFinite(along) || along < 0 || along > 1 || !inIsrael_(lat, lon)) continue;
+      var along = Number(c.along);
+      if (!isFinite(along) || along < 0 || along > 1) continue;
       custom.push({id: c.id, sid: String(c.sid), along: Math.round(along * 1000) / 1000, lat: lat, lon: lon});
     }
   }
