@@ -58,7 +58,7 @@ function loadTapData() {
       if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2) return;
       var id = parseInt(p.id, 10);
       if (!isFinite(id)) return;
-      lines.push({coords: g.coordinates, id: id, name: p.name || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'desert', perennial: false});
+      lines.push({coords: g.coordinates, id: id, name: p.name || '', nameHe: p.name_he || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'desert', perennial: false});
     });
     var northLines = [];
     (pair[3].features || []).forEach(function (f) {
@@ -66,7 +66,7 @@ function loadTapData() {
       if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2) return;
       var id = parseInt(p.id, 10);
       if (!isFinite(id)) return;
-      northLines.push({coords: g.coordinates, id: id, name: p.name || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.p === 1 || p.p === true});
+      northLines.push({coords: g.coordinates, id: id, name: p.name || '', nameHe: p.name_he || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.p === 1 || p.p === true});
     });
     var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3b');
     return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], idMap: pair[5] || {}, ndGeomVersion: geomVersion};
@@ -92,7 +92,8 @@ function placeName(value) {
 }
 // Named segment: "נחל X" or "נחל X, יובל של נחל Y", plus "נשפך אל: Z" when it adds a place.
 function segmentTitle(line) {
-  var name = String(line.name || '').trim();
+  var he = String(line.nameHe || '').trim();
+  var name = he || String(line.name || '').trim();
   if (!name) return null;
   var main = String(line.mainNahal || '').trim();
   var flows = String(line.flowsInto || '').trim();
