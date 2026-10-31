@@ -19,15 +19,16 @@ https://eyalevi235-arch.github.io/Flood-alerts/
 
 אפשר גם להריץ ידנית: [Actions → hourly-forecast → Run workflow](https://github.com/eyalevi235-arch/Flood-alerts/actions/workflows/hourly.yml).
 
-## להדליק את האתר (פעם אחת)
+## להדליק את האתר (פעם אחת, חובה)
 
-אם העמוד עדיין לא נפתח, צריך לבחור את מקור הפרסום. זה כפתור אחד:
+הבדיקה השעתית כבר רצה על GitHub והחישוב הצליח. הפרסום נעצר כי אתר Pages עדיין לא הוגדר. לא ניתן להדליק אותו אוטומטית: גם הטוקן של ההתקנה וגם הטוקן של Actions קיבלו `403 Resource not accessible by integration` בניסיון ליצור את האתר.
 
 1. פתחו [Settings → Pages](https://github.com/eyalevi235-arch/Flood-alerts/settings/pages).
 2. תחת **Build and deployment**, בשדה **Source**, בחרו **GitHub Actions**.
 3. אין צורך בענף `gh-pages` ואין צורך בדומיין משלכם.
+4. פתחו [Actions → hourly-forecast](https://github.com/eyalevi235-arch/Flood-alerts/actions/workflows/hourly.yml), לחצו **Run workflow**, השאירו את הענף `main`, ולחצו **Run workflow** שוב. הכפתור הזה נדרש כי הפעלה אוטומטית של `workflow_dispatch` נחסמה (`403`).
 
-אחר כך הריצו פעם אחת את [hourly-forecast](https://github.com/eyalevi235-arch/Flood-alerts/actions/workflows/hourly.yml) עם **Run workflow**. אחרי כמה דקות האתר אמור לעלות.
+אחרי כמה דקות האתר אמור להופיע בכתובת למעלה.
 
 אם הריצה נעצרת עם הודעה על הרשאות (`Resource not accessible by integration` או `pages: write`):
 
