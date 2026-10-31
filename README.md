@@ -119,6 +119,26 @@ rm -f /tmp/flood-vapid/private_key.pem /tmp/flood-vapid/public_key.pem
 
 פרטי אבטחה נוספים, כולל מה צריך להפעיל ידנית בחשבון GitHub, נמצאים ב-[SECURITY.md](SECURITY.md).
 
+## דיווח שיטפון ומשוב
+
+המסכים «דיווח» ו«משוב» שולחים ל**אותו** Web app של ההרשמות. הדיווח כולל מיקום, שעה ותמונה. המשוב הוא טקסט על התחזית או על האפליקציה. שום דבר מזה לא נכנס למאגר הציבורי ולא לאתר. התמונות נשמרות בתיקייה פרטית ב-Drive, והשורות בלשוניות `reports` ו-`feedback` בגיליון. התמונות עשויות לשמש לשיפור המודל. שם וטלפון לא נדרשים.
+
+אם כבר יש גיליון והרשמות, לא יוצרים גיליון חדש.
+
+1. ב-Google Drive לחצו **New → Folder** וקראו לתיקייה `flood-reports`. פתחו אותה. בכתובת הדפדפן העתיקו את הקטע שאחרי `/folders/`.
+2. פתחו את גיליון ההרשמות. **Extensions → Apps Script**. החליפו את כל הקוד בתוכן של [`tools/subscriptions_apps_script.gs`](tools/subscriptions_apps_script.gs). שמרו.
+3. **Project Settings → Script properties**. הוסיפו:
+   - Property: `FOLDER_ID`
+   - Value: המזהה מהשלב 1
+   - אם אין עדיין `TOKEN`, הוסיפו גם אותו (לפחות 16 תווים).
+4. **Deploy → Manage deployments**. לחצו על העיפרון, בחרו **Version: New version**, ואז **Deploy**. אם זו פריסה ראשונה: **Deploy → New deployment → Web app**, Execute as **Me**, Who has access **Anyone**.
+5. ב-[משתני Actions](https://github.com/eyalevi235-arch/Flood-alerts/settings/variables/actions) ודאו ש-`SUBSCRIBE_URL` הוא אותה כתובת שמסתיימת ב-`/exec`. אין משתנה נוסף. אם שיניתם כתובת, הריצו פעם אחת את `hourly-forecast`.
+6. באפליקציה פתחו «דיווח» או «משוב». העוזר קורא את הלשוניות `reports` ו-`feedback` בגיליון, ואת התמונות בתיקיית Drive. הלשוניות נוצרות לבד בשליחה הראשונה.
+
+בלי `FOLDER_ID` השרת דוחה דיווח עם תמונה. הטלפון לא רואה את התשובה, לכן השלב הזה חובה לפני שמפיצים את האפליקציה.
+
+בלי רשת הדיווח נשמר במכשיר ונשלח כשהחיבור חוזר.
+
 ## מגבלות
 
 - המקור הוא תחזית Open-Meteo (רשת של כעשירית מעלה), לא רדאר של השירות המטאורולוגי.
