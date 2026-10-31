@@ -1,0 +1,28 @@
+{
+ "VC": 3.5,
+ "frac_up": 0.4,
+ "pairs": [
+  {
+   "pair": "Arugot upper->Rt90 2022-11-02",
+   "obs_h": 2.25,
+   "model_h": 2.26,
+   "reach_km": 26.0,
+   "err_h": 0.01
+  },
+  {
+   "pair": "Og upper->downstream 2022-11-01",
+   "obs_h": 1.5,
+   "model_h": 0.7,
+   "reach_km": 7.1,
+   "err_h": -0.8
+  },
+  {
+   "pair": "Zin upper tributaries->Rt40 2025-11-25",
+   "obs_h": 2.0,
+   "model_h": 1.82,
+   "reach_km": 19.9,
+   "err_h": -0.18
+  }
+ ],
+ "mae_h": 0.33
+}

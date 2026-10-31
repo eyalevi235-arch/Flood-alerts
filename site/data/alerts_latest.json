@@ -1,0 +1,1109 @@
+{
+ "issued": "2026-10-31 19:00",
+ "source": "flood_engine/openmeteo_icon_seamless",
+ "stub": false,
+ "alerts": [
+  {
+   "point": "VP01",
+   "name": "ואדי קלט – גשר דרך אלון",
+   "nahal": "נחל פרת",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 99.9
+  },
+  {
+   "point": "VP02",
+   "name": "נחל אוג – גשר נבי מוסא",
+   "nahal": "נחל אוג",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 99.9
+  },
+  {
+   "point": "VP03",
+   "name": "נחל אוג – תצפית קיבוץ אלמוג",
+   "nahal": "נחל אוג",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 99.9
+  },
+  {
+   "point": "VP04",
+   "name": "נחל קומראן – מפלים מכביש 90",
+   "nahal": "נחל קומראן",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 11.2
+  },
+  {
+   "point": "VP05",
+   "name": "מפל נחל קדרון – בריכת מקורות (אבנת)",
+   "nahal": "נחל קדרון",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 51.3
+  },
+  {
+   "point": "VP06",
+   "name": "נחל תמרים – ק\"מ 265-266",
+   "nahal": "נחל תמרים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 1.4
+  },
+  {
+   "point": "VP07",
+   "name": "מצוקי דרגות – מצפה העץ",
+   "nahal": "נחל דרגה",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 70.9
+  },
+  {
+   "point": "VP08",
+   "name": "נחל דרגה – גשר/שפך כביש 90",
+   "nahal": "נחל דרגה",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 70.9
+  },
+  {
+   "point": "VP09",
+   "name": "נחל סלוודורה – חניון ק\"מ 250",
+   "nahal": "נחל סלוודורה",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 13.0
+  },
+  {
+   "point": "VP10",
+   "name": "נחל דוד – עין גדי",
+   "nahal": "נחל דוד",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 15.2
+  },
+  {
+   "point": "VP11",
+   "name": "נחל ערוגות – גשר כביש 90",
+   "nahal": "נחל ערוגות",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 220.8
+  },
+  {
+   "point": "VP12",
+   "name": "נחל חבר – שפך לים המלח",
+   "nahal": "נחל חבר",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 151.4
+  },
+  {
+   "point": "VP13",
+   "name": "בירכת צפירה – מפל צאלים",
+   "nahal": "נחל צאלים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 185.4
+  },
+  {
+   "point": "VP14",
+   "name": "נחל צאלים – גשר כביש 90",
+   "nahal": "נחל צאלים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 188.5
+  },
+  {
+   "point": "VP15",
+   "name": "נחל חימר – מפל / כביש 31",
+   "nahal": "נחל חימר",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 0.7
+  },
+  {
+   "point": "VP16",
+   "name": "מפל בוקק – צוק תמרור",
+   "nahal": "נחל בוקק",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 10.4
+  },
+  {
+   "point": "VP17",
+   "name": "נחל בוקק – גשר כביש 90",
+   "nahal": "נחל בוקק",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 15.0
+  },
+  {
+   "point": "VP18",
+   "name": "נחל זהר – קידוח זהר 4",
+   "nahal": "נחל זהר",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 9.5
+  },
+  {
+   "point": "VP19",
+   "name": "המרפסת של נחל צין",
+   "nahal": "נחל צין",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 787.6
+  },
+  {
+   "point": "VP20",
+   "name": "עין עבדת עליון – מפל עין מעריף",
+   "nahal": "נחל צין",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 241.2
+  },
+  {
+   "point": "VP21",
+   "name": "חניון הסרפנטינות – עין עבדת תחתון",
+   "nahal": "נחל צין",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 252.7
+  },
+  {
+   "point": "VP22",
+   "name": "נחל רמון – גשר כביש 40",
+   "nahal": "נחל רמון",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 84.1
+  },
+  {
+   "point": "VP23",
+   "name": "נחל נקרות – גשר כביש 40",
+   "nahal": "נחל נקרות",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 793.6
+  },
+  {
+   "point": "VP24",
+   "name": "נחל נקרות – כביש 90",
+   "nahal": "נחל נקרות",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 793.6
+  },
+  {
+   "point": "VP25",
+   "name": "נחל פארן – כביש 40",
+   "nahal": "נחל פארן",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 3312.1
+  },
+  {
+   "point": "VP26",
+   "name": "נחל פארן – גשר כביש 90",
+   "nahal": "נחל פארן",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 3600.0
+  },
+  {
+   "point": "VP27",
+   "name": "נחל רביבים – צומת משאבים (כביש 40)",
+   "nahal": "נחל רביבים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 183.3
+  },
+  {
+   "point": "VP28",
+   "name": "נחל רביבים – גשר כביש 222 (פארק גולדה)",
+   "nahal": "נחל רביבים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 220.6
+  },
+  {
+   "point": "VP29",
+   "name": "אגם ירוחם – הסכר",
+   "nahal": "נחל רביבים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 110.3
+  },
+  {
+   "point": "VP30",
+   "name": "נחל ניצנה – גשר כביש 211",
+   "nahal": "נחל ניצנה",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 654.1
+  },
+  {
+   "point": "VP31",
+   "name": "נחל הבשור – גשר פארק אשכול",
+   "nahal": "נחל הבשור",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 2468.4
+  },
+  {
+   "point": "VP32",
+   "name": "תל שרוחן – מגדל תצפית",
+   "nahal": "נחל הבשור",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 2466.4
+  },
+  {
+   "point": "VP33",
+   "name": "נחל סער – מרפסת תצפית מפל סער",
+   "nahal": "נחל סער",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 47.3
+  },
+  {
+   "point": "VP34",
+   "name": "נחל עורבים – צפונית לקלע",
+   "nahal": "נחל עורבים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 4.6
+  },
+  {
+   "point": "VP36",
+   "name": "גשר נחל צין – כביש 90",
+   "nahal": "נחל צין",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 6.3
+  },
+  {
+   "point": "VP38",
+   "name": "נחל הבשור – כביש 232 ליד צומת רעים / תל גמה",
+   "nahal": "נחל הבשור",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 2571.8
+  },
+  {
+   "point": "VP41",
+   "name": "נחל יעלים – כביש 31 (5 ק\"מ מצומת ערד)",
+   "nahal": "נחל יעלים",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 2.9
+  },
+  {
+   "point": "VP42",
+   "name": "נחל חימר – גשר כביש המפעלים 258",
+   "nahal": "נחל חימר",
+   "prob": 0.0,
+   "eta_first_wave": null,
+   "eta_peak": null,
+   "hours_until_first_wave": null,
+   "rain_summary": {
+    "basin_mean_mm": 0.0,
+    "max_cell_mm_h": 0.0,
+    "runoff_mm": 0.0,
+    "q_peak_m3s": 0.0,
+    "contributing_by_travel_time": {
+     "<1h": 0.0,
+     "1-3h": 0.0,
+     "3-6h": 0.0,
+     "6-12h": 0.0,
+     ">12h": 0.0
+    },
+    "top_rain_cells": [],
+    "cn_source": "curve_number.tif",
+    "model_r24_mm": 0.0
+   },
+   "confidence": "low",
+   "source": "openmeteo_icon_seamless",
+   "issued": "2026-10-31 19:00",
+   "basin_km2": 0.2
+  }
+ ]
+}

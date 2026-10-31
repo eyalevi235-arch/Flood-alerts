@@ -1,0 +1,219 @@
+{
+ "DRY_MM": 2,
+ "GATE_EXP": 1,
+ "THR_GLOBAL": 0.08,
+ "THR_POINT": {
+  "VP07": 0.08,
+  "VP11": 0.21,
+  "VP14": 0.14,
+  "VP19": 0.16,
+  "VP22": 0.11,
+  "VP25": 0.13,
+  "VP26": 0.23,
+  "VP36": 0.08,
+  "VP42": 0.08
+ },
+ "results": {
+  "icon": {
+   "global_thr": {
+    "n": 376,
+    "pos": 79,
+    "det": 0.709,
+    "fa_rate": 0.707,
+    "far": 0.789,
+    "alerts": 266
+   },
+   "per_point_thr": {
+    "n": 376,
+    "pos": 79,
+    "det": 0.658,
+    "fa_rate": 0.572,
+    "far": 0.766,
+    "alerts": 222
+   },
+   "old": {
+    "n": 376,
+    "pos": 79,
+    "det": 0.203,
+    "fa_rate": 0.148,
+    "far": 0.733,
+    "alerts": 60
+   },
+   "per_point_detail": {
+    "VP07": {
+     "n": 72,
+     "pos": 6,
+     "det": 0.5,
+     "fa_rate": 0.773,
+     "far": 0.944,
+     "alerts": 54
+    },
+    "VP11": {
+     "n": 71,
+     "pos": 10,
+     "det": 0.7,
+     "fa_rate": 0.557,
+     "far": 0.829,
+     "alerts": 41
+    },
+    "VP14": {
+     "n": 44,
+     "pos": 10,
+     "det": 0.7,
+     "fa_rate": 0.5,
+     "far": 0.708,
+     "alerts": 24
+    },
+    "VP19": {
+     "n": 33,
+     "pos": 3,
+     "det": 1.0,
+     "fa_rate": 0.533,
+     "far": 0.842,
+     "alerts": 19
+    },
+    "VP22": {
+     "n": 29,
+     "pos": 7,
+     "det": 0.857,
+     "fa_rate": 0.273,
+     "far": 0.5,
+     "alerts": 12
+    },
+    "VP25": {
+     "n": 25,
+     "pos": 7,
+     "det": 0.714,
+     "fa_rate": 0.778,
+     "far": 0.737,
+     "alerts": 19
+    },
+    "VP26": {
+     "n": 25,
+     "pos": 5,
+     "det": 0.8,
+     "fa_rate": 0.55,
+     "far": 0.733,
+     "alerts": 15
+    },
+    "VP36": {
+     "n": 33,
+     "pos": 8,
+     "det": 1.0,
+     "fa_rate": 0.32,
+     "far": 0.5,
+     "alerts": 16
+    },
+    "VP42": {
+     "n": 44,
+     "pos": 23,
+     "det": 0.391,
+     "fa_rate": 0.619,
+     "far": 0.591,
+     "alerts": 22
+    }
+   }
+  },
+  "pdir": {
+   "global_thr": {
+    "n": 894,
+    "pos": 129,
+    "det": 0.612,
+    "fa_rate": 0.809,
+    "far": 0.887,
+    "alerts": 698
+   },
+   "per_point_thr": {
+    "n": 894,
+    "pos": 129,
+    "det": 0.543,
+    "fa_rate": 0.702,
+    "far": 0.885,
+    "alerts": 607
+   },
+   "old": {
+    "n": 894,
+    "pos": 129,
+    "det": 0.24,
+    "fa_rate": 0.323,
+    "far": 0.888,
+    "alerts": 278
+   },
+   "per_point_detail": {
+    "VP07": {
+     "n": 139,
+     "pos": 9,
+     "det": 0.556,
+     "fa_rate": 0.862,
+     "far": 0.957,
+     "alerts": 117
+    },
+    "VP11": {
+     "n": 143,
+     "pos": 20,
+     "det": 0.6,
+     "fa_rate": 0.65,
+     "far": 0.87,
+     "alerts": 92
+    },
+    "VP14": {
+     "n": 111,
+     "pos": 23,
+     "det": 0.478,
+     "fa_rate": 0.784,
+     "far": 0.862,
+     "alerts": 80
+    },
+    "VP19": {
+     "n": 83,
+     "pos": 4,
+     "det": 0.75,
+     "fa_rate": 0.759,
+     "far": 0.952,
+     "alerts": 63
+    },
+    "VP22": {
+     "n": 79,
+     "pos": 12,
+     "det": 0.5,
+     "fa_rate": 0.537,
+     "far": 0.857,
+     "alerts": 42
+    },
+    "VP25": {
+     "n": 78,
+     "pos": 10,
+     "det": 0.6,
+     "fa_rate": 0.647,
+     "far": 0.88,
+     "alerts": 50
+    },
+    "VP26": {
+     "n": 79,
+     "pos": 7,
+     "det": 0.571,
+     "fa_rate": 0.514,
+     "far": 0.902,
+     "alerts": 41
+    },
+    "VP36": {
+     "n": 83,
+     "pos": 14,
+     "det": 0.571,
+     "fa_rate": 0.623,
+     "far": 0.843,
+     "alerts": 51
+    },
+    "VP42": {
+     "n": 99,
+     "pos": 30,
+     "det": 0.5,
+     "fa_rate": 0.812,
+     "far": 0.789,
+     "alerts": 71
+    }
+   }
+  }
+ },
+ "note": "truth: HS gauge Q>=1 m3/s (local day D or D+1<12h); candidate days = basin rain>=0.3mm or flood"
+}
