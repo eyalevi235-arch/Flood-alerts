@@ -4,47 +4,86 @@ let UID=localStorage.uid;
 if(!/^u[a-z0-9]{6,20}$/.test(UID||'')){UID='u'+Math.random().toString(36).slice(2,10);localStorage.uid=UID;}
 let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL,baseL;
 const BASEMAPS={
- topo:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), GIS User Community',maxZoom:17},
- street:{url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',subdomains:'abcd',attr:'© <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">OpenStreetMap</a> © <a href="https://carto.com/attributions" rel="noopener noreferrer">CARTO</a>',maxZoom:19},
- sat:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, Maxar, Earthstar Geographics, GIS User Community',maxZoom:17}
+ topo:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), GIS User Community',maxZoom:18,maxNativeZoom:16},
+ sat:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, Maxar, Earthstar Geographics, GIS User Community',maxZoom:18,maxNativeZoom:17}
 };
+function basemapKind(kind){
+ if(kind==='street'||!BASEMAPS[kind])return 'topo';
+ return kind;
+}
 function addBasemap(target,kind){
- const spec=BASEMAPS[kind]||BASEMAPS.topo;
- const layer=L.tileLayer(spec.url,{attribution:spec.attr,maxZoom:spec.maxZoom,subdomains:spec.subdomains||'abc'});
+ const spec=BASEMAPS[basemapKind(kind)];
+ const layer=L.tileLayer(spec.url,{attribution:spec.attr,maxZoom:spec.maxZoom,maxNativeZoom:spec.maxNativeZoom,subdomains:spec.subdomains||'abc'});
  layer.addTo(target);
  layer.bringToBack();
  return layer;
 }
 function northOn(){const n=$('#north');return !n||n.checked;}
-function northColor(p){if(p>0.6)return '#08306b';if(p>=0.3)return '#2171b5';if(p>=0.1)return '#6baed6';return '#c6dbef';}
-function northWeight(a,p){
- let w=1;
- if(a>=500)w=4;else if(a>20)w=1+3*(Math.log(a/20)/Math.log(500/20));
- if(p>0.6)w=Math.min(5,w+0.8);
- return w;
+function basinsOn(){const n=$('#basins');return !n||n.checked;}
+// Zero risk stays a visible medium blue. The ramp only gets darker, never near-white.
+function northColor(p){
+ if(p>0.6)return '#1a365d';
+ if(p>=0.3)return '#2a4365';
+ if(p>=0.1)return '#2c5282';
+ return '#2b6cb0';
 }
-let northL=null;
+function northStyle(f){
+ const pr=f.properties||{};
+ const id=Number(pr.id);
+ const probs=northL&&northL._probs?northL._probs:[];
+ const prob=Number.isFinite(probs[id])?Number(probs[id]):0;
+ const a=Number(pr.a)||0;
+ const z=map?map.getZoom():10;
+ if(z<=7&&a<80)return {opacity:0,weight:0,interactive:false};
+ if(z<=8&&a<30)return {opacity:0,weight:0,interactive:false};
+ if(z<=9&&a<8)return {opacity:0,weight:0,interactive:false};
+ let w=a>=500?4.2:a>20?2.2+1.8*(Math.log(a/20)/Math.log(500/20)):2;
+ if(prob>0.6)w=Math.min(5.5,w+0.6);
+ if(z<=8)w=Math.max(w,2.6);
+ return {color:northColor(prob),weight:w,opacity:.95,dashArray:pr.p?null:'7 5',interactive:false};
+}
+function basinStyle(p){
+ const perennial=!!(p&&p.perennial);
+ return {color:'#5c6b76',weight:.6,opacity:.5,fillColor:perennial?'#8aa':col(p.risk??p.risk_raw),fillOpacity:perennial?0.08:0.1,interactive:false};
+}
+let northL=null,northGen=0;
+function raiseOverlays(){
+ if(!map)return;
+ if(baseL)baseL.bringToBack();
+ if(riskL&&map.hasLayer(riskL))riskL.bringToFront();
+ if(streamL)streamL.bringToFront();
+ if(northL)northL.bringToFront();
+ if(vpL)vpL.bringToFront();
+ if(typeof myLayer!=='undefined'&&myLayer)myLayer.bringToFront();
+}
+function applyBasinsVisibility(){
+ if(!map||!riskL)return;
+ if(basinsOn()){if(!map.hasLayer(riskL))riskL.addTo(map);}
+ else if(map.hasLayer(riskL))map.removeLayer(riskL);
+ raiseOverlays();
+}
 async function loadNorth(){
  if(!map)return;
+ const gen=++northGen;
  if(northL){map.removeLayer(northL);northL=null;}
  if(!northOn())return;
  const gj=await jget('data/channel_segments_nondesert.geojson',null);
+ if(gen!==northGen||!northOn())return;
  if(!gj||!Array.isArray(gj.features))return;
  const risk=await jget('data/segment_risk_nondesert.json',null);
  const probs=risk&&Array.isArray(risk.p)?risk.p:[];
- northL=L.geoJSON(gj,{interactive:false,style:f=>{
-  const pr=f.properties||{};const id=Number(pr.id);const prob=Number.isFinite(probs[id])?Number(probs[id]):0;const a=Number(pr.a)||0;
-  return {color:northColor(prob),weight:northWeight(a,prob),opacity:.95,dashArray:pr.p?null:'6 5',interactive:false};
- }}).addTo(map);
- if(vpL)vpL.bringToFront();
+ northL=L.geoJSON(gj,{interactive:false,style:northStyle}).addTo(map);
+ northL._probs=probs;
+ northL.setStyle(northStyle);
+ raiseOverlays();
 }
 function setMainBase(kind){
- if(!BASEMAPS[kind])kind='topo';
+ kind=basemapKind(kind);
+ try{localStorage.basemap=kind;}catch(e){}
+ const sel=$('#base');if(sel&&sel.value!==kind)sel.value=kind;
  if(baseL)map.removeLayer(baseL);
  baseL=addBasemap(map,kind);
- if(riskL)riskL.bringToFront();
- if(streamL)streamL.bringToFront();
- if(vpL)vpL.bringToFront();
+ raiseOverlays();
 }
 const api=p=>fetch(p,{cache:'no-cache'}).then(r=>{if(!r.ok)throw r.status;return r.json()});
 const jget=(p,d)=>api(p).catch(()=>d);
@@ -96,9 +135,12 @@ function dateOk(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);}
 async function init(){
  CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null,subscribe_url:''});
  PREFS=loadPrefs();
- map=L.map('map',{zoomControl:false}).setView([30.9,35.0],8);
+ map=L.map('map',{zoomControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:120,scrollWheelZoom:true}).setView([30.9,35.0],8);
  L.control.zoom({position:'bottomleft'}).addTo(map);
- setMainBase('topo');
+ map.on('zoomend',()=>{if(northL)northL.setStyle(northStyle);});
+ let savedBase='topo';
+ try{savedBase=localStorage.basemap||'topo';}catch(e){}
+ setMainBase(savedBase);
  $('#base').onchange=()=>setMainBase($('#base').value);
  const date=$('#date');clear(date);
  const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
@@ -109,6 +151,11 @@ async function init(){
  if(north){
   if(localStorage.north_layer==='0')north.checked=false;
   north.onchange=()=>{localStorage.north_layer=north.checked?'1':'0';loadNorth();};
+ }
+ const basins=$('#basins');
+ if(basins){
+  if(localStorage.basins_layer==='0')basins.checked=false;
+  basins.onchange=()=>{localStorage.basins_layer=basins.checked?'1':'0';applyBasinsVisibility();};
  }
  loadNorth();
  await loadRisk();
@@ -129,8 +176,8 @@ async function loadRisk(){
  const features=(g0&&Array.isArray(g0.features)?g0.features:[]).filter(x=>$('#per').checked||!(x.properties&&x.properties.perennial));
  const g={...g0,features};
  if(riskL)map.removeLayer(riskL);
- riskL=L.geoJSON(g,{interactive:false,style:f=>{const p=f.properties||{};return{color:'#333',weight:.4,fillOpacity:p.perennial?.15:.5,fillColor:p.perennial?'#999':col(p.risk??p.risk_raw),interactive:false};}}).addTo(map);
- riskL.bringToBack();
+ riskL=L.geoJSON(g,{interactive:false,style:f=>basinStyle(f.properties||{})}).addTo(map);
+ applyBasinsVisibility();
 }
 function riskPopup(p){
  const box=el('div');
