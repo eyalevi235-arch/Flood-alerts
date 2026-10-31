@@ -23,11 +23,70 @@ function myPointsPayload() {
 }
 function loadTapData() {
   if (tapCache) return tapCache;
+  function geo(url) { return fetch(url, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {features: []}; }); }
   tapCache = Promise.all([
-    fetch('data/risk_live.geojson', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {features: []}; }),
-    fetch('data/basin_tt.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {}; })
-  ]).then(function (pair) { return {fc: pair[0], tt: pair[1]}; });
+    geo('data/risk_live.geojson'),
+    fetch('data/basin_tt.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {}; }),
+    geo('data/streams.geojson')
+  ]).then(function (pair) {
+    var lines = [];
+    (pair[2].features || []).forEach(function (f) {
+      var g = f.geometry;
+      if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2) return;
+      lines.push({coords: g.coordinates, acc: f.properties && f.properties.acc_km2});
+    });
+    return {fc: pair[0], tt: pair[1], lines: lines};
+  });
   return tapCache;
+}
+function distLabel(m) {
+  if (m >= 1000) return (m / 1000).toFixed(1) + ' ק"מ';
+  return Math.round(m) + ' מ׳';
+}
+function streamTitle(nahal) {
+  var s = String(nahal || '').replace(/[\u0000-\u001f<>]/g, '').trim();
+  if (!s) return 'ערוץ';
+  return s.indexOf('נחל') === 0 ? s : 'נחל ' + s;
+}
+var snapGfx = null;
+function clearSnapGfx() {
+  if (snapGfx) { map.removeLayer(snapGfx.group); snapGfx = null; }
+}
+function showSnapGfx(tapLat, tapLon, markLat, markLon, onDragEnd) {
+  clearSnapGfx();
+  var group = L.layerGroup().addTo(map);
+  var moved = _hav(tapLat, tapLon, markLat, markLon) > 0.015;
+  var line = L.polyline([[tapLat, tapLon], [markLat, markLon]], {color: '#0b4f6c', weight: 2, dashArray: '6 6', interactive: false, opacity: moved ? 1 : 0}).addTo(group);
+  if (moved) L.circleMarker([tapLat, tapLon], {radius: 5, color: '#0b4f6c', weight: 2, fillColor: '#fff', fillOpacity: 1, interactive: false}).addTo(group);
+  var marker = L.marker([markLat, markLon], {draggable: true, zIndexOffset: 800, icon: L.divIcon({className: 'pin', iconSize: [18, 18], iconAnchor: [9, 9]})}).addTo(group);
+  marker.on('dragstart', function () { suppressTapClick = true; });
+  marker.on('drag', function () {
+    if (!snapGfx || !snapGfx.line) return;
+    var p = marker.getLatLng();
+    snapGfx.line.setLatLngs([[tapLat, tapLon], [p.lat, p.lng]]);
+  });
+  marker.on('dragend', function () {
+    var p = marker.getLatLng();
+    suppressTapClick = true;
+    if (onDragEnd) onDragEnd(p.lat, p.lng);
+  });
+  snapGfx = {group: group, line: line || null, marker: marker, tapLat: tapLat, tapLon: tapLon};
+}
+function nameStreamHits(hits, data) {
+  var named = [], seen = {};
+  hits.forEach(function (h) {
+    var basin = locateBasin((data.fc && data.fc.features) || [], h.lat, h.lon, data.tt);
+    var props = basin.feature && basin.feature.properties || {};
+    var nahal = String(props.main_nahal || props.name_he || '').trim();
+    var bucket = h.acc == null ? 'i' + h.index : String(Math.round(Number(h.acc) / 25));
+    var key = (nahal || 'noname') + '|' + bucket;
+    if (seen[key]) return;
+    seen[key] = 1;
+    var label = nahal ? streamTitle(nahal) : 'ערוץ';
+    if (h.acc) label += ' · ' + Math.round(Number(h.acc)) + ' קמ"ר';
+    named.push({name: label, lat: h.lat, lon: h.lon, distM: h.distM});
+  });
+  return named;
 }
 function fmtHours(h) {
   if (h == null || !isFinite(h)) return null;
@@ -55,31 +114,69 @@ function ilClock(date) {
 function openTap(lat, lon) {
   if (!map || !isFinite(lat) || !isFinite(lon)) return;
   var box = el('div');
-  box.appendChild(el('div', null, 'בודקים את האגן…'));
-  L.popup({maxWidth: 280, autoPan: true}).setLatLng([lat, lon]).setContent(box).openOn(map);
+  box.appendChild(el('div', null, 'בודקים את הערוץ…'));
+  L.popup({maxWidth: 250, autoPan: true, autoPanPaddingTopLeft: L.point(16, 170), autoPanPaddingBottomRight: L.point(16, 90)}).setLatLng([lat, lon]).setContent(box).openOn(map);
+  var tol = snapToleranceMeters(lat, map.getZoom());
   loadTapData().then(function (data) {
-    var hit = locateBasin(data.fc.features || [], lat, lon, data.tt);
-    while (box.firstChild) box.removeChild(box.firstChild);
-    if (!hit.inside) {
-      box.appendChild(el('b', null, 'מחוץ לאגנים במודל'));
-      box.appendChild(el('p', 'muted', 'הנקודה הזו לא נופלת באגני המדבר שהתחזית מכירה. אין כאן חישוב — למשל בים, או במקום בלי אגן ממופה.'));
-    } else if (!hit.modeled) {
-      var other = (hit.feature.properties || {});
-      box.appendChild(el('b', null, txt(other.name_he || other.main_nahal, 'אגן לא במודל')));
-      box.appendChild(el('p', 'muted', 'המקום נמצא באגן הזה, אבל הוא לא אגן מדבר שהמודל מחשב (למשל נחל איתן או אזור צפוני). אין כאן סיכוי שיטפון מחושב.'));
-    } else fillModeled(box, hit, data.tt, lat, lon);
-    if (map._popup) map._popup.update();
+    var choices = nameStreamHits(nearestStreams(data.lines || [], lat, lon, tol, 8), data);
+    placeChoice(box, lat, lon, choices, data, true);
   }).catch(function () {
-    box.textContent = 'לא הצלחנו לטעון את שכבת האגנים.';
+    box.textContent = 'לא הצלחנו לטעון את שכבת הנחלים.';
   });
 }
-function fillModeled(root, hit, tt, lat, lon) {
+function placeChoice(box, tapLat, tapLon, choices, data, fresh, fixed) {
+  var picked = choices && choices.length ? choices[0] : null;
+  var markLat = fixed ? fixed.lat : (picked ? picked.lat : tapLat);
+  var markLon = fixed ? fixed.lon : (picked ? picked.lon : tapLon);
+  if (fresh) {
+    showSnapGfx(tapLat, tapLon, markLat, markLon, function (la, lo) {
+      var tol = snapToleranceMeters(la, map.getZoom());
+      var again = nameStreamHits(nearestStreams(data.lines || [], la, lo, tol, 8), data);
+      if (snapGfx && snapGfx.line) { snapGfx.line.setStyle({opacity: 1}); snapGfx.line.setLatLngs([[tapLat, tapLon], [la, lo]]); }
+      placeChoice(box, tapLat, tapLon, again.slice(0, 1), data, false, {lat: la, lon: lo});
+    });
+  }
+  paintTap(box, tapLat, tapLon, picked, choices, data, markLat, markLon);
+}
+function paintTap(box, tapLat, tapLon, picked, choices, data, lat, lon) {
+  while (box.firstChild) box.removeChild(box.firstChild);
+  if (map._popup) { map._popup.setLatLng([lat, lon]); }
+  if (choices && choices.length > 1) {
+    box.appendChild(el('div', 'muted', 'כמה ערוצים בטווח האצבע. בחרו:'));
+    choices.forEach(function (c) {
+      var b = el('button', 'btn alt', c.name + ' · ' + distLabel(c.distM));
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        if (snapGfx && snapGfx.marker) snapGfx.marker.setLatLng([c.lat, c.lon]);
+        if (snapGfx && snapGfx.line) snapGfx.line.setLatLngs([[tapLat, tapLon], [c.lat, c.lon]]);
+        paintTap(box, tapLat, tapLon, c, choices, data, c.lat, c.lon);
+      });
+      box.appendChild(b);
+    });
+  }
+  var hit = locateBasin((data.fc && data.fc.features) || [], lat, lon, data.tt);
+  if (!hit.inside) {
+    box.appendChild(el('b', null, 'מחוץ לאגנים במודל'));
+    box.appendChild(el('p', 'muted', 'הנקודה הזו לא נופלת באגני המדבר שהתחזית מכירה. אין כאן חישוב — למשל בים, או במקום בלי אגן ממופה.'));
+  } else if (!hit.modeled) {
+    var other = (hit.feature.properties || {});
+    box.appendChild(el('b', null, txt(other.name_he || other.main_nahal, 'אגן לא במודל')));
+    box.appendChild(el('p', 'muted', 'המקום נמצא באגן הזה, אבל הוא לא אגן מדבר שהמודל מחשב (למשל נחל איתן או אזור צפוני). אין כאן סיכוי שיטפון מחושב.'));
+  } else fillModeled(box, hit, data.tt, lat, lon, picked);
+  if (map._popup) map._popup.update();
+}
+function fillModeled(root, hit, tt, lat, lon, streamHit) {
   var p = hit.feature.properties || {};
   var prob = Number(p.risk);
   if (!isFinite(prob)) prob = null;
   var travel = travelHours(tt, hit.sid, hit.along);
-  root.appendChild(el('b', null, txt(p.name_he || p.main_nahal, 'אגן')));
-  root.appendChild(el('div', 'muted', txt(p.main_nahal, '')));
+  if (streamHit) {
+    root.appendChild(el('b', null, streamHit.name));
+    root.appendChild(el('div', 'muted', 'נצמד לערוץ, ' + distLabel(streamHit.distM) + ' מההקשה. אגן: ' + txt(p.name_he || p.main_nahal, '')));
+  } else {
+    root.appendChild(el('b', null, txt(p.name_he || p.main_nahal, 'אגן')));
+    root.appendChild(el('div', 'muted', 'אין ערוץ בטווח האצבע. זו תחזית לכל האגן, לא לערוץ מסוים.'));
+  }
   root.appendChild(el('div', null, 'סיכוי לשיטפון באגן: ' + (prob == null ? '—' : Math.round(prob * 100) + '%') + ' · ' + riskClass(prob)));
   var rain = p.event_rain_mm;
   root.appendChild(el('div', null, 'גשם חזוי באגן: ' + (rain == null || rain === '' ? '—' : rain) + ' מ"מ'));
