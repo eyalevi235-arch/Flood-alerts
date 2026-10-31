@@ -2,7 +2,27 @@ const $=s=>document.querySelector(s);
 const SRC=new URLSearchParams(location.search).get('src')==='demo'?'demo':'live';
 let UID=localStorage.uid;
 if(!/^u[a-z0-9]{6,20}$/.test(UID||'')){UID='u'+Math.random().toString(36).slice(2,10);localStorage.uid=UID;}
-let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL;
+let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL,baseL;
+const BASEMAPS={
+ topo:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), GIS User Community',maxZoom:17},
+ street:{url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',subdomains:'abcd',attr:'© <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">OpenStreetMap</a> © <a href="https://carto.com/attributions" rel="noopener noreferrer">CARTO</a>',maxZoom:19},
+ sat:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, Maxar, Earthstar Geographics, GIS User Community',maxZoom:17}
+};
+function addBasemap(target,kind){
+ const spec=BASEMAPS[kind]||BASEMAPS.topo;
+ const layer=L.tileLayer(spec.url,{attribution:spec.attr,maxZoom:spec.maxZoom,subdomains:spec.subdomains||'abc'});
+ layer.addTo(target);
+ layer.bringToBack();
+ return layer;
+}
+function setMainBase(kind){
+ if(!BASEMAPS[kind])kind='topo';
+ if(baseL)map.removeLayer(baseL);
+ baseL=addBasemap(map,kind);
+ if(riskL)riskL.bringToFront();
+ if(streamL)streamL.bringToFront();
+ if(vpL)vpL.bringToFront();
+}
 const api=p=>fetch(p,{cache:'no-cache'}).then(r=>{if(!r.ok)throw r.status;return r.json()});
 const jget=(p,d)=>api(p).catch(()=>d);
 const PAGES=['map','points','alerts','report','feedback','set'];
@@ -55,7 +75,8 @@ async function init(){
  PREFS=loadPrefs();
  map=L.map('map',{zoomControl:false}).setView([30.9,35.0],8);
  L.control.zoom({position:'bottomleft'}).addTo(map);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:17}).addTo(map);
+ setMainBase('topo');
+ $('#base').onchange=()=>setMainBase($('#base').value);
  const date=$('#date');clear(date);
  const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
  (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});

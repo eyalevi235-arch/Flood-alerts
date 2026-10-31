@@ -12,9 +12,9 @@
 - דיווחים ותמונות נשמרים בגיליון הפרטי (לשוניות `reports` ו-`feedback`) ובתיקיית Drive (`FOLDER_ID`). הם לא נכתבים למאגר ולא לאתר הציבורי. מיקום חייב להיות בתוך מסגרת ישראל, ותמונה אחרי הקטנה עד 3MB.
 - כתובת Push חייבת להיות `https` על `fcm.googleapis.com`, `updates.push.services.mozilla.com`, `*.push.apple.com` או `*.notify.windows.com`. שדות אחרים נזרקים. יש תקרת גודל, תקרת שורות, והגבלה לפי כתובת ולפי שעה (`CacheService`).
 - שליחה קורית רק ב-GitHub Action כש-`VAPID_PRIVATE_KEY` מוגדר. הטקסט נבנה משדות התחזית שלנו. כתובת שמחזירה 404 או 410 נמחקת מהגיליון.
-- באתר אין סקריפטים מצד שלישי ואין CDN, אז אין SRI. עיצוב ומפה מקומיים. אריחי המפה מ-OpenStreetMap.
+- באתר אין סקריפטים מצד שלישי ואין CDN, אז אין SRI. עיצוב המפה מקומי. אריחי הרקע הם Esri (טופוגרפיה ולוויין) ו-CARTO Voyager (רחובות), לא שרתי האריחים של OpenStreetMap.
 - Content-Security-Policy ב-meta: `script-src 'self'`. `style-src` כולל `'unsafe-inline'` כי Leaflet כותב סגנון על המפה עצמה. תג meta לא יכול לקבוע `frame-ancestors`; GitHub Pages לא נותן כותרות HTTP משלנו.
-- `Referrer-Policy: no-referrer`.
+- `Referrer-Policy: strict-origin-when-cross-origin`, כדי שספקי האריחים יראו את מקור האתר בלי לקבל את הנתיב המלא.
 - טקסט שמגיע מהנתונים נכנס לעמוד דרך `textContent`, לא דרך `innerHTML`.
 - ה-workflow מצמיד Actions ל-SHA, נועל את חבילות Python עם hash, ומפצל הרשאות: עבודת החישוב `contents: write`, עבודת הפרסום `pages: write` ו-`id-token: write`.
 - Dependabot מוגדר ל-`github-actions` ול-`pip` (קובץ `.github/dependabot.yml`).

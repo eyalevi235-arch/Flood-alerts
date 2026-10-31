@@ -79,7 +79,7 @@ function ensureReportMap() {
   var host = document.getElementById('report-map');
   if (!host || typeof L === 'undefined') return;
   reportMap = L.map(host, {zoomControl: false, attributionControl: true}).setView([30.9, 35.0], 7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap', maxZoom: 17}).addTo(reportMap);
+  if (typeof addBasemap === 'function') addBasemap(reportMap, 'topo');
   setTimeout(function () { reportMap.invalidateSize(); }, 60);
 }
 function placePin(lat, lon) {

@@ -1,8 +1,13 @@
-const C='flood-v5',SHELL=['./','./index.html','./app.js','./app.css','./reports.js','./report_rules.js','./manifest.json','./icon-192.png','./vendor/leaflet.js','./vendor/leaflet.css'];
+const C='flood-v6',SHELL=['./','./index.html','./app.js','./app.css','./reports.js','./report_rules.js','./manifest.json','./icon-192.png','./vendor/leaflet.js','./vendor/leaflet.css'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
-// network-first (data/*.json changes hourly), cache fallback offline
-self.addEventListener('fetch',e=>{if(e.request.method!='GET')return;e.respondWith(fetch(e.request).then(r=>{const k=r.clone();caches.open(C).then(c=>c.put(e.request,k));return r}).catch(()=>caches.match(e.request)))});
+// Same-origin only. Basemap tiles stay a direct browser request so the provider sees the page referrer.
+self.addEventListener('fetch',e=>{
+ if(e.request.method!='GET')return;
+ const url=new URL(e.request.url);
+ if(url.origin!==self.location.origin)return;
+ e.respondWith(fetch(e.request).then(r=>{const k=r.clone();caches.open(C).then(c=>c.put(e.request,k));return r}).catch(()=>caches.match(e.request)));
+});
 self.addEventListener('push',e=>{
  let title='התראת שיטפון',body='';
  try{const raw=e.data?e.data.json():{};
