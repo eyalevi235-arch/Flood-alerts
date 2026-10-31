@@ -65,7 +65,7 @@ function raiseOverlays(){
  if(streamL)streamL.bringToFront();
  if(northL)northL.bringToFront();
  if(vpL)vpL.eachLayer(l=>{if(l.bringToFront)l.bringToFront();});
- if(typeof myLayer!=='undefined'&&myLayer)myLayer.bringToFront();
+ if(typeof myLayer!=='undefined'&&myLayer)myLayer.eachLayer(l=>{if(l.bringToFront)l.bringToFront();});
 }
 function applyBasinsVisibility(){
  if(!map||!riskL)return;

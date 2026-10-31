@@ -72,3 +72,50 @@ fieldset{border:1px solid #ccd;border-radius:8px;margin:8px 0;padding:8px}
  .leaflet-control-attribution{max-width:62%;font-size:9px;line-height:1.2}
  .leaflet-bottom.leaflet-left .leaflet-control-zoom{margin-bottom:8px}
 }
+/* hide/show controls (collapse.js) */
+.ui-hidden{display:none!important}
+.ui-x{float:left;border:0;background:#0001;color:#345;border-radius:50%;width:20px;height:20px;line-height:18px;padding:0;font-size:15px;cursor:pointer;margin:0 0 2px 4px}
+.ui-x-inline{float:none;width:16px;height:16px;line-height:14px;font-size:12px;vertical-align:middle;margin:0 0 0 4px}
+.ui-chip{border:0;background:#fffe;color:#0b4f6c;border-radius:14px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700;box-shadow:0 1px 3px #0003;cursor:pointer}
+.ui-chip[hidden]{display:none}
+.ui-chip-ctl{position:absolute;top:10px;right:10px;z-index:500}
+.ui-chip-legend{position:absolute;bottom:10px;right:10px;z-index:500}
+.ui-chip-legal{position:fixed;bottom:64px;right:8px;z-index:650;width:26px;height:26px;padding:0;border-radius:50%;font-size:15px}
+.ui-chip-snap{display:block;margin-top:4px;padding:1px 8px;font-size:11px;box-shadow:none;background:#e4eef3}
+.ui-attr-wrap{pointer-events:auto;clear:both;float:left;display:flex;align-items:flex-start;gap:2px;margin:0 0 0 10px}
+.ui-attr-wrap .leaflet-control-attribution{margin:0!important;float:none}
+.ui-x-attr{float:none;background:#fffe;margin:0;flex:none}
+.ui-chip-attr{width:22px;height:22px;padding:0;border-radius:50%;font-size:12px}
+body.hid-legal main{bottom:58px}
+body.hid-legal .ui-chip-legend{bottom:40px}
+@media (max-width:480px){
+ header{padding:6px 10px;font-size:15px;align-items:center}
+ header small{font-size:10px}
+ main{top:33px}
+ .ctl{left:auto;right:6px;top:6px;max-width:62vw;font-size:11px;line-height:1.35;padding:4px 6px}
+ .ctl select{font-size:11px;padding:1px 2px;width:auto;max-width:42vw;border-radius:4px}
+ .ctl input[type=checkbox]{width:12px;height:12px;margin:0 0 0 3px;vertical-align:middle}
+ .ctl .muted{font-size:10px}
+ .ui-chip-ctl{top:6px;right:6px}
+ .legend{left:auto;right:6px;bottom:6px;font-size:10px;line-height:1.2;padding:4px 6px}
+ .legend .sw{width:9px;height:9px}
+ .ui-chip-legend{bottom:6px;right:6px}
+ body.hid-legal .ui-chip-legend,body.hid-legal .legend{bottom:6px}
+ .legal{font-size:10px;line-height:1.25;padding:4px 8px;max-height:44px}
+ main{bottom:102px}
+ .leaflet-popup-content-wrapper{border-radius:8px}
+ .leaflet-popup-content{margin:8px 10px;font-size:11.5px;line-height:1.3;max-width:calc(100vw - 60px)!important;max-height:30vh}
+ .leaflet-popup-content .btn{font-size:11.5px;padding:5px 8px;margin:2px 0}
+ .leaflet-popup-content table{font-size:10.5px}
+ .ui-attr-wrap .leaflet-control-attribution{font-size:9px;max-width:55vw}
+ .ui-x{width:18px;height:18px;line-height:16px;font-size:13px}
+ .ui-chip{font-size:11px;padding:3px 8px}
+}
+.leaflet-popup-close-button{right:auto!important;left:0}
+body.hid-legal .ui-chip-legend{right:40px}
+@media (max-width:480px){
+ body.hid-legal .ui-chip-legend{right:40px}
+ .leaflet-popup-content .muted,.leaflet-popup-content .coverage-note{font-size:10.5px}
+ .leaflet-popup-content h2,.leaflet-popup-content h3,.leaflet-popup-content h4,.leaflet-popup-content b{font-size:12.5px}
+ .leaflet-popup-content p{margin:4px 0}
+}
