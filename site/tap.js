@@ -45,7 +45,12 @@ function loadTapData() {
     fetch('data/segment_risk.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
     geo('data/channel_segments_nondesert.geojson'),
     fetch('data/segment_risk_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-    fetch('data/id_map_nondesert_v2_to_v3b.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
+    fetch('data/id_map_nondesert_v2_to_v3b.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }),
+    geo('data/coverage.geojson'),
+    fetch('data/risk_nondesert.geojson', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      if (!t) return {features: []};
+      try { return JSON.parse(t.replace(/\bNaN\b/g, 'null')); } catch (e) { return {features: []}; }
+    }).catch(function () { return {features: []}; })
   ]).then(function (pair) {
     var nahal = {};
     (pair[0].features || []).forEach(function (f) {
@@ -69,7 +74,13 @@ function loadTapData() {
       northLines.push({coords: g.coordinates, id: id, name: p.name || '', nameHe: p.name_he || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.p === 1 || p.p === true});
     });
     var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3b');
-    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], idMap: pair[5] || {}, ndGeomVersion: geomVersion};
+    var northSids = {};
+    northLines.forEach(function (line) { if (line.basin) northSids[line.basin] = 1; });
+    ((pair[7] && pair[7].features) || []).forEach(function (f) {
+      var sid = f.properties && f.properties.sid;
+      if (sid != null) northSids[String(sid)] = 1;
+    });
+    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], coverage: (pair[6] && pair[6].features) || [], northSids: northSids, idMap: pair[5] || {}, ndGeomVersion: geomVersion};
   });
   return tapCache;
 }
@@ -192,7 +203,8 @@ function openTap(lat, lon) {
   if (!map || !isFinite(lat) || !isFinite(lon)) return;
   var box = el('div');
   box.appendChild(el('div', null, 'בודקים את הערוץ…'));
-  L.popup({maxWidth: 250, autoPan: true, autoPanPaddingTopLeft: L.point(16, 220), autoPanPaddingBottomRight: L.point(16, 90)}).setLatLng([lat, lon]).setContent(box).openOn(map);
+  var popW = Math.min(250, Math.max(160, (window.innerWidth || 320) - 36));
+  L.popup({maxWidth: popW, autoPan: true, autoPanPaddingTopLeft: L.point(12, 200), autoPanPaddingBottomRight: L.point(12, 120)}).setLatLng([lat, lon]).setContent(box).openOn(map);
   loadTapData().then(function (data) {
     resolveTap(box, lat, lon, lat, lon, data, true);
   }).catch(function () {
@@ -325,26 +337,33 @@ function fillSegment(root, hit, data, tol) {
   });
   root.appendChild(btn);
 }
-function containingBasin(features, lat, lon) {
-  var hits = [];
-  for (var i = 0; i < features.length; i++) if (pointInFeature(lat, lon, features[i])) hits.push(features[i]);
-  if (!hits.length) return null;
-  hits.sort(function (a, b) {
-    var aa = Number((a.properties || {}).area_dem), bb = Number((b.properties || {}).area_dem);
-    return (isFinite(aa) ? aa : 1e12) - (isFinite(bb) ? bb : 1e12);
-  });
-  for (var j = 0; j < hits.length; j++) if (isFinite(Number((hits[j].properties || {}).risk))) return hits[j];
-  return hits[0];
+function mappedChannelNote(near, nahal) {
+  if (!near) return '';
+  var name = '';
+  if (near.stream) name = streamTitle(near.stream);
+  else if (near.basin && nahal && nahal[near.basin]) name = streamTitle(nahal[near.basin]);
+  else if (near.name) name = String(near.name);
+  if (!name) return '';
+  return 'הערוץ הממופה הקרוב: ' + name + ', במרחק ' + distLabel(near.distM);
 }
 function paintBasin(box, lat, lon, data, nearest) {
   while (box.firstChild) box.removeChild(box.firstChild);
   if (map._popup) map._popup.setLatLng([lat, lon]);
-  var feature = containingBasin((data.fc && data.fc.features) || [], lat, lon);
+  var hasCoverage = !!(data.coverage && data.coverage.length);
+  var region = hasCoverage ? coverageRegion(data.coverage, lat, lon) : null;
+  var feature = liveBasin((data.fc && data.fc.features) || [], lat, lon, data.northSids);
+  // coverage.geojson is the mask. A published polygon outside it is not a forecast.
+  if (hasCoverage && !region) feature = null;
   var near = nearest && data._snapLines ? nameSegmentHits([nearest], data._snapLines, data.nahal)[0] : null;
-  if (!feature) {
-    box.appendChild(el('b', null, 'מחוץ לאגנים במודל'));
-    box.appendChild(el('div', 'muted', 'הנקודה אינה על ערוץ מסומן — מוצג לפי האגן'));
-    box.appendChild(el('p', 'muted', 'הנקודה לא נופלת באגן ממופה, אז אין כאן הערכת אגן.'));
+  var note = mappedChannelNote(near, data.nahal);
+  if (!feature && !region) {
+    box.appendChild(el('b', null, 'מחוץ לאזור הכיסוי'));
+    if (note) box.appendChild(el('div', 'muted coverage-note', note));
+  } else if (!feature) {
+    // Inside the mask, but the published basins have no polygon here (for example Bezeq, which is only in the withheld geometry).
+    box.appendChild(el('b', null, 'בתוך אזור הכיסוי'));
+    box.appendChild(el('p', 'muted', 'אין אגן במודל שמפורסם כרגע לנקודה הזו, אז אין סיכוי ואין זמן הגעה.'));
+    if (note) box.appendChild(el('div', 'muted coverage-note', note));
   } else {
     var p = feature.properties || {};
     var prob = Number(p.risk);
