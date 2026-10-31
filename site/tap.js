@@ -6,8 +6,10 @@ function loadMyPoints() {
     var raw = JSON.parse(localStorage.myPoints || '[]');
     if (!Array.isArray(raw)) return [];
     return raw.filter(function (p) {
-      var seg = parseInt(p && p.seg, 10);
-      return p && /^M[a-z0-9]{6,16}$/.test(p.id) && inIsrael(Number(p.lat), Number(p.lon)) && isFinite(seg) && seg >= 0 && seg <= 20000;
+      if (!p || !/^M[a-z0-9]{6,16}$/.test(p.id) || !inIsrael(Number(p.lat), Number(p.lon))) return false;
+      var seg = parseInt(p.seg, 10);
+      if (isFinite(seg) && seg >= 0 && seg <= 20000) return true;
+      return /^[0-9]{3,8}$/.test(String(p.sid)) && isFinite(Number(p.along));
     }).slice(0, 8);
   } catch (e) { return []; }
 }
@@ -19,7 +21,10 @@ function storeMyPoints(list) {
 }
 function myPointsPayload() {
   return loadMyPoints().map(function (p) {
-    return {id: p.id, seg: parseInt(p.seg, 10), sid: String(p.sid || ''), lat: Math.round(Number(p.lat) * 1e5) / 1e5, lon: Math.round(Number(p.lon) * 1e5) / 1e5};
+    var lat = Math.round(Number(p.lat) * 1e5) / 1e5, lon = Math.round(Number(p.lon) * 1e5) / 1e5;
+    var seg = parseInt(p.seg, 10);
+    if (isFinite(seg) && seg >= 0 && seg <= 20000) return {id: p.id, seg: seg, sid: String(p.sid || ''), lat: lat, lon: lon};
+    return {id: p.id, sid: String(p.sid), along: Math.round(Number(p.along) * 1000) / 1000, lat: lat, lon: lon};
   });
 }
 function loadTapData() {
@@ -43,7 +48,7 @@ function loadTapData() {
       if (!isFinite(id)) return;
       lines.push({coords: g.coordinates, id: id, name: p.name || '', area: Number(p.a), basin: p.b != null ? String(p.b) : ''});
     });
-    return {nahal: nahal, lines: lines, risk: pair[2]};
+    return {nahal: nahal, lines: lines, risk: pair[2], fc: pair[0]};
   });
   return tapCache;
 }
@@ -124,36 +129,48 @@ function openTap(lat, lon) {
   if (!map || !isFinite(lat) || !isFinite(lon)) return;
   var box = el('div');
   box.appendChild(el('div', null, 'בודקים את הערוץ…'));
-  L.popup({maxWidth: 250, autoPan: true, autoPanPaddingTopLeft: L.point(16, 170), autoPanPaddingBottomRight: L.point(16, 90)}).setLatLng([lat, lon]).setContent(box).openOn(map);
-  var tol = snapToleranceMeters(lat, map.getZoom());
+  L.popup({maxWidth: 250, autoPan: true, autoPanPaddingTopLeft: L.point(16, 220), autoPanPaddingBottomRight: L.point(16, 90)}).setLatLng([lat, lon]).setContent(box).openOn(map);
   loadTapData().then(function (data) {
-    var ranked = closestStreams(data.lines || [], lat, lon, 6);
-    var within = ranked.filter(function (h) { return h.distM <= tol; });
-    var choices = nameSegmentHits(within.length ? within : ranked.slice(0, 1), data);
-    placeChoice(box, lat, lon, choices, data, true, tol);
+    resolveTap(box, lat, lon, lat, lon, data, true);
   }).catch(function () {
     box.textContent = 'לא הצלחנו לטעון את שכבת הערוצים.';
   });
 }
-function placeChoice(box, tapLat, tapLon, choices, data, fresh, tol) {
-  var picked = choices && choices.length ? choices[0] : null;
-  var markLat = picked ? picked.lat : tapLat;
-  var markLon = picked ? picked.lon : tapLon;
-  if (!fresh && picked && snapGfx) {
-    if (snapGfx.marker) snapGfx.marker.setLatLng([markLat, markLon]);
-    if (snapGfx.line) { snapGfx.line.setStyle({opacity: 1}); snapGfx.line.setLatLngs([[tapLat, tapLon], [markLat, markLon]]); }
+function hitsWithin(data, lat, lon) {
+  var tol = snapToleranceMeters(lat, map.getZoom());
+  var ranked = closestStreams(data.lines || [], lat, lon, 4);
+  var within = [];
+  for (var i = 0; i < ranked.length; i++) if (ranked[i].distM <= tol) within.push(ranked[i]);
+  return {tol: tol, ranked: ranked, choices: nameSegmentHits(within, data)};
+}
+function resolveTap(box, tapLat, tapLon, lat, lon, data, fresh) {
+  var hit = hitsWithin(data, lat, lon);
+  if (hit.choices.length) {
+    var picked = hit.choices[0];
+    if (fresh) {
+      showSnapGfx(tapLat, tapLon, picked.lat, picked.lon, function (la, lo) {
+        resolveTap(box, tapLat, tapLon, la, lo, data, false);
+      });
+    } else if (snapGfx) {
+      if (snapGfx.marker) snapGfx.marker.setLatLng([picked.lat, picked.lon]);
+      if (snapGfx.line) {
+        var show = _hav(tapLat, tapLon, picked.lat, picked.lon) > 0.015;
+        snapGfx.line.setStyle({opacity: show ? 1 : 0});
+        snapGfx.line.setLatLngs([[tapLat, tapLon], [picked.lat, picked.lon]]);
+      }
+    }
+    paintTap(box, tapLat, tapLon, picked, hit.choices, data, picked.lat, picked.lon, hit.tol);
+    return;
   }
-  if (fresh && picked) {
-    showSnapGfx(tapLat, tapLon, markLat, markLon, function (la, lo) {
-      var againTol = snapToleranceMeters(la, map.getZoom());
-      var ranked = closestStreams(data.lines || [], la, lo, 4);
-      var within = ranked.filter(function (h) { return h.distM <= againTol; });
-      var again = nameSegmentHits(within.length ? within.slice(0, 1) : ranked.slice(0, 1), data);
-      if (snapGfx && snapGfx.line) { snapGfx.line.setStyle({opacity: 1}); }
-      placeChoice(box, tapLat, tapLon, again, data, false, againTol);
+  if (fresh) {
+    showSnapGfx(tapLat, tapLon, lat, lon, function (la, lo) {
+      resolveTap(box, tapLat, tapLon, la, lo, data, false);
     });
+  } else if (snapGfx) {
+    if (snapGfx.marker) snapGfx.marker.setLatLng([lat, lon]);
+    if (snapGfx.line) snapGfx.line.setStyle({opacity: 0});
   }
-  paintTap(box, tapLat, tapLon, picked, choices, data, markLat, markLon, tol);
+  paintBasin(box, lat, lon, data, hit.ranked[0] || null);
 }
 function segRisk(data, seg) {
   var r = data.risk;
@@ -172,9 +189,8 @@ function paintTap(box, tapLat, tapLon, picked, choices, data, lat, lon, tol) {
     if (map._popup) map._popup.update();
     return;
   }
-  var multi = choices && choices.length > 1 && choices.every(function (c) { return c.distM <= tol + 1; });
-  if (multi) {
-    box.appendChild(el('div', 'muted', 'כמה ערוצים בטווח האצבע. בחרו:'));
+  if (choices && choices.length > 1) {
+    box.appendChild(el('div', 'muted', 'יותר מערוץ אחד בטווח של ' + Math.round(tol) + ' מ׳. בחרו:'));
     choices.forEach(function (c) {
       var area = c.area == null ? '' : ' · ' + (c.area < 10 ? c.area.toFixed(1) : Math.round(c.area)) + ' קמ"ר';
       var b = el('button', 'btn alt', c.name + area + ' · ' + distLabel(c.distM));
@@ -193,8 +209,7 @@ function paintTap(box, tapLat, tapLon, picked, choices, data, lat, lon, tol) {
 function fillSegment(root, hit, data, tol) {
   var risk = segRisk(data, hit.seg);
   root.appendChild(el('b', null, hit.name));
-  var far = hit.distM > tol + 1;
-  root.appendChild(el('div', 'muted', (far ? 'אין ערוץ בטווח האצבע. הקרוב ביותר הוא במרחק ' : 'נצמד לערוץ, ') + distLabel(hit.distM) + (far ? '.' : ' מההקשה.')));
+  root.appendChild(el('div', 'muted', 'נצמד לערוץ, ' + distLabel(hit.distM) + ' מההקשה.'));
   var areaTxt = hit.area == null ? '—' : (hit.area < 10 ? hit.area.toFixed(1) : String(Math.round(hit.area)));
   root.appendChild(el('div', null, 'שטח מעלה: ' + areaTxt + ' קמ"ר'));
   if (hit.area != null && hit.area < 10) root.appendChild(el('div', 'muted', 'שטח המעלה קטן, לכן הסיכוי מוגבל.'));
@@ -231,6 +246,51 @@ function fillSegment(root, hit, data, tol) {
   });
   root.appendChild(btn);
 }
+function containingBasin(features, lat, lon) {
+  var hits = [];
+  for (var i = 0; i < features.length; i++) if (pointInFeature(lat, lon, features[i])) hits.push(features[i]);
+  if (!hits.length) return null;
+  hits.sort(function (a, b) {
+    var aa = Number((a.properties || {}).area_dem), bb = Number((b.properties || {}).area_dem);
+    return (isFinite(aa) ? aa : 1e12) - (isFinite(bb) ? bb : 1e12);
+  });
+  for (var j = 0; j < hits.length; j++) if (isFinite(Number((hits[j].properties || {}).risk))) return hits[j];
+  return hits[0];
+}
+function paintBasin(box, lat, lon, data, nearest) {
+  while (box.firstChild) box.removeChild(box.firstChild);
+  if (map._popup) map._popup.setLatLng([lat, lon]);
+  var feature = containingBasin((data.fc && data.fc.features) || [], lat, lon);
+  var near = nearest ? nameSegmentHits([nearest], data)[0] : null;
+  if (!feature) {
+    box.appendChild(el('b', null, 'מחוץ לאגנים במודל'));
+    box.appendChild(el('div', 'muted', 'הנקודה אינה על ערוץ מסומן — מוצג לפי האגן'));
+    box.appendChild(el('p', 'muted', 'הנקודה לא נופלת באגן ממופה, אז אין כאן הערכת אגן.'));
+  } else {
+    var p = feature.properties || {};
+    var prob = Number(p.risk);
+    if (!isFinite(prob)) prob = null;
+    box.appendChild(el('b', null, txt(p.name_he || p.main_nahal, 'אגן')));
+    box.appendChild(el('div', 'muted', 'הנקודה אינה על ערוץ מסומן — מוצג לפי האגן'));
+    box.appendChild(el('div', null, 'סיכוי לשיטפון באגן: ' + (prob == null ? '—' : Math.round(prob * 100) + '%') + (prob == null ? '' : ' · ' + riskClass(prob))));
+    var rain = p.event_rain_mm;
+    box.appendChild(el('div', null, 'גשם חזוי באגן: ' + (rain == null || rain === '' ? '—' : rain) + ' מ"מ'));
+    if (near) box.appendChild(el('div', 'muted', 'הערוץ המסומן הקרוב: ' + near.name + ', במרחק ' + distLabel(near.distM) + '.'));
+    var saved = loadMyPoints().some(function (x) { return x.seg == null && x.sid === String(p.sid) && Math.abs(x.lat - lat) < 0.002 && Math.abs(x.lon - lon) < 0.002; });
+    var btn = el('button', 'btn', saved ? 'הנקודה הזו כבר שמורה' : 'שמור כנקודה שלי');
+    btn.type = 'button';
+    if (!saved && p.sid != null) btn.addEventListener('click', function () {
+      var id = 'M' + Math.random().toString(36).slice(2, 10);
+      var along = alongBasin(feature, lat, lon);
+      var list = loadMyPoints().filter(function (x) { return Math.hypot((x.lat - lat) * 111, (x.lon - lon) * 111) > 0.3; });
+      list.unshift({id: id, lat: Math.round(lat * 1e5) / 1e5, lon: Math.round(lon * 1e5) / 1e5, sid: String(p.sid), along: Math.round(along * 1000) / 1000, name: txt(p.name_he || p.main_nahal, 'הנקודה שלי')});
+      storeMyPoints(list);
+      btn.textContent = 'נשמרה. ההתראות יכללו את האגן.';
+    });
+    box.appendChild(btn);
+  }
+  if (map._popup) map._popup.update();
+}
 function drawMyPoints() {
   if (!map || typeof L === 'undefined') return;
   if (myLayer) map.removeLayer(myLayer);
@@ -260,15 +320,21 @@ async function appendMyPointAlerts(host) {
   if (!list.length || !host) return;
   var data;
   try { data = await loadTapData(); } catch (e) { return; }
+  var bySid = {};
+  ((data.fc && data.fc.features) || []).forEach(function (f) { if (f.properties) bySid[String(f.properties.sid)] = f.properties; });
   list.forEach(function (p) {
-    var risk = segRisk(data, p.seg) || {p: 0, rain: null, tm: null};
-    var prob = isFinite(risk.p) ? risk.p : 0;
+    var onChannel = isFinite(parseInt(p.seg, 10));
+    var risk = onChannel ? (segRisk(data, p.seg) || {p: 0, rain: null, tm: null}) : null;
+    var prop = onChannel ? null : (bySid[String(p.sid)] || {});
+    var prob = onChannel ? (isFinite(risk.p) ? risk.p : 0) : Number(prop.risk);
+    if (!isFinite(prob)) prob = 0;
     var card = el('div', 'card al' + (prob >= 0.5 ? ' hi' : prob >= 0.3 ? ' mid' : ''));
     card.appendChild(el('h3', null, txt(p.name, 'הנקודה שלי') + (prob >= (PREFS && PREFS.threshold || 0.3) ? ' · סיכוי מעל הסף' : '')));
-    card.appendChild(el('div', 'muted', 'נקודה על ערוץ. ההגעה היא הערכה לקצה המקטע.'));
-    card.appendChild(el('div', null, 'סיכוי בנקודה: ' + Math.round(prob * 100) + '% · ' + riskClass(prob)));
-    card.appendChild(el('div', null, 'גשם חזוי במעלה: ' + (risk.rain == null || !isFinite(risk.rain) ? '—' : risk.rain) + ' מ"מ'));
-    if (risk.tm != null) card.appendChild(el('div', 'muted', 'זמן זרימה משוער עד לקצה המקטע: ' + fmtHours(risk.tm / 60) + '.'));
+    card.appendChild(el('div', 'muted', onChannel ? 'נקודה על ערוץ. ההגעה היא הערכה לקצה המקטע.' : 'נקודה שאינה על ערוץ מסומן. ההערכה היא לפי האגן.'));
+    card.appendChild(el('div', null, (onChannel ? 'סיכוי בנקודה: ' : 'סיכוי באגן: ') + Math.round(prob * 100) + '% · ' + riskClass(prob)));
+    var rain = onChannel ? risk.rain : prop.event_rain_mm;
+    card.appendChild(el('div', null, (onChannel ? 'גשם חזוי במעלה: ' : 'גשם חזוי באגן: ') + (rain == null || rain === '' || !isFinite(Number(rain)) && rain !== 0 ? '—' : rain) + ' מ"מ'));
+    if (onChannel && risk.tm != null) card.appendChild(el('div', 'muted', 'זמן זרימה משוער עד לקצה המקטע: ' + fmtHours(risk.tm / 60) + '.'));
     host.appendChild(card);
   });
 }
