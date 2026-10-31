@@ -121,6 +121,7 @@ async function init(){
  const hash=location.hash.slice(1);if(PAGES.includes(hash))show(hash);
  if(typeof bindTap==='function')bindTap(map);
  if(typeof drawMyPoints==='function')drawMyPoints();
+ if(typeof resnapNorthPoints==='function')resnapNorthPoints();
 }
 async function loadRisk(){
  const chosen=$('#date').value;

@@ -21,15 +21,20 @@ function storeMyPoints(list) {
 }
 function myPointsPayload() {
   return loadMyPoints().map(function (p) {
+    if (!p) return null;
     var lat = Math.round(Number(p.lat) * 1e5) / 1e5, lon = Math.round(Number(p.lon) * 1e5) / 1e5;
     var seg = parseInt(p.seg, 10);
+    if (p.out_of_coverage) return null;
     if (isFinite(seg) && seg >= 0 && seg <= 20000) {
       var row = {id: p.id, seg: seg, sid: String(p.sid || ''), lat: lat, lon: lon};
-      if (p.region === 'north_center') row.region = 'north_center';
+      if (p.region === 'north_center') {
+        row.region = 'north_center';
+        if (p.nd_geom_version) row.nd_geom_version = p.nd_geom_version;
+      }
       return row;
     }
     return {id: p.id, sid: String(p.sid), along: Math.round(Number(p.along) * 1000) / 1000, lat: lat, lon: lon};
-  });
+  }).filter(Boolean);
 }
 function loadTapData() {
   if (tapCache) return tapCache;
@@ -39,7 +44,8 @@ function loadTapData() {
     geo('data/channel_segments.geojson'),
     fetch('data/segment_risk.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
     geo('data/channel_segments_nondesert.geojson'),
-    fetch('data/segment_risk_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    fetch('data/segment_risk_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    fetch('data/id_map_nondesert_v2_to_v3b.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
   ]).then(function (pair) {
     var nahal = {};
     (pair[0].features || []).forEach(function (f) {
@@ -62,7 +68,8 @@ function loadTapData() {
       if (!isFinite(id)) return;
       northLines.push({coords: g.coordinates, id: id, name: p.name || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.p === 1 || p.p === true});
     });
-    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0]};
+    var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3b');
+    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], idMap: pair[5] || {}, ndGeomVersion: geomVersion};
   });
   return tapCache;
 }
@@ -278,7 +285,11 @@ function fillSegment(root, hit, data, tol) {
     var id = 'M' + Math.random().toString(36).slice(2, 10);
     var list = loadMyPoints().filter(function (x) { return !(parseInt(x.seg, 10) === hit.seg && (x.region || '') === regionKey); });
     var savedPoint = {id: id, lat: Math.round(hit.lat * 1e5) / 1e5, lon: Math.round(hit.lon * 1e5) / 1e5, seg: hit.seg, sid: hit.basin || '', name: hit.stream || hit.name};
-    if (hit.region === 'north') savedPoint.region = 'north_center';
+    if (hit.region === 'north') {
+      savedPoint.region = 'north_center';
+      savedPoint.nd_geom_version = (data && data.ndGeomVersion) || ND_GEOM_VERSION;
+      savedPoint.out_of_coverage = false;
+    }
     list.unshift(savedPoint);
     storeMyPoints(list);
     btn.textContent = 'נשמרה. ההתראות יכללו את הערוץ.';
@@ -346,7 +357,8 @@ function renderMyPointList() {
   var list = loadMyPoints();
   if (!list.length) { host.textContent = 'הקישו על המפה ושמרו נקודה. היא תיכנס להתראות.'; return; }
   list.forEach(function (p) {
-    var chip = el('span', 'chip', '📌 ' + txt(p.name, 'נקודה') + ' ');
+    var label = txt(p.name, 'נקודה') + (p.out_of_coverage ? ' · מחוץ לאזור הכיסוי' : '');
+    var chip = el('span', 'chip', '📌 ' + label + ' ');
     var b = el('button', 'unsub', 'בטל התראות');
     b.type = 'button';
     b.addEventListener('click', function () {
@@ -365,6 +377,14 @@ async function appendMyPointAlerts(host) {
   var bySid = {};
   ((data.fc && data.fc.features) || []).forEach(function (f) { if (f.properties) bySid[String(f.properties.sid)] = f.properties; });
   list.forEach(function (p) {
+    if (p.out_of_coverage) {
+      var gap = el('div', 'card');
+      gap.appendChild(el('h3', null, txt(p.name, 'הנקודה שלי')));
+      gap.appendChild(el('div', null, 'מחוץ לאזור הכיסוי'));
+      gap.appendChild(el('div', 'muted', 'אין ערוץ צפון/מרכז בטווח ההצמדה, אז אין סיכוי ואין התראה לנקודה הזו.'));
+      host.appendChild(gap);
+      return;
+    }
     var onChannel = isFinite(parseInt(p.seg, 10));
     var risk = onChannel ? (segRisk(data, p.seg, p.region) || {p: 0, rain: null, tm: null}) : null;
     var prop = onChannel ? null : (bySid[String(p.sid)] || {});
@@ -403,4 +423,19 @@ function bindTap(target) {
     var t = ev.touches[0];
     if (Math.hypot(t.clientX - origin.x, t.clientY - origin.y) > 12) { clearTimeout(timer); timer = null; }
   }, {passive: true});
+}
+function resnapNorthPoints() {
+  var version = (typeof CFG !== 'undefined' && CFG && CFG.nd_geom_version) || ND_GEOM_VERSION;
+  return loadTapData().then(function (data) {
+    var ver = (data && data.ndGeomVersion) || version;
+    var list = loadMyPoints();
+    var changed = false;
+    var next = list.map(function (p) {
+      var res = resnapNorthPoint(p, data.northLines, data.idMap, ver);
+      if (res.changed) changed = true;
+      return res.point;
+    });
+    if (changed) storeMyPoints(next);
+    return changed;
+  });
 }

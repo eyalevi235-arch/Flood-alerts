@@ -34,53 +34,53 @@
  "gauged_stations": 90,
  "results": {
   "nondesert_flow": {
-   "train_n": 26262,
+   "train_n": 26270,
    "train_pos": 0.298,
-   "thr": 0.1963,
-   "platt_a": 0.7213,
-   "platt_b": 0.5079,
+   "thr": 0.1934,
+   "platt_a": 0.7214,
+   "platt_b": 0.5039,
    "all": {
-    "n": 4196,
+    "n": 4191,
     "pos": 0.43,
     "roc": 0.884,
-    "pr": 0.844,
-    "hit": 0.873,
-    "fa": 0.277,
-    "fa_at_70pct_hit": 0.122
+    "pr": 0.843,
+    "hit": 0.877,
+    "fa": 0.286,
+    "fa_at_70pct_hit": 0.127
    },
    "gauge": {
-    "n": 4111,
+    "n": 4106,
     "pos": 0.419,
     "roc": 0.9,
     "pr": 0.852,
-    "hit": 0.897,
-    "fa": 0.277,
-    "fa_at_70pct_hit": 0.116
+    "hit": 0.903,
+    "fa": 0.286,
+    "fa_at_70pct_hit": 0.117
    },
    "perennial": {
-    "n": 3829,
+    "n": 3824,
     "pos": 0.429,
-    "roc": 0.887,
-    "pr": 0.845,
-    "hit": 0.881,
-    "fa": 0.283,
-    "fa_at_70pct_hit": 0.124
+    "roc": 0.886,
+    "pr": 0.844,
+    "hit": 0.887,
+    "fa": 0.291,
+    "fa_at_70pct_hit": 0.126
    },
    "non_perennial": {
     "n": 367,
     "pos": 0.444,
-    "roc": 0.861,
-    "pr": 0.851,
-    "hit": 0.791,
-    "fa": 0.216,
-    "fa_at_70pct_hit": 0.123
+    "roc": 0.863,
+    "pr": 0.853,
+    "hit": 0.785,
+    "fa": 0.23,
+    "fa_at_70pct_hit": 0.142
    },
    "fb": {
     "n": 85,
     "pos": 0.965,
-    "roc": 0.626,
-    "pr": 0.979,
-    "hit": 0.366,
+    "roc": 0.654,
+    "pr": 0.981,
+    "hit": 0.341,
     "fa": 0.333,
     "fa_at_70pct_hit": 0.333
    },
@@ -98,73 +98,73 @@
    ],
    "old_model_same_test": {
     "all": {
-     "roc": 0.883,
-     "pr": 0.838,
-     "fa_at_70pct_hit": 0.128
+     "roc": 0.885,
+     "pr": 0.845,
+     "fa_at_70pct_hit": 0.123
     },
     "gauge": {
-     "roc": 0.895,
-     "pr": 0.845,
-     "fa_at_70pct_hit": 0.118
+     "roc": 0.9,
+     "pr": 0.853,
+     "fa_at_70pct_hit": 0.116
     },
     "perennial": {
-     "roc": 0.885,
-     "pr": 0.839,
-     "fa_at_70pct_hit": 0.129
+     "roc": 0.887,
+     "pr": 0.845,
+     "fa_at_70pct_hit": 0.124
     },
     "non_perennial": {
-     "roc": 0.864,
-     "pr": 0.848,
-     "fa_at_70pct_hit": 0.132
+     "roc": 0.861,
+     "pr": 0.851,
+     "fa_at_70pct_hit": 0.123
     },
     "fb": {
-     "roc": 0.699,
-     "pr": 0.985,
+     "roc": 0.626,
+     "pr": 0.979,
      "fa_at_70pct_hit": 0.333
     }
    }
   },
   "nondesert_sig": {
-   "train_n": 26262,
+   "train_n": 26270,
    "train_pos": 0.172,
-   "thr": 0.0745,
-   "platt_a": 0.7085,
-   "platt_b": 0.4759,
+   "thr": 0.0556,
+   "platt_a": 0.7106,
+   "platt_b": 0.4822,
    "all": {
-    "n": 4196,
+    "n": 4191,
     "pos": 0.284,
-    "roc": 0.89,
-    "pr": 0.76,
-    "hit": 0.902,
-    "fa": 0.304,
-    "fa_at_70pct_hit": 0.126
+    "roc": 0.889,
+    "pr": 0.762,
+    "hit": 0.927,
+    "fa": 0.355,
+    "fa_at_70pct_hit": 0.128
    },
    "gauge": {
-    "n": 4111,
+    "n": 4106,
     "pos": 0.27,
     "roc": 0.907,
-    "pr": 0.773,
-    "hit": 0.936,
-    "fa": 0.304,
-    "fa_at_70pct_hit": 0.108
+    "pr": 0.776,
+    "hit": 0.963,
+    "fa": 0.355,
+    "fa_at_70pct_hit": 0.111
    },
    "perennial": {
-    "n": 3829,
+    "n": 3824,
     "pos": 0.286,
-    "roc": 0.892,
-    "pr": 0.766,
-    "hit": 0.909,
-    "fa": 0.313,
-    "fa_at_70pct_hit": 0.125
+    "roc": 0.891,
+    "pr": 0.768,
+    "hit": 0.933,
+    "fa": 0.363,
+    "fa_at_70pct_hit": 0.129
    },
    "non_perennial": {
     "n": 367,
     "pos": 0.262,
     "roc": 0.872,
-    "pr": 0.716,
-    "hit": 0.823,
-    "fa": 0.21,
-    "fa_at_70pct_hit": 0.137
+    "pr": 0.728,
+    "hit": 0.854,
+    "fa": 0.277,
+    "fa_at_70pct_hit": 0.144
    },
    "fb": {
     "n": 85,
@@ -172,10 +172,10 @@
     "roc": 0.74,
     "pr": 0.987,
     "hit": 0.439,
-    "fa": 0.0,
+    "fa": 0.333,
     "fa_at_70pct_hit": 0.333
    },
-   "baseline_total_roc": 0.805,
+   "baseline_total_roc": 0.804,
    "baseline_max24_roc": 0.784,
    "top_features": [
     "total",
@@ -184,34 +184,34 @@
     "doy_s",
     "summer_flow_frac",
     "ante30",
-    "lat",
+    "max24",
     "f_veg"
    ],
    "old_model_same_test": {
     "all": {
      "roc": 0.889,
-     "pr": 0.756,
-     "fa_at_70pct_hit": 0.131
+     "pr": 0.76,
+     "fa_at_70pct_hit": 0.128
     },
     "gauge": {
-     "roc": 0.905,
-     "pr": 0.767,
-     "fa_at_70pct_hit": 0.115
+     "roc": 0.907,
+     "pr": 0.773,
+     "fa_at_70pct_hit": 0.108
     },
     "perennial": {
-     "roc": 0.891,
-     "pr": 0.761,
-     "fa_at_70pct_hit": 0.131
+     "roc": 0.892,
+     "pr": 0.766,
+     "fa_at_70pct_hit": 0.126
     },
     "non_perennial": {
-     "roc": 0.878,
-     "pr": 0.729,
-     "fa_at_70pct_hit": 0.129
+     "roc": 0.872,
+     "pr": 0.716,
+     "fa_at_70pct_hit": 0.137
     },
     "fb": {
-     "roc": 0.695,
-     "pr": 0.986,
-     "fa_at_70pct_hit": 0.667
+     "roc": 0.732,
+     "pr": 0.987,
+     "fa_at_70pct_hit": 0.333
     }
    }
   }
