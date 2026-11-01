@@ -32,7 +32,7 @@
   a.parentNode.insertBefore(wrap,a);wrap.appendChild(a);if(window.L&&L.DomEvent){L.DomEvent.disableClickPropagation(wrap);}
   // Leaflet rewrites a.innerHTML on every update, so the × button lives outside it.
   var x=btn('ui-x ui-x-attr','×','הסתר קרדיטים');wrap.insertBefore(x,a);
-  var chip=btn('ui-chip ui-chip-attr','©','הצג קרדיטים (OpenStreetMap, GeoNames)');wrap.appendChild(chip);
+  var chip=btn('ui-chip ui-chip-attr','©','הצג קרדיטים (OpenStreetMap, GeoNames, השירות המטאורולוגי)');wrap.appendChild(chip);
   function apply(h){a.classList.toggle('ui-hidden',h);x.hidden=h;chip.hidden=!h;}
   x.addEventListener('click',function(){set('attr',true);apply(true);});
   chip.addEventListener('click',function(){set('attr',false);apply(false);});

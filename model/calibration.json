@@ -1,6 +1,30 @@
 {
- "platt_a": 0.6367,
- "platt_b": 0.8498,
- "thr": 0.0139,
- "thr_cal": 0.1343
+ "note": "READY v3final (2026-11-01), approved by Eyal 08:22: alert risk>=0.086, no gate. Model file must be at model/desert_pdir_both_np_cn_mm_v3final.txt.",
+ "selected": {
+  "model": "model/desert_pdir_both_np_cn_mm_v3final.txt",
+  "name": "cn_only+power_np",
+  "platt_a": 0.6017,
+  "platt_b": 0.0312,
+  "thr": 0.0342,
+  "thr_cal": 0.1214,
+  "alert_thr_proposed": 0.086,
+  "gate_proposed": null,
+  "gauge": {
+   "n": 902,
+   "pos": 171,
+   "roc": 0.74,
+   "hit": 0.515,
+   "fa": 0.201,
+   "prec": 0.374
+  },
+  "alert_thr": 0.086,
+  "gate": null
+ },
+ "alt_gate_cmax5": {
+  "alert_thr": 0.04,
+  "hit": 0.503,
+  "fa": 0.209,
+  "prec": 0.36,
+  "note": "gate caps hit at 0.503"
+ }
 }

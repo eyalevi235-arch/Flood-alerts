@@ -28,6 +28,7 @@ function addNameAttribution(target){
  box._names=1;
  box.addAttribution('<a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
  box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
+ box.addAttribution('נתוני גשם: השירות המטאורולוגי');
 }
 function northOn(){const n=$('#north');return !n||n.checked;}
 function basinsOn(){const n=$('#basins');return !n||n.checked;}

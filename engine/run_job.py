@@ -5,7 +5,7 @@ env: FORECAST_MODEL (icon_seamless; fallback ecmwf_ifs025), VAPID_PRIVATE_KEY, V
 Push is sent only when VAPID_PRIVATE_KEY is set (the Action). Payloads are built from this job's alert fields.
 Dead endpoints (HTTP 404/410) are pruned on the private store. Secrets and endpoint URLs are not printed."""
 import os,sys,json,re,time,traceback,datetime as dt,glob,urllib.parse,pandas as pd
-sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import flood_engine as fe
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import flood_engine_v2 as fe
 ROOT=fe.ROOT; SITE=f'{ROOT}/site/data'; os.makedirs(SITE,exist_ok=True); os.makedirs(f'{ROOT}/state',exist_ok=True)
 def vapid_public():
     """Actions secret when set; otherwise the published vapid_public_key.txt. Never logs the key."""
