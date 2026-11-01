@@ -52,7 +52,9 @@ function loadTapData() {
       try { return JSON.parse(t.replace(/\bNaN\b/g, 'null')); } catch (e) { return {features: []}; }
     }).catch(function () { return {features: []}; }),
     geo('data/small_streams_nd.geojson').catch(function () { return {features: []}; }),
-    geo('data/small_streams_de.geojson').catch(function () { return {features: []}; })
+    geo('data/small_streams_de.geojson').catch(function () { return {features: []}; }),
+    geo('data/channel_extensions_desert.geojson').catch(function () { return {features: []}; }),
+    geo('data/channel_extensions_nondesert.geojson').catch(function () { return {features: []}; })
   ]).then(function (pair) {
     var nahal = {};
     (pair[0].features || []).forEach(function (f) {
@@ -75,7 +77,20 @@ function loadTapData() {
       if (!isFinite(id) || Number(p.hidden) === 1) return;
       northLines.push({coords: g.coordinates, id: id, name: p.name || '', nameHe: p.name_he || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.perennial != null ? !!p.perennial : (p.p === 1 || p.p === true)});
     });
-    var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3c');
+    // Display-only extensions (ext=1): snap like a channel, but carry src_seg's id so risk/saving use the model segment.
+    // Never perennial (APP_BOT: the perennial toggle does not hide extensions).
+    [[pair[10], lines], [pair[11], northLines]].forEach(function (pr) {
+      var byId = {};
+      pr[1].forEach(function (l) { if (!(l.id in byId)) byId[l.id] = l; });
+      ((pr[0] && pr[0].features) || []).forEach(function (f) {
+        var g = f.geometry, p = f.properties || {};
+        if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2 || Number(p.ext) !== 1) return;
+        var src = byId[parseInt(p.src_seg, 10)];
+        if (!src) return;
+        pr[1].push({coords: g.coordinates, id: src.id, name: src.name, nameHe: src.nameHe, flowsInto: src.flowsInto, mainNahal: src.mainNahal, area: src.area, basin: src.basin, region: src.region, perennial: false, srcPerennial: src.perennial, ext: true, extNote: String(p.note || 'הערכה לפי התחנה במעלה')});
+      });
+    });
+    var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3d');
     var northSids = {};
     northLines.forEach(function (line) { if (line.basin) northSids[line.basin] = 1; });
     ((pair[7] && pair[7].features) || []).forEach(function (f) {
@@ -185,9 +200,9 @@ function nameSegmentHits(hits, lines, nahal) {
     var area = isFinite(line.area) ? line.area : null;
     var titled = segmentTitle(line);
     var label = titled ? titled.title : unnamedLabel(line, nahal || {});
-    var kind = line.region === 'north' ? ('צפון/מרכז · ' + (line.perennial ? 'נחל איתן' : 'נחל אכזב')) : '';
+    var kind = line.region === 'north' ? ('צפון/מרכז · ' + ((line.ext ? line.srcPerennial : line.perennial) ? 'נחל איתן' : 'נחל אכזב')) : '';
     var flows = titled ? titled.flowsLine : '';
-    named.push({name: label, flowsLine: [kind, flows].filter(Boolean).join(' · '), stream: line.name || '', lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin, region: line.region || 'desert', perennial: !!line.perennial});
+    named.push({name: label, flowsLine: [kind, flows].filter(Boolean).join(' · '), stream: line.name || '', lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin, region: line.region || 'desert', perennial: !!line.perennial, ext: !!line.ext, extNote: line.extNote || ''});
   });
   return named;
 }
@@ -327,6 +342,7 @@ function fillSegment(root, hit, data, tol) {
   var risk = segRisk(data, hit.seg, hit.region);
   root.appendChild(el('b', null, hit.name));
   if (hit.flowsLine) root.appendChild(el('div', null, hit.flowsLine));
+  if (hit.ext) root.appendChild(el('div', null, hit.extNote || 'הערכה לפי התחנה במעלה'));
   root.appendChild(el('div', 'muted', 'נצמד לערוץ, ' + distLabel(hit.distM) + ' מההקשה.'));
   if (hit.region === 'north') {
     root.appendChild(el('div', 'muted', 'מודל צפון/מרכז — פחות מדויק, מבוסס תחנות הידרומטריות'));
