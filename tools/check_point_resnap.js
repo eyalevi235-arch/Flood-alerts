@@ -18,7 +18,11 @@ var lines = geo.features.map(function (f) {
 var idMap = JSON.parse(fs.readFileSync(path.join(root, 'data/id_map_nondesert_v2_to_v3b.json'), 'utf8'));
 var nullIds = Object.keys(idMap).filter(function (k) { return idMap[k] == null; });
 assert(geo.nd_geom_version === 'v3b', 'channel file is stamped v3b');
-assert(lines.length === 3392, 'v3b segment count is 3392, got ' + lines.length);
+var zlib = require('zlib');
+var full = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(root, 'data/channel_segments_nondesert.json.gz'))).toString('utf8')).segments;
+var shown = full.filter(function (s) { return !Number(s.hidden); }).length;
+assert(lines.length === shown, 'v3b display segment count matches json.gz minus hidden (' + shown + '), got ' + lines.length);
+assert(geo.features.every(function (f) { return !Number(f.properties.hidden); }), 'no hidden segment in the display geojson');
 assert(nullIds.length === 73, 'id map has 73 unmapped v2 ids, got ' + nullIds.length);
 assert(ctx.NORTH_RESNAP_M === 60, 'resnap radius is the 60 m cap');
 
