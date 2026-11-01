@@ -78,7 +78,7 @@ function loadTapData() {
       northLines.push({coords: g.coordinates, id: id, name: p.name || '', nameHe: p.name_he || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.perennial != null ? !!p.perennial : (p.p === 1 || p.p === true)});
     });
     // Display-only extensions (ext=1): snap like a channel, but carry src_seg's id so risk/saving use the model segment.
-    // Never perennial (APP_BOT: the perennial toggle does not hide extensions).
+    // An extension of a perennial src_seg hides/unsnaps with it when the perennial checkbox is off (team-lead decision).
     [[pair[10], lines], [pair[11], northLines]].forEach(function (pr) {
       var byId = {};
       pr[1].forEach(function (l) { if (!(l.id in byId)) byId[l.id] = l; });
@@ -87,7 +87,7 @@ function loadTapData() {
         if (!g || g.type !== 'LineString' || !g.coordinates || g.coordinates.length < 2 || Number(p.ext) !== 1) return;
         var src = byId[parseInt(p.src_seg, 10)];
         if (!src) return;
-        pr[1].push({coords: g.coordinates, id: src.id, name: src.name, nameHe: src.nameHe, flowsInto: src.flowsInto, mainNahal: src.mainNahal, area: src.area, basin: src.basin, region: src.region, perennial: false, srcPerennial: src.perennial, ext: true, extNote: String(p.note || 'הערכה לפי התחנה במעלה')});
+        pr[1].push({coords: g.coordinates, id: src.id, name: src.name, nameHe: src.nameHe, flowsInto: src.flowsInto, mainNahal: src.mainNahal, area: src.area, basin: src.basin, region: src.region, perennial: !!src.perennial, srcPerennial: src.perennial, ext: true, extNote: String(p.note || 'הערכה לפי התחנה במעלה')});
       });
     });
     var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3d');

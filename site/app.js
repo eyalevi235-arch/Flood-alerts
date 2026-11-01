@@ -51,7 +51,7 @@ function northStyle(f){
  const a=Number(pr.a)||0;
  const z=map?map.getZoom():10;
  if(ndHidden(pr))return {opacity:0,weight:0,interactive:false};
- if(ndPerennial(pr)&&!perOn())return {opacity:0,weight:0,interactive:false};
+ if((ndPerennial(pr)||pr._srcPer)&&!perOn())return {opacity:0,weight:0,interactive:false};
  if(z<=7&&a<80)return {opacity:0,weight:0,interactive:false};
  if(z<=8&&a<30)return {opacity:0,weight:0,interactive:false};
  if(z<=9&&a<8)return {opacity:0,weight:0,interactive:false};
@@ -105,7 +105,7 @@ async function loadNorth(){
  if(!gj||!Array.isArray(gj.features))return;
  const ext=await jget('data/channel_extensions_nondesert.geojson',null);
  if(gen!==northGen||!northOn())return;
- if(ext&&Array.isArray(ext.features))gj.features=gj.features.concat(ext.features.filter(f=>f.properties&&Number(f.properties.ext)===1));
+ if(ext&&Array.isArray(ext.features)){const per={};gj.features.forEach(f=>{const q=f.properties||{};if(ndPerennial(q))per[Number(q.id)]=1;});gj.features=gj.features.concat(ext.features.filter(f=>f.properties&&Number(f.properties.ext)===1).map(f=>{f.properties._srcPer=!!per[Number(f.properties.src_seg)];return f;}));}
  const risk=await jget('data/segment_risk_nondesert.json',null);
  const probs=risk&&Array.isArray(risk.p)?risk.p:[];
  northL=L.geoJSON(gj,{interactive:false,style:northStyle}).addTo(map);
