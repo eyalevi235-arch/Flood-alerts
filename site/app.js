@@ -31,6 +31,7 @@ function addNameAttribution(target){
  box.addAttribution('נתוני גשם: השירות המטאורולוגי');
 }
 function northOn(){const n=$('#north');return !n||n.checked;}
+function perOn(){const n=$('#per');return !!(n&&n.checked);}
 function basinsOn(){const n=$('#basins');return !n||n.checked;}
 // Zero risk stays a visible medium blue. The ramp only gets darker, never near-white.
 function northColor(p){
@@ -46,6 +47,7 @@ function northStyle(f){
  const prob=Number.isFinite(probs[id])?Number(probs[id]):0;
  const a=Number(pr.a)||0;
  const z=map?map.getZoom():10;
+ if(pr.p&&!perOn())return {opacity:0,weight:0,interactive:false};
  if(z<=7&&a<80)return {opacity:0,weight:0,interactive:false};
  if(z<=8&&a<30)return {opacity:0,weight:0,interactive:false};
  if(z<=9&&a<8)return {opacity:0,weight:0,interactive:false};
@@ -177,7 +179,7 @@ async function init(){
  const date=$('#date');clear(date);
  const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
  (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
- date.onchange=loadRisk;$('#per').onchange=loadRisk;
+ date.onchange=loadRisk;$('#per').onchange=()=>{loadRisk();if(northL)northL.setStyle(northStyle);};
  api('data/channel_segments.geojson').then(g=>{streamL=L.geoJSON(dashSplit(g),{style:f=>({color:'#1565c0',weight:1.6,opacity:.85,dashArray:f.properties&&f.properties._dash?'6 5':null}),interactive:false}).addTo(map)});
  const north=$('#north');
  if(north){

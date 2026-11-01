@@ -93,11 +93,10 @@ function loadTapData() {
   });
   return tapCache;
 }
-function segmentLabel(line, nahal) {
-  if (line.name) return streamTitle(line.name);
-  var n = nahal[line.basin] || '';
-  if (!n) return 'יובל';
-  return 'יובל של ' + (String(n).indexOf('נחל') === 0 ? n : 'נחל ' + n);
+// No name_he/name: "ערוץ ללא שם" plus the basin's main stream when known. Perennial/ephemeral stays out of the name.
+function unnamedLabel(line, nahal) {
+  var b = String(line.mainNahal || nahal[line.basin] || '').trim();
+  return b ? 'ערוץ ללא שם · אגן ' + placeName(b) : 'ערוץ ללא שם';
 }
 function bareStream(value) {
   return String(value || '').replace(/^נחל\s+/, '').trim();
@@ -163,9 +162,16 @@ function northEnabled() {
   var box = document.getElementById('north');
   return !box || box.checked;
 }
+function perennialEnabled() {
+  var box = document.getElementById('per');
+  return !!(box && box.checked);
+}
 function linesForSnap(data) {
   var lines = data.lines || [];
-  if (northEnabled() && data.northLines && data.northLines.length) return lines.concat(data.northLines);
+  if (northEnabled() && data.northLines && data.northLines.length) {
+    var per = perennialEnabled();
+    return lines.concat(per ? data.northLines : data.northLines.filter(function (l) { return !l.perennial; }));
+  }
   return lines;
 }
 function nameSegmentHits(hits, lines, nahal) {
@@ -178,10 +184,10 @@ function nameSegmentHits(hits, lines, nahal) {
     seen[key] = 1;
     var area = isFinite(line.area) ? line.area : null;
     var titled = segmentTitle(line);
-    var label = titled ? titled.title : (line.region === 'north'
-      ? (line.perennial ? 'צפון/מרכז – נחל איתן' : 'צפון/מרכז – נחל אכזב')
-      : segmentLabel(line, nahal || {}));
-    named.push({name: label, flowsLine: titled ? titled.flowsLine : '', stream: line.name || '', lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin, region: line.region || 'desert', perennial: !!line.perennial});
+    var label = titled ? titled.title : unnamedLabel(line, nahal || {});
+    var kind = line.region === 'north' ? ('צפון/מרכז · ' + (line.perennial ? 'נחל איתן' : 'נחל אכזב')) : '';
+    var flows = titled ? titled.flowsLine : '';
+    named.push({name: label, flowsLine: [kind, flows].filter(Boolean).join(' · '), stream: line.name || '', lat: h.lat, lon: h.lon, distM: h.distM, seg: line.id, area: area, basin: line.basin, region: line.region || 'desert', perennial: !!line.perennial});
   });
   return named;
 }
@@ -238,6 +244,7 @@ function smallHit(data, lat, lon, tol) {
   var mi = -1;
   for (var i = 0; i < pool.length; i++) if (pool[i].id === sl.d) { mi = i; break; }
   if (mi < 0) return null;
+  if (pool[mi].perennial && !perennialEnabled()) return null;
   var named = nameSegmentHits([{index: mi, lat: r.lat, lon: r.lon, distM: r.distM}], pool, data.nahal)[0];
   if (!named) return null;
   named.flowsLine = 'יובל קטן, הסיכון של הערוץ במורד: ' + named.name + (named.flowsLine ? ' · ' + named.flowsLine : '');
