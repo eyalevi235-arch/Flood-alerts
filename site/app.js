@@ -45,13 +45,13 @@ function northColor(p){
 }
 function northStyle(f){
  const pr=f.properties||{};
- const id=Number(pr.id);
+ const id=Number(Number(pr.ext)===1?pr.src_seg:pr.id);
  const probs=northL&&northL._probs?northL._probs:[];
  const prob=Number.isFinite(probs[id])?Number(probs[id]):0;
  const a=Number(pr.a)||0;
  const z=map?map.getZoom():10;
  if(ndHidden(pr))return {opacity:0,weight:0,interactive:false};
- if(ndPerennial(pr)&&!perOn())return {opacity:0,weight:0,interactive:false};
+ if((ndPerennial(pr)||pr._srcPer)&&!perOn())return {opacity:0,weight:0,interactive:false};
  if(z<=7&&a<80)return {opacity:0,weight:0,interactive:false};
  if(z<=8&&a<30)return {opacity:0,weight:0,interactive:false};
  if(z<=9&&a<8)return {opacity:0,weight:0,interactive:false};
@@ -103,6 +103,9 @@ async function loadNorth(){
  const gj=await jget('data/channel_segments_nondesert.geojson',null);
  if(gen!==northGen||!northOn())return;
  if(!gj||!Array.isArray(gj.features))return;
+ const ext=await jget('data/channel_extensions_nondesert.geojson',null);
+ if(gen!==northGen||!northOn())return;
+ if(ext&&Array.isArray(ext.features)){const per={};gj.features.forEach(f=>{const q=f.properties||{};if(ndPerennial(q))per[Number(q.id)]=1;});gj.features=gj.features.concat(ext.features.filter(f=>f.properties&&Number(f.properties.ext)===1).map(f=>{f.properties._srcPer=!!per[Number(f.properties.src_seg)];return f;}));}
  const risk=await jget('data/segment_risk_nondesert.json',null);
  const probs=risk&&Array.isArray(risk.p)?risk.p:[];
  northL=L.geoJSON(gj,{interactive:false,style:northStyle}).addTo(map);
@@ -184,7 +187,7 @@ async function init(){
  const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
  (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
  date.onchange=loadRisk;$('#per').onchange=()=>{loadRisk();if(northL)northL.setStyle(northStyle);};
- api('data/channel_segments.geojson').then(g=>{streamL=L.geoJSON(dashSplit(g),{style:f=>({color:'#1565c0',weight:1.6,opacity:.85,dashArray:f.properties&&f.properties._dash?'6 5':null}),interactive:false}).addTo(map)});
+ Promise.all([api('data/channel_segments.geojson'),jget('data/channel_extensions_desert.geojson',null)]).then(([g,x])=>{if(x&&Array.isArray(x.features))g.features=g.features.concat(x.features.filter(f=>f.properties&&Number(f.properties.ext)===1));streamL=L.geoJSON(dashSplit(g),{style:f=>({color:'#1565c0',weight:1.6,opacity:.85,dashArray:f.properties&&f.properties._dash?'6 5':null}),interactive:false}).addTo(map)});
  const north=$('#north');
  if(north){
   if(localStorage.north_layer==='0')north.checked=false;
