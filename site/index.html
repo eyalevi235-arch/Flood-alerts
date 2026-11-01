@@ -1,6 +1,6 @@
 <!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://server.arcgisonline.com https://services.arcgisonline.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://gc.zgo.at; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.goatcounter.com https://server.arcgisonline.com https://services.arcgisonline.com; connect-src 'self' https://*.goatcounter.com https://script.google.com https://script.googleusercontent.com; font-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>שיטפון בדרך</title><link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#0b4f6c">
 <link rel="icon" href="./favicon.ico" sizes="any">
@@ -14,7 +14,7 @@
   <h2>לפני שמשתמשים</h2>
   <p>זהו כלי עזר ניסיוני. הוא אינו מערכת התרעה רשמית, ואינו מחליף הנחיות של פיקוד העורף, רשות הטבע והגנים או השירות המטאורולוגי.</p>
   <p>אין להיכנס לנחל כשיש בו זרימה. ההתראות עלולות להיות שגויות או חסרות.</p>
-  <p class="muted">פרטיות: במכשיר נשמרים הנקודות והנחלים שבחרתם וסף ההתראה. אם מפעילים התראות, נשמרת גם הרשמת ה-Push. דיווח שיטפון שולח מיקום, שעת דיווח ותמונה לגיליון פרטי של בעל האתר (לא למאגר הציבורי). התמונות עשויות לשמש לשיפור המודל. שם וטלפון לא נדרשים.</p>
+  <p class="muted">פרטיות: במכשיר נשמרים הנקודות והנחלים שבחרתם וסף ההתראה. אם מפעילים התראות, נשמרת גם הרשמת ה-Push. דיווח שיטפון שולח מיקום, שעת דיווח ותמונה לגיליון פרטי של בעל האתר (לא למאגר הציבורי). התמונות עשויות לשמש לשיפור המודל. שם וטלפון לא נדרשים. ספירת ביקורים אנונימית (GoatCounter), ללא עוגיות וללא פרטים אישיים.</p>
   <p class="muted">שמות הנחלים: OpenStreetMap (ODbL), GeoNames (CC BY 4.0), Wikidata (CC0). נתוני גשם: השירות המטאורולוגי.</p>
   <label class="gate-cb" for="gate-hide"><input type="checkbox" id="gate-hide"> <span>אל תציג הודעה זאת יותר</span></label>
   <button type="button" class="btn" id="gate-ok">הבנתי, זה כלי עזר בלבד</button>
@@ -34,7 +34,7 @@
  <div class="card"><h3>סף התראה: <span id="thv"></span>%</h3><input type="range" id="th" min="5" max="90" step="5"><div class="muted">התראה תישלח כשהסיכוי לשיטפון בנקודה מועדפת עובר את הסף.</div></div>
  <div class="card"><h3>התראות לטלפון</h3><button type="button" class="btn" id="enable-push">הפעל התראות במכשיר הזה</button> <button type="button" class="btn alt" id="test-push">שלח בדיקה</button> <button type="button" class="btn alt" id="unsubscribe-all">בטל את כל ההתראות</button><div id="pst" class="muted"></div>
  <div class="muted">באייפון: יש להוסיף קודם את האתר למסך הבית (שיתוף ← "הוסף למסך הבית").</div>
- <p class="muted">פרטיות: נשמרים הרשמת ה-Push, הנקודות או הנחלים שנבחרו, וסף ההתראה. דיווח שומר מיקום, שעה ותמונה אצל בעל האתר בלבד. התמונות עשויות לשמש לשיפור המודל. אין חובה למסור שם או טלפון.</p>
+ <p class="muted">פרטיות: נשמרים הרשמת ה-Push, הנקודות או הנחלים שנבחרו, וסף ההתראה. דיווח שומר מיקום, שעה ותמונה אצל בעל האתר בלבד. התמונות עשויות לשמש לשיפור המודל. אין חובה למסור שם או טלפון. ספירת ביקורים אנונימית (GoatCounter), ללא עוגיות וללא פרטים אישיים.</p>
  <p class="muted">שמות הנחלים: OpenStreetMap (ODbL), GeoNames (CC BY 4.0), Wikidata (CC0). נתוני גשם: השירות המטאורולוגי.</p>
  <p class="muted" dir="ltr">Copernicus DEM GLO-30: © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved</p></div>
 </section>
@@ -117,4 +117,5 @@
 <script src="./app.js"></script>
 <script src="./tap.js"></script>
 <script src="./reports.js"></script>
-<script src="./collapse.js"></script></body></html>
+<script src="./collapse.js"></script><!-- GoatCounter (ללא עוגיות): להפעלה החליפו CODE בשם החשבון והסירו את סימני ההערה --><!-- <script data-goatcounter="https://CODE.goatcounter.com/count" async src="https://gc.zgo.at/count.v5.js" crossorigin="anonymous" integrity="sha384-atnOLvQb9t+jTSipvd75X2yginT4PjVbqDdlJAmxMm+wYElFmeR6EmLP5bYeoRVQ"></script> -->
+</body></html>
