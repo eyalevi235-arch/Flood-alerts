@@ -155,6 +155,32 @@ function resnapNorthPoint(point, lines, idMap, version) {
   next.out_of_coverage = false;
   return {point: next, changed: true, kind: 'snapped', distM: chosen.distM};
 }
+// Geometry stamp for desert segment ids (Arava / south Dead Sea fix). Removed ids re-snap by lat/lon within 60 m.
+var DESERT_GEOM_VERSION = 'v5arava';
+function resnapDesertPoint(point, lines, version) {
+  if (!point || point.region === 'north_center') return {point: point, changed: false, kind: 'kept'};
+  var seg = parseInt(point.seg, 10);
+  if (!isFinite(seg)) return {point: point, changed: false, kind: 'kept'};
+  var ver = version || DESERT_GEOM_VERSION;
+  if (point.dg_geom_version === ver && !point.out_of_coverage) return {point: point, changed: false, kind: 'current'};
+  var next = {};
+  for (var k in point) next[k] = point[k];
+  next.dg_geom_version = ver;
+  var exists = false;
+  for (var i = 0; i < (lines || []).length; i++) if (lines[i].id === seg) { exists = true; break; }
+  if (exists && !point.out_of_coverage) return {point: next, changed: true, kind: 'stamped'};
+  var ranked = closestStreams(lines || [], Number(point.lat), Number(point.lon), 1);
+  var best = ranked.length && ranked[0].distM <= NORTH_RESNAP_M ? ranked[0] : null;
+  if (!best) { next.out_of_coverage = true; return {point: next, changed: true, kind: 'out', distM: ranked.length ? ranked[0].distM : null}; }
+  var line = lines[best.index];
+  next.seg = line.id;
+  next.sid = line.basin || point.sid || '';
+  next.lat = Math.round(best.lat * 1e5) / 1e5;
+  next.lon = Math.round(best.lon * 1e5) / 1e5;
+  if (line.name) next.name = line.name;
+  next.out_of_coverage = false;
+  return {point: next, changed: true, kind: 'snapped', distM: best.distM};
+}
 function _toXY(lat, lon, lat0) {
   var kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
   return [lon * kx, lat * ky];
