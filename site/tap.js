@@ -90,7 +90,7 @@ function loadTapData() {
         pr[1].push({coords: g.coordinates, id: src.id, name: src.name, nameHe: src.nameHe, flowsInto: src.flowsInto, mainNahal: src.mainNahal, area: src.area, basin: src.basin, region: src.region, perennial: !!src.perennial, srcPerennial: src.perennial, ext: true, extNote: String(p.note || 'הערכה לפי התחנה במעלה')});
       });
     });
-    var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3d');
+    var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3e');
     var northSids = {};
     northLines.forEach(function (line) { if (line.basin) northSids[line.basin] = 1; });
     ((pair[7] && pair[7].features) || []).forEach(function (f) {

@@ -17,7 +17,7 @@ var lines = geo.features.map(function (f) {
 });
 var idMap = JSON.parse(fs.readFileSync(path.join(root, 'data/id_map_nondesert_v2_to_v3b.json'), 'utf8'));
 var nullIds = Object.keys(idMap).filter(function (k) { return idMap[k] == null; });
-assert(geo.nd_geom_version === 'v3d', 'channel file is stamped v3d');
+assert(geo.nd_geom_version === 'v3e', 'channel file is stamped v3e');
 var zlib = require('zlib');
 var full = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(root, 'data/channel_segments_nondesert.json.gz'))).toString('utf8')).segments;
 var shown = full.filter(function (s) { return !Number(s.hidden); }).length;
@@ -27,7 +27,7 @@ assert(nullIds.length === 73, 'id map has 73 unmapped v2 ids, got ' + nullIds.le
 assert(ctx.NORTH_RESNAP_M === 60, 'resnap radius is the 60 m cap');
 
 function snap(seg, lat, lon) {
-  return ctx.resnapNorthPoint({id: 'Msample01', region: 'north_center', seg: seg, sid: '1', lat: lat, lon: lon, name: 'old'}, lines, idMap, 'v3d');
+  return ctx.resnapNorthPoint({id: 'Msample01', region: 'north_center', seg: seg, sid: '1', lat: lat, lon: lon, name: 'old'}, lines, idMap, 'v3e');
 }
 
 // v2 segment midpoints that the id map translates. Geometry still overlaps, so the mapped id wins.
@@ -38,7 +38,7 @@ var mapped = [
 mapped.forEach(function (s) {
   var r = snap(s.seg, s.lat, s.lon);
   assert(r.kind === 'snapped' && r.point.seg === s.expect && r.distM <= 60 && !r.point.out_of_coverage, 'v2 seg ' + s.seg + ' -> ' + s.expect + ' within 60 m (got ' + r.kind + ' seg ' + r.point.seg + ' dist ' + r.distM + ')');
-  assert(r.point.nd_geom_version === 'v3d', 'snapped point stores v3d');
+  assert(r.point.nd_geom_version === 'v3e', 'snapped point stores v3e');
 });
 
 // All 73 removed ids are absent from the map. Their old midpoints are farther than 60 m, so re-snap must not invent an id.
@@ -53,28 +53,30 @@ unmapped.forEach(function (s) {
 });
 
 var desert = {id: 'Mdesert01', seg: 12, sid: '55170', lat: 30.95, lon: 35.08, name: 'ימין'};
-var kept = ctx.resnapNorthPoint(desert, lines, idMap, 'v3d');
+var kept = ctx.resnapNorthPoint(desert, lines, idMap, 'v3e');
 assert(kept.kind === 'kept' && kept.changed === false && kept.point === desert && kept.point.seg === 12, 'desert point is not resnapped');
 
-var current = {id: 'Msample01', region: 'north_center', seg: 1, sid: '900079', lat: 32.74792, lon: 35.07458, nd_geom_version: 'v3d'};
-var again = ctx.resnapNorthPoint(current, lines, idMap, 'v3d');
-assert(again.changed === false && again.point.seg === 1, 'a point already stamped v3d is left alone');
+var current = {id: 'Msample01', region: 'north_center', seg: 1, sid: '900079', lat: 32.74792, lon: 35.07458, nd_geom_version: 'v3e'};
+var again = ctx.resnapNorthPoint(current, lines, idMap, 'v3e');
+assert(again.changed === false && again.point.seg === 1, 'a point already stamped v3e is left alone');
 
 var dgeo = JSON.parse(fs.readFileSync(path.join(root, 'site/data/channel_segments.geojson'), 'utf8'));
 var dlines = dgeo.features.map(function (f) { return {coords: f.geometry.coordinates, id: Number(f.properties.id), basin: String(f.properties.b), name: f.properties.name || ''}; });
-assert(dgeo.desert_geom_version === 'v8ext' && ctx.DESERT_GEOM_VERSION === 'v8ext', 'desert file is stamped v8ext');
-assert(dlines.length === 9805, 'desert segment count is 9805, got ' + dlines.length);
-var dk = ctx.resnapDesertPoint({id: 'Mdesert01', seg: 12, sid: '55170', lat: 30.95, lon: 35.08}, dlines, 'v8ext');
-assert(dk.kind === 'stamped' && dk.point.seg === 12 && dk.point.dg_geom_version === 'v8ext', 'existing desert seg 12 is kept and stamped');
-var dr = ctx.resnapDesertPoint({id: 'Mdesert02', seg: 106, sid: '1', lat: 30.61208, lon: 35.51292}, dlines, 'v8ext');
+assert(dgeo.desert_geom_version === 'v8p' && ctx.DESERT_GEOM_VERSION === 'v8p', 'desert file is stamped v8p');
+var dfull = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(root, 'data/channel_segments.json.gz'))).toString('utf8')).segments;
+var dvis = dfull.filter(function (s) { return Number(s.hidden) !== 1; }).length;
+assert(dlines.length === dvis, 'desert display count equals non-hidden segments (' + dvis + '), got ' + dlines.length);
+var dk = ctx.resnapDesertPoint({id: 'Mdesert01', seg: 12, sid: '55170', lat: 30.95, lon: 35.08}, dlines, 'v8p');
+assert(dk.kind === 'stamped' && dk.point.seg === 12 && dk.point.dg_geom_version === 'v8p', 'existing desert seg 12 is kept and stamped');
+var dr = ctx.resnapDesertPoint({id: 'Mdesert02', seg: 106, sid: '1', lat: 30.61208, lon: 35.51292}, dlines, 'v8p');
 assert(dr.point.seg !== 106 || dr.point.out_of_coverage === true, 'removed desert seg 106 re-snaps or goes out of coverage (' + dr.kind + ')');
-var dn = ctx.resnapDesertPoint({id: 'Mnorth', region: 'north_center', seg: 1, lat: 32.7, lon: 35.0}, dlines, 'v8ext');
+var dn = ctx.resnapDesertPoint({id: 'Mnorth', region: 'north_center', seg: 1, lat: 32.7, lon: 35.0}, dlines, 'v8p');
 assert(dn.kind === 'kept' && !dn.changed, 'north point is not touched by desert resnap');
-var dc = ctx.resnapDesertPoint(dk.point, dlines, 'v8ext');
+var dc = ctx.resnapDesertPoint(dk.point, dlines, 'v8p');
 assert(dc.kind === 'current' && !dc.changed, 'a desert point already stamped is left alone');
 
-var dz = ctx.resnapDesertPoint({id: 'Mdesert03', seg: 9865, sid: '1', lat: 30.96708, lon: 35.33375, dg_geom_version: 'v5arava'}, dlines, 'v8ext');
-assert(dz.point.seg !== 9865 && dz.kind === 'snapped' && dz.point.dg_geom_version === 'v8ext', 'v7-removed seg 9865 (stamped v5arava) re-snaps by lat/lon (' + dz.kind + ')');
+var dz = ctx.resnapDesertPoint({id: 'Mdesert03', seg: 9865, sid: '1', lat: 30.96708, lon: 35.33375, dg_geom_version: 'v5arava'}, dlines, 'v8p');
+assert(dz.point.seg !== 9865 && dz.kind === 'snapped' && dz.point.dg_geom_version === 'v8p', 'v7-removed seg 9865 (stamped v5arava) re-snaps by lat/lon (' + dz.kind + ')');
 var ds10754 = dgeo.features.filter(function (f) { return Number(f.properties.id) === 10754; });
 assert(ds10754.length === 1 && Array.isArray(ds10754[0].properties.dash), 'seg 10754 has a display-only dash range');
 assert(dgeo.features.filter(function (f) { return f.properties.dash; }).length === 1, 'only one feature is dashed');
@@ -84,6 +86,6 @@ console.log('all resnap checks passed');
 
 // v3b point on hidden segment 476 re-snaps to a displayed channel or goes out of coverage; never keeps 476.
 assert(!lines.some(function (l) { return l.id === 476; }), 'hidden 476 is not a display line');
-var h = ctx.resnapNorthPoint({id: 'Mh', region: 'north_center', seg: 476, sid: '1', lat: 31.47792, lon: 34.48125, nd_geom_version: 'v3b'}, lines, idMap, 'v3d');
-assert(h.changed && h.point.nd_geom_version === 'v3d' && (h.point.seg !== 476 || (h.kind === 'out' && h.point.out_of_coverage)), 'v3b point on hidden 476 moves (' + h.kind + ', seg ' + h.point.seg + ')');
+var h = ctx.resnapNorthPoint({id: 'Mh', region: 'north_center', seg: 476, sid: '1', lat: 31.47792, lon: 34.48125, nd_geom_version: 'v3b'}, lines, idMap, 'v3e');
+assert(h.changed && h.point.nd_geom_version === 'v3e' && (h.point.seg !== 476 || (h.kind === 'out' && h.point.out_of_coverage)), 'v3b point on hidden 476 moves (' + h.kind + ', seg ' + h.point.seg + ')');
 console.log('ok hidden 476 v3b point -> ' + h.kind + ' seg ' + h.point.seg + (h.distM != null ? ' ' + Math.round(h.distM) + ' m' : ''));
