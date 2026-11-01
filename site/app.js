@@ -104,6 +104,8 @@ function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className
 function clear(n){while(n&&n.firstChild)n.removeChild(n.firstChild);}
 function txt(v,fallback){if(v==null||v==='')return fallback==null?'':String(fallback);return String(v);}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:null;}
+let DESERT_THR=0.3,OWN_THR=false;
+function thrFor(a){return OWN_THR?PREFS.threshold:((a&&a.region==='north_center')?0.3:DESERT_THR);}
 function loadPrefs(){
  const base={points:[],streams:[],threshold:0.3};
  try{
@@ -147,6 +149,7 @@ function dateOk(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);}
 async function init(){
  CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null,subscribe_url:''});
  PREFS=loadPrefs();
+ {const dt=num(CFG.desert_alert_thr);if(dt!=null&&dt>=0.05&&dt<=0.9)DESERT_THR=dt;try{OWN_THR=JSON.parse(localStorage.prefs||'{}').threshold!=null;}catch(e){}}
  map=L.map('map',{zoomControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:120,scrollWheelZoom:true,attributionControl:false}).setView([30.9,35.0],8);
  L.control.zoom({position:'bottomleft'}).addTo(map);
  L.control.attribution({position:'bottomleft',prefix:false}).addTo(map);
@@ -210,7 +213,7 @@ function drawVP(){
  if(vpL)map.removeLayer(vpL);
  vpL=L.layerGroup(VPS.filter(v=>finiteCoord(v.lat,v.lon)).map(v=>{
   const c=finiteCoord(v.lat,v.lon);
-  const mk=L.circleMarker(c,{radius:7,color:'#fff',weight:2,fillColor:v.current&&num(v.current.prob)>=PREFS.threshold?'#c0392b':'#1e88e5',fillOpacity:1}).bindPopup(()=>cardEl(v,true));
+  const mk=L.circleMarker(c,{radius:7,color:'#fff',weight:2,fillColor:v.current&&num(v.current.prob)>=thrFor(v.current)?'#c0392b':'#1e88e5',fillOpacity:1}).bindPopup(()=>cardEl(v,true));
   mk.on('click',ev=>{if(ev.originalEvent)ev.originalEvent.__vp=1;});
   return mk;
  })).addTo(map);
@@ -335,7 +338,7 @@ async function loadAlerts(){
  for(const a of alerts){
   if(!a)continue;
   let why;if(PREFS.points.includes(a.point))why={via:'point'};else if(st[norm(a.nahal)])why={via:'stream',stream:st[norm(a.nahal)]};else continue;
-  mine.push({...a,alert:num(a.prob)>=PREFS.threshold,...why});
+  mine.push({...a,alert:num(a.prob)>=thrFor(a),...why});
  }
  mine.sort((x,y)=>(num(y.prob)||0)-(num(x.prob)||0));
  const host=$('#alist');clear(host);
@@ -349,7 +352,7 @@ async function loadAlerts(){
   const title=a.alert?`סיכוי גבוה לשיטפון ב${txt(a.nahal)}, הגל צפוי להגיע לנקודה "${txt(a.name)}" בעוד ${fmtH(num(a.hours_until_first_wave))}`:`${txt(a.name)} – אין התראה`;
   card.appendChild(el('h3',null,title));
   if(a.via==='stream'&&a.stream)card.appendChild(el('div','muted','במעקב דרך: '+txt(a.stream)));
-  card.appendChild(el('div',null,'סיכוי: '+Math.round(prob*100)+'% (סף '+Math.round(PREFS.threshold*100)+'%) · ודאות: '+(conf[a.confidence]||'—')));
+  card.appendChild(el('div',null,'סיכוי: '+Math.round(prob*100)+'% (סף '+Math.round(thrFor(a)*100)+'%) · ודאות: '+(conf[a.confidence]||'—')));
   card.appendChild(el('div',null,'גל ראשון: '+txt(a.eta_first_wave,'—')+' · שיא: '+txt(a.eta_peak,'—')));
   card.appendChild(el('div','muted','גשם ממוצע באגן: '+txt(r.basin_mean_mm,'—')+' מ"מ · עוצמה מרבית: '+txt(r.max_cell_mm_h,'—')+' מ"מ/שעה · ספיקת שיא משוערת: '+txt(r.q_peak_m3s,'—')+' מק"ש'));
   const dist=distEl(r.contributing_by_travel_time);if(dist)card.appendChild(dist);
@@ -374,7 +377,7 @@ function subscribeUrlOk(url){
 }
 const b64=s=>{const p='='.repeat((4-s.length%4)%4);const r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));};
 function storedPush(){try{const p=JSON.parse(localStorage.pushsub||'null');return p&&hostOk(p.endpoint)?p:null;}catch(e){return null;}}
-function subRecord(){return{action:'register',uid:UID,points:PREFS.points,streams:PREFS.streams,threshold:PREFS.threshold,custom:(typeof myPointsPayload==='function')?myPointsPayload():[],push:storedPush(),updated:new Date().toISOString()};}
+function subRecord(){return{action:'register',uid:UID,points:PREFS.points,streams:PREFS.streams,threshold:OWN_THR?PREFS.threshold:null,custom:(typeof myPointsPayload==='function')?myPointsPayload():[],push:storedPush(),updated:new Date().toISOString()};}
 async function postSub(body){
  if(!CFG||!subscribeUrlOk(CFG.subscribe_url))return false;
  await fetch(CFG.subscribe_url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});
@@ -413,7 +416,7 @@ $('#enable-push').addEventListener('click',()=>enablePush());
 $('#test-push').addEventListener('click',()=>testPush());
 $('#unsubscribe-all').addEventListener('click',()=>unsubscribeAll());
 $('#th').addEventListener('input',e=>{$('#thv').textContent=e.target.value;});
-$('#th').addEventListener('change',e=>{const v=Number(e.target.value);if(Number.isFinite(v)){PREFS.threshold=Math.min(0.9,Math.max(0.05,v/100));savePrefs();}});
+$('#th').addEventListener('change',e=>{const v=Number(e.target.value);if(Number.isFinite(v)){OWN_THR=true;PREFS.threshold=Math.min(0.9,Math.max(0.05,v/100));savePrefs();}});
 if(localStorage.ack_disclaimer_v1==='1')$('#gate').hidden=true;
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
 init();

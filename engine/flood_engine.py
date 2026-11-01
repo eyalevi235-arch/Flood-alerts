@@ -6,7 +6,7 @@ import os,json,time,numpy as np,pandas as pd,requests,lightgbm as lgb
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT=json.load(open(f'{ROOT}/data/catchments.json'))
 LAT=np.array(CAT['grid']['lat']); LON=np.array(CAT['grid']['lon']); RES=CAT['grid']['res']; P=CAT['routing_params']
-CAL=json.load(open(f'{ROOT}/model/calibration.json'))
+CAL=json.load(open(f'{ROOT}/model/calibration_legacy.json'))  # v1 Platt; model/calibration.json is v3final (flood_engine_v2)
 BOOST=lgb.Booster(model_file=f'{ROOT}/model/desert_pdir_radar_np.txt'); FEAT=BOOST.feature_name()
 DRY_MM=float(os.environ.get('DRY_MM',5.))   # same as arrival/alert_engine.py (see model/alert_calibration.json for tuning work)
 VP=pd.read_csv(f'{ROOT}/data/viewpoints.csv')

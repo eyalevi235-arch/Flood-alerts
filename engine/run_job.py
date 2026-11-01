@@ -5,7 +5,11 @@ env: FORECAST_MODEL (icon_seamless; fallback ecmwf_ifs025), VAPID_PRIVATE_KEY, V
 Push is sent only when VAPID_PRIVATE_KEY is set (the Action). Payloads are built from this job's alert fields.
 Dead endpoints (HTTP 404/410) are pruned on the private store. Secrets and endpoint URLs are not printed."""
 import os,sys,json,re,time,traceback,datetime as dt,glob,urllib.parse,pandas as pd
-sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import flood_engine_v2 as fe
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import importlib
+ENGINE_VERSION=os.environ.get('ENGINE_VERSION','v2')   # one-line switch: 'v1' = old engine/flood_engine.py
+def _load_engine(v): return importlib.import_module('flood_engine' if v=='v1' else 'flood_engine_v2')
+fe=_load_engine(ENGINE_VERSION)
+_CALJ=json.load(open(f'{fe.ROOT}/model/calibration.json')); DESERT_THR=float((_CALJ.get('selected') or _CALJ).get('alert_thr') or 0.3)
 ROOT=fe.ROOT; SITE=f'{ROOT}/site/data'; os.makedirs(SITE,exist_ok=True); os.makedirs(f'{ROOT}/state',exist_ok=True)
 def vapid_public():
     """Actions secret when set; otherwise the published vapid_public_key.txt. Never logs the key."""
@@ -18,7 +22,7 @@ def jload(p,d):
     except Exception: return d
 def jsave(p,o,indent=None): json.dump(o,open(p+'.tmp','w'),ensure_ascii=False,indent=indent,default=str,separators=None if indent else (',',':')); os.replace(p+'.tmp',p)
 norm=lambda x:str(x).replace('נחל ','').strip()
-def main():
+def _main():
     t0=time.time(); now=pd.Timestamp.now('UTC').tz_localize(None).floor('h'); g=None; err=None
     if os.environ.get('USE_IMS_RADAR','0')=='1': print('USE_IMS_RADAR=1 ignored: radar input not supported in the Actions engine (needs IMS token + regridding)')
     for m in [os.environ.get('FORECAST_MODEL','icon_seamless'),'ecmwf_ifs025']:
@@ -37,7 +41,7 @@ def main():
             em=[int(round((s['eta']-now).total_seconds()/60)) if s['eta'] is not None else -1 for s in segs],
             tp=[int(round(s['tt_p10_s']/60)) for s in segs],tm=[int(round(s['tt_med_s']/60)) for s in segs])
         jsave(f'{SITE}/segment_risk.json',compact)
-        print(f'segments: {len(segs)} scored, {sum(s["prob"]>=0.3 for s in segs)} with prob>=0.3 ({time.time()-t0:.0f}s)')
+        print(f'segments: {len(segs)} scored, {sum(s["prob"]>=DESERT_THR for s in segs)} with prob>={DESERT_THR} ({time.time()-t0:.0f}s)')
     except Exception:
         traceback.print_exc(); print('segment scoring failed')
     R,n=fe.live_risk(g,now,f'{ROOT}/data/basins_simplified.geojson'); jsave(f'{SITE}/risk_live.geojson',R)
@@ -70,8 +74,8 @@ def main():
     jsave(f'{SITE}/viewpoints.json',V)
     dates=sorted(os.path.basename(p)[5:15] for p in glob.glob(f'{SITE}/risk_20*.geojson'))
     pub=vapid_public()
-    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3b'),1)
-    nal=sum(a['prob']>=0.3 for a in A); print(f'alerts: {len(A)} points, {nal} with prob>=0.3; risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
+    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3b',desert_alert_thr=DESERT_THR),1)
+    nal=sum(a['prob']>=(0.3 if a.get('region')=='north_center' else DESERT_THR) for a in A); print(f'alerts: {len(A)} points, {nal} with prob>={DESERT_THR} (engine {fe.__name__}); risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
     notify(A,g,now); return 0
 # Same 60 m cap as site/tap_basin.js NORTH_RESNAP_M / snapToleranceMeters. No zoom on the server.
 NORTH_SNAP_M=60
@@ -151,9 +155,9 @@ def clean_sub(s):
     streams=[]
     for x in (s.get('streams') or [])[:12]:
         if isinstance(x,str) and 1<=len(x)<=40 and not re.search(r'[\x00-\x1f<>]',x): streams.append(x)
-    try: thr=float(s.get('threshold',0.3))
+    try: thr=None if s.get('threshold') is None else float(s['threshold'])   # None = desert default (calibration.json alert_thr)
     except (TypeError,ValueError): return None
-    if not (0.05<=thr<=0.9): thr=0.3
+    if thr is not None and not (0.05<=thr<=0.9): thr=None
     uid=s.get('uid')
     if not isinstance(uid,str) or not re.fullmatch(r'u[a-z0-9]{6,20}',uid): uid='anon'
     custom=[]
@@ -254,15 +258,17 @@ def notify(A,g=None,now=None):
     sentp=f'{ROOT}/state/push_sent.json'; sent=jload(sentp,{}); n=0; dead=[]
     try:
         for s in subs:
-            pts=set(s['points']); st={norm(x) for x in s['streams']}; thr=s['threshold']
+            pts=set(s['points']); st={norm(x) for x in s['streams']}; thr0=s['threshold']
             for a in A:
                 via=a.get('point') in pts or norm(a.get('nahal')) in st
+                thr=thr0 if thr0 is not None else (0.3 if a.get('region')=='north_center' else DESERT_THR)
                 if not via or not isinstance(a.get('prob'),(int,float)) or a['prob']<thr: continue
                 n+=_push_one(s,a,key,sent,dead)
             for c in s.get('custom') or []:
                 if g is None or now is None: break
                 ca=fe.custom_point_alert(g,now,c)
-                if not ca or not isinstance(ca.get('prob'),(int,float)) or ca['prob']<thr: continue
+                cthr=thr0 if thr0 is not None else (0.3 if c.get('region')=='north_center' else DESERT_THR)
+                if not ca or not isinstance(ca.get('prob'),(int,float)) or ca['prob']<cthr: continue
                 n+=_push_one(s,ca,key,sent,dead)
     finally:
         if pem:
@@ -271,4 +277,14 @@ def notify(A,g=None,now=None):
     cut=time.time()-14*86400; jsave(sentp,{k:v for k,v in sent.items() if v>cut},1)
     if dead: prune_remote(list(dict.fromkeys(dead)))
     print(f'push: sent {n}; pruned {len(set(dead))}')
+def main():
+    global fe
+    try:
+        if os.environ.get('FORCE_V2_FAIL')=='1' and fe.__name__=='flood_engine_v2': raise RuntimeError('forced v2 failure (test)')
+        return _main()
+    except Exception:
+        if fe.__name__!='flood_engine_v2': raise
+        traceback.print_exc(); print('ENGINE FALLBACK: flood_engine_v2 failed -> running old flood_engine (v1)')
+        fe=_load_engine('v1'); return _main()
+
 if __name__=='__main__': sys.exit(main())
