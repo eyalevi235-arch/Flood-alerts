@@ -4,7 +4,7 @@ env: FORECAST_MODEL (icon_seamless; fallback ecmwf_ifs025), VAPID_PRIVATE_KEY, V
      USE_IMS_RADAR=0 (not implemented here; needs IMS token).
 Push is sent only when VAPID_PRIVATE_KEY is set (the Action). Payloads are built from this job's alert fields.
 Dead endpoints (HTTP 404/410) are pruned on the private store. Secrets and endpoint URLs are not printed."""
-import os,sys,json,re,time,traceback,datetime as dt,glob,urllib.parse,pandas as pd
+import os,math,sys,json,re,time,traceback,datetime as dt,glob,urllib.parse,pandas as pd
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import importlib
 ENGINE_VERSION=os.environ.get('ENGINE_VERSION','v2')   # one-line switch: 'v1' = old engine/flood_engine.py
 def _load_engine(v): return importlib.import_module('flood_engine' if v=='v1' else 'flood_engine_v2')
@@ -20,7 +20,15 @@ def vapid_public():
 def jload(p,d):
     try: return json.load(open(p))
     except Exception: return d
-def jsave(p,o,indent=None): json.dump(o,open(p+'.tmp','w'),ensure_ascii=False,indent=indent,default=str,separators=None if indent else (',',':')); os.replace(p+'.tmp',p)
+def _clean(o):
+    if isinstance(o,float): return o if math.isfinite(o) else None
+    if isinstance(o,dict): return {k:_clean(v) for k,v in o.items()}
+    if isinstance(o,(list,tuple)): return [_clean(v) for v in o]
+    if hasattr(o,'item') and not isinstance(o,(str,bytes)):
+        try: return _clean(o.item())
+        except Exception: return o
+    return o
+def jsave(p,o,indent=None): json.dump(_clean(o),open(p+'.tmp','w'),ensure_ascii=False,indent=indent,default=str,allow_nan=False,separators=None if indent else (',',':')); os.replace(p+'.tmp',p)
 norm=lambda x:str(x).replace('נחל ','').strip()
 def _main():
     t0=time.time(); now=pd.Timestamp.now('UTC').tz_localize(None).floor('h'); g=None; err=None

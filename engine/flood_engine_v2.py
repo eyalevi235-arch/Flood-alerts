@@ -96,7 +96,9 @@ def model_prob(g,z,lat,lon,T0,T1,sid=None):
         rows.append({**{f'pd_{k}':v for k,v in f.items()},**dict(zip(POW,EV[j])),**so,**st,'lat':lat,'lon':lon,'doy_s':np.sin(2*np.pi*doy/365),'doy_c':np.cos(2*np.pi*doy/365)})
     p=platt(BOOST.predict(pd.DataFrame(rows)[FEAT])); i=int(np.argmax(p)); return float(p[i]),Ts[i],rows[i]
 def scs(Pc,CN,lam):
-    S=25400/CN-254; Ia=lam*S; return np.where(Pc>Ia,(Pc-Ia)**2/(Pc-Ia+S),0)
+    # CN=100 (impervious/water cells) -> S=0, Ia=0; where Pc==0 the unused branch is 0/0. Guard the denominator.
+    S=25400/CN-254; Ia=lam*S; d=Pc-Ia
+    return np.where(d>0,d**2/np.where(d>0,d+S,1.0),0)
 def route(g,z,t0,t1):
     p=P; G=z['groups']; r=np.array([x['r'] for x in G]); c=np.array([x['c'] for x in G]); cn=np.array([x['cn'] for x in G])
     area=np.array([sum(x['band']) for x in G]); band=np.array([x['band'] for x in G])
