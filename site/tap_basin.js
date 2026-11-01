@@ -115,7 +115,7 @@ function snapToleranceMeters(lat, zoom) {
   return Math.min(60, screenM);
 }
 // Geometry stamp for north/center segment ids. Migration uses the 60 m cap, not the zoom-dependent screen cap.
-var ND_GEOM_VERSION = 'v3d';
+var ND_GEOM_VERSION = 'v3e';
 var NORTH_RESNAP_M = 60;
 // idMap: old segment id -> new id, or null when that old id was removed. Coordinates win.
 // A mapped id is used only when that new segment is itself inside the snap radius.
@@ -157,7 +157,7 @@ function resnapNorthPoint(point, lines, idMap, version) {
   return {point: next, changed: true, kind: 'snapped', distM: chosen.distM};
 }
 // Geometry stamp for desert segment ids (Arava / south Dead Sea fix). Removed ids re-snap by lat/lon within 60 m.
-var DESERT_GEOM_VERSION = 'v8ext';
+var DESERT_GEOM_VERSION = 'v8p';
 function resnapDesertPoint(point, lines, version) {
   if (!point || point.region === 'north_center') return {point: point, changed: false, kind: 'kept'};
   var seg = parseInt(point.seg, 10);
