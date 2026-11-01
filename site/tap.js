@@ -50,7 +50,9 @@ function loadTapData() {
     fetch('data/risk_nondesert.geojson', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
       if (!t) return {features: []};
       try { return JSON.parse(t.replace(/\bNaN\b/g, 'null')); } catch (e) { return {features: []}; }
-    }).catch(function () { return {features: []}; })
+    }).catch(function () { return {features: []}; }),
+    geo('data/small_streams_nd.geojson').catch(function () { return {features: []}; }),
+    geo('data/small_streams_de.geojson').catch(function () { return {features: []}; })
   ]).then(function (pair) {
     var nahal = {};
     (pair[0].features || []).forEach(function (f) {
@@ -80,7 +82,14 @@ function loadTapData() {
       var sid = f.properties && f.properties.sid;
       if (sid != null) northSids[String(sid)] = 1;
     });
-    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], coverage: (pair[6] && pair[6].features) || [], northSids: northSids, idMap: pair[5] || {}, ndGeomVersion: geomVersion, dgGeomVersion: (pair[1] && pair[1].desert_geom_version) || DESERT_GEOM_VERSION};
+    var smallLines = [];
+    [[pair[8], 'north'], [pair[9], 'desert']].forEach(function (pr) {
+      ((pr[0] && pr[0].features) || []).forEach(function (f) {
+        var g = f.geometry, d = parseInt(f.properties && f.properties.d, 10);
+        if (g && g.type === 'LineString' && g.coordinates && g.coordinates.length > 1 && isFinite(d)) smallLines.push({coords: g.coordinates, d: d, region: pr[1]});
+      });
+    });
+    return {smallLines: smallLines, nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], coverage: (pair[6] && pair[6].features) || [], northSids: northSids, idMap: pair[5] || {}, ndGeomVersion: geomVersion, dgGeomVersion: (pair[1] && pair[1].desert_geom_version) || DESERT_GEOM_VERSION};
   });
   return tapCache;
 }
@@ -219,6 +228,23 @@ function hitsWithin(data, lat, lon) {
   for (var i = 0; i < ranked.length; i++) if (ranked[i].distM <= tol) within.push(ranked[i]);
   return {tol: tol, lines: lines, ranked: ranked, choices: nameSegmentHits(within, lines, data.nahal)};
 }
+function smallHit(data, lat, lon, tol) {
+  if (!map || map.getZoom() < 11 || !data.smallLines || !data.smallLines.length) return null;
+  var ne = northEnabled();
+  var cand = data.smallLines.filter(function (l) { return ne || l.region !== 'north'; });
+  var r = closestStreams(cand, lat, lon, 1)[0];
+  if (!r || r.distM > tol) return null;
+  var sl = cand[r.index], pool = sl.region === 'north' ? (data.northLines || []) : (data.lines || []);
+  var mi = -1;
+  for (var i = 0; i < pool.length; i++) if (pool[i].id === sl.d) { mi = i; break; }
+  if (mi < 0) return null;
+  var named = nameSegmentHits([{index: mi, lat: r.lat, lon: r.lon, distM: r.distM}], pool, data.nahal)[0];
+  if (!named) return null;
+  named.flowsLine = 'יובל קטן, הסיכון של הערוץ במורד: ' + named.name + (named.flowsLine ? ' · ' + named.flowsLine : '');
+  named.name = 'יובל קטן';
+  named.area = null;
+  return named;
+}
 function resolveTap(box, tapLat, tapLon, lat, lon, data, fresh) {
   var hit = hitsWithin(data, lat, lon);
   if (hit.choices.length) {
@@ -245,6 +271,12 @@ function resolveTap(box, tapLat, tapLon, lat, lon, data, fresh) {
   } else if (snapGfx) {
     if (snapGfx.marker) snapGfx.marker.setLatLng([lat, lon]);
     if (snapGfx.line) snapGfx.line.setStyle({opacity: 0});
+  }
+  var small = smallHit(data, lat, lon, hit.tol);
+  if (small) {
+    if (fresh && snapGfx && snapGfx.marker) snapGfx.marker.setLatLng([small.lat, small.lon]);
+    paintTap(box, tapLat, tapLon, small, [small], data, small.lat, small.lon, hit.tol);
+    return;
   }
   data._snapLines = hit.lines;
   paintBasin(box, lat, lon, data, hit.ranked[0] || null);

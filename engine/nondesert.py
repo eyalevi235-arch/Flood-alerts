@@ -231,7 +231,12 @@ def write_outputs(info, issued, now):
             ),
         ))
     geo = dict(type='FeatureCollection', issued=issued, hours=48, region='north_center', features=feats)
-    segs = info['segments']
+    # Arrays are indexed by segment id (ids are sparse after the Bezek fix); gaps are None / -1 / 0.
+    _gap = dict(prob=None, rain=None, lead=None, eta=None, strong=False, tt_p10_s=None, tt_med_s=None)
+    _segs = info['segments']
+    segs = [_gap] * ((max(s['id'] for s in _segs) + 1) if _segs else 0)
+    for s in _segs:
+        segs[s['id']] = s
     compact = dict(
         v=1, region='north_center', issued=issued,
         p=[s['prob'] for s in segs],
@@ -239,8 +244,8 @@ def write_outputs(info, issued, now):
         lead=[s['lead'] if s['lead'] is not None else None for s in segs],
         em=[int(round((s['eta'] - now).total_seconds() / 60)) if s['eta'] is not None else -1 for s in segs],
         strong=[1 if s['strong'] else 0 for s in segs],
-        tp=[int(round(s['tt_p10_s'] / 60)) for s in segs],
-        tm=[int(round(s['tt_med_s'] / 60)) for s in segs],
+        tp=[int(round(s['tt_p10_s'] / 60)) if s['tt_p10_s'] is not None else None for s in segs],
+        tm=[int(round(s['tt_med_s'] / 60)) if s['tt_med_s'] is not None else None for s in segs],
     )
     return geo, compact
 

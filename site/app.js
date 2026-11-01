@@ -59,6 +59,21 @@ function basinStyle(p){
  return {color:'#5c6b76',weight:.6,opacity:.5,fillColor:perennial?'#8aa':col(p.risk??p.risk_raw),fillOpacity:perennial?0.08:0.1,interactive:false};
 }
 let northL=null,northGen=0;
+let smallL=null,smallP=null;const SMALL_MINZ=11;
+function smallStyle(){return {color:'#4a90c2',weight:1,opacity:0.8,interactive:false};}
+function loadSmall(){
+ if(!smallP)smallP=Promise.all(['data/small_streams_nd.geojson','data/small_streams_de.geojson'].map(u=>jget(u,null))).then(a=>{
+  const f=[];a.forEach(g=>{if(g&&Array.isArray(g.features))f.push(...g.features);});
+  if(!map.getPane('smallPane')){const pn=map.createPane('smallPane');pn.style.zIndex=390;pn.style.pointerEvents='none';}
+  smallL=L.geoJSON({type:'FeatureCollection',features:f},{pane:'smallPane',interactive:false,style:smallStyle});
+  return smallL;});
+ return smallP;
+}
+function applySmall(){
+ if(!map)return;
+ if(map.getZoom()>=SMALL_MINZ)loadSmall().then(l=>{if(l&&map.getZoom()>=SMALL_MINZ&&!map.hasLayer(l))l.addTo(map);});
+ else if(smallL&&map.hasLayer(smallL))map.removeLayer(smallL);
+}
 function raiseOverlays(){
  if(!map)return;
  if(baseL)baseL.bringToBack();
@@ -154,7 +169,7 @@ async function init(){
  L.control.zoom({position:'bottomleft'}).addTo(map);
  L.control.attribution({position:'bottomleft',prefix:false}).addTo(map);
  addNameAttribution(map);
- map.on('zoomend',()=>{if(northL)northL.setStyle(northStyle);});
+ map.on('zoomend',()=>{if(northL)northL.setStyle(northStyle);applySmall();});
  let savedBase='topo';
  try{savedBase=localStorage.basemap||'topo';}catch(e){}
  setMainBase(savedBase);
