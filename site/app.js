@@ -163,7 +163,7 @@ async function init(){
  const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
  (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
  date.onchange=loadRisk;$('#per').onchange=loadRisk;
- api('data/channel_segments.geojson').then(g=>{streamL=L.geoJSON(g,{style:{color:'#1565c0',weight:1.6,opacity:.85},interactive:false}).addTo(map)});
+ api('data/channel_segments.geojson').then(g=>{streamL=L.geoJSON(dashSplit(g),{style:f=>({color:'#1565c0',weight:1.6,opacity:.85,dashArray:f.properties&&f.properties._dash?'6 5':null}),interactive:false}).addTo(map)});
  const north=$('#north');
  if(north){
   if(localStorage.north_layer==='0')north.checked=false;
@@ -420,3 +420,17 @@ $('#th').addEventListener('change',e=>{const v=Number(e.target.value);if(Number.
 if(localStorage.ack_disclaimer_v1==='1')$('#gate').hidden=true;
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
 init();
+
+// Display only: a feature with properties.dash=[i,j] draws vertices i..j dashed (e.g. 10754 across the evaporation ponds). Engine/tap geometry is untouched.
+function dashSplit(g){
+ if(!g||!Array.isArray(g.features))return g;
+ const out=[];
+ g.features.forEach(f=>{
+  const d=f.properties&&f.properties.dash,c=f.geometry&&f.geometry.coordinates;
+  if(!Array.isArray(d)||!Array.isArray(c)||f.geometry.type!=='LineString'){out.push(f);return;}
+  const i=Math.max(0,d[0]|0),j=Math.min(c.length-1,d[1]|0);
+  const part=(a,b,dash)=>{if(b>a)out.push({type:'Feature',geometry:{type:'LineString',coordinates:c.slice(a,b+1)},properties:Object.assign({},f.properties,{_dash:dash})});};
+  part(0,i,false);part(i,j,true);part(j,c.length-1,false);
+ });
+ return Object.assign({},g,{features:out});
+}

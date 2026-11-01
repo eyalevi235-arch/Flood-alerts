@@ -156,7 +156,7 @@ function resnapNorthPoint(point, lines, idMap, version) {
   return {point: next, changed: true, kind: 'snapped', distM: chosen.distM};
 }
 // Geometry stamp for desert segment ids (Arava / south Dead Sea fix). Removed ids re-snap by lat/lon within 60 m.
-var DESERT_GEOM_VERSION = 'v5arava';
+var DESERT_GEOM_VERSION = 'v7zin';
 function resnapDesertPoint(point, lines, version) {
   if (!point || point.region === 'north_center') return {point: point, changed: false, kind: 'kept'};
   var seg = parseInt(point.seg, 10);

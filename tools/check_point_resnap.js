@@ -58,16 +58,22 @@ assert(again.changed === false && again.point.seg === 1, 'a point already stampe
 
 var dgeo = JSON.parse(fs.readFileSync(path.join(root, 'site/data/channel_segments.geojson'), 'utf8'));
 var dlines = dgeo.features.map(function (f) { return {coords: f.geometry.coordinates, id: Number(f.properties.id), basin: String(f.properties.b), name: f.properties.name || ''}; });
-assert(dgeo.desert_geom_version === 'v5arava' && ctx.DESERT_GEOM_VERSION === 'v5arava', 'desert file is stamped v5arava');
-assert(dlines.length === 9839, 'desert segment count is 9839, got ' + dlines.length);
-var dk = ctx.resnapDesertPoint({id: 'Mdesert01', seg: 12, sid: '55170', lat: 30.95, lon: 35.08}, dlines, 'v5arava');
-assert(dk.kind === 'stamped' && dk.point.seg === 12 && dk.point.dg_geom_version === 'v5arava', 'existing desert seg 12 is kept and stamped');
-var dr = ctx.resnapDesertPoint({id: 'Mdesert02', seg: 106, sid: '1', lat: 30.61208, lon: 35.51292}, dlines, 'v5arava');
+assert(dgeo.desert_geom_version === 'v7zin' && ctx.DESERT_GEOM_VERSION === 'v7zin', 'desert file is stamped v7zin');
+assert(dlines.length === 9805, 'desert segment count is 9805, got ' + dlines.length);
+var dk = ctx.resnapDesertPoint({id: 'Mdesert01', seg: 12, sid: '55170', lat: 30.95, lon: 35.08}, dlines, 'v7zin');
+assert(dk.kind === 'stamped' && dk.point.seg === 12 && dk.point.dg_geom_version === 'v7zin', 'existing desert seg 12 is kept and stamped');
+var dr = ctx.resnapDesertPoint({id: 'Mdesert02', seg: 106, sid: '1', lat: 30.61208, lon: 35.51292}, dlines, 'v7zin');
 assert(dr.point.seg !== 106 || dr.point.out_of_coverage === true, 'removed desert seg 106 re-snaps or goes out of coverage (' + dr.kind + ')');
-var dn = ctx.resnapDesertPoint({id: 'Mnorth', region: 'north_center', seg: 1, lat: 32.7, lon: 35.0}, dlines, 'v5arava');
+var dn = ctx.resnapDesertPoint({id: 'Mnorth', region: 'north_center', seg: 1, lat: 32.7, lon: 35.0}, dlines, 'v7zin');
 assert(dn.kind === 'kept' && !dn.changed, 'north point is not touched by desert resnap');
-var dc = ctx.resnapDesertPoint(dk.point, dlines, 'v5arava');
+var dc = ctx.resnapDesertPoint(dk.point, dlines, 'v7zin');
 assert(dc.kind === 'current' && !dc.changed, 'a desert point already stamped is left alone');
+
+var dz = ctx.resnapDesertPoint({id: 'Mdesert03', seg: 9865, sid: '1', lat: 30.96708, lon: 35.33375, dg_geom_version: 'v5arava'}, dlines, 'v7zin');
+assert(dz.point.seg !== 9865 && dz.kind === 'snapped' && dz.point.dg_geom_version === 'v7zin', 'v7-removed seg 9865 (stamped v5arava) re-snaps by lat/lon (' + dz.kind + ')');
+var ds10754 = dgeo.features.filter(function (f) { return Number(f.properties.id) === 10754; });
+assert(ds10754.length === 1 && Array.isArray(ds10754[0].properties.dash), 'seg 10754 has a display-only dash range');
+assert(dgeo.features.filter(function (f) { return f.properties.dash; }).length === 1, 'only one feature is dashed');
 
 if (process.exitCode) process.exit(process.exitCode);
 console.log('all resnap checks passed');

@@ -43,7 +43,7 @@ def _main():
     try:
         segs=fe.score_channel_segments(g,now)
         t0s=int(pd.Timestamp(now).timestamp())
-        # Arrays are indexed by segment id (ids are sparse after the v5arava fix); gaps are None.
+        # Arrays are indexed by segment id (ids are sparse after the v5arava/v7zin fixes); gaps are None.
         _n=max(int(s['id']) for s in segs)+1; _pos=[None]*_n
         for s in segs: _pos[int(s['id'])]=s
         _gap=dict(prob=None,rain=None,lead=None,eta=None,tt_p10_s=None,tt_med_s=None)
@@ -87,7 +87,7 @@ def _main():
     jsave(f'{SITE}/viewpoints.json',V)
     dates=sorted(os.path.basename(p)[5:15] for p in glob.glob(f'{SITE}/risk_20*.geojson'))
     pub=vapid_public()
-    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3b',desert_geom_version='v5arava',desert_alert_thr=DESERT_THR),1)
+    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3b',desert_geom_version='v7zin',desert_alert_thr=DESERT_THR),1)
     nal=sum(a['prob']>=(0.3 if a.get('region')=='north_center' else DESERT_THR) for a in A); print(f'alerts: {len(A)} points, {nal} with prob>={DESERT_THR} (engine {fe.__name__}); risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
     notify(A,g,now); return 0
 # Same 60 m cap as site/tap_basin.js NORTH_RESNAP_M / snapToleranceMeters. No zoom on the server.
@@ -145,7 +145,7 @@ def desert_segments():
     import gzip
     with gzip.open(f'{ROOT}/data/channel_segments.json.gz','rt') as f: return json.load(f)['segments']
 def resolve_desert_segment(lat,lon,seg):
-    """Desert seg id if it still exists (v5arava). Removed ids re-snap to the nearest desert segment within 60 m, else None."""
+    """Desert seg id if it still exists (v7zin). Removed ids re-snap to the nearest desert segment within 60 m, else None."""
     global _DESERT_IDS
     segs=None
     if _DESERT_IDS is None:
