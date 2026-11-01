@@ -35,11 +35,16 @@ def _main():
     try:
         segs=fe.score_channel_segments(g,now)
         t0s=int(pd.Timestamp(now).timestamp())
+        # Arrays are indexed by segment id (ids are sparse after the v5arava fix); gaps are None.
+        _n=max(int(s['id']) for s in segs)+1; _pos=[None]*_n
+        for s in segs: _pos[int(s['id'])]=s
+        _gap=dict(prob=None,rain=None,lead=None,eta=None,tt_p10_s=None,tt_med_s=None)
+        segs_d=[x if x is not None else _gap for x in _pos]
         compact=dict(v=1,t0=t0s,issued=fe.il(now),
-            p=[round(s['prob'],3) for s in segs],rain=[s['rain'] for s in segs],
-            lead=[s['lead'] if s['lead'] is not None else None for s in segs],
-            em=[int(round((s['eta']-now).total_seconds()/60)) if s['eta'] is not None else -1 for s in segs],
-            tp=[int(round(s['tt_p10_s']/60)) for s in segs],tm=[int(round(s['tt_med_s']/60)) for s in segs])
+            p=[round(s['prob'],3) if s['prob'] is not None else None for s in segs_d],rain=[s['rain'] for s in segs_d],
+            lead=[s['lead'] for s in segs_d],
+            em=[int(round((s['eta']-now).total_seconds()/60)) if s['eta'] is not None else -1 for s in segs_d],
+            tp=[int(round(s['tt_p10_s']/60)) if s['tt_p10_s'] is not None else None for s in segs_d],tm=[int(round(s['tt_med_s']/60)) if s['tt_med_s'] is not None else None for s in segs_d])
         jsave(f'{SITE}/segment_risk.json',compact)
         print(f'segments: {len(segs)} scored, {sum(s["prob"]>=DESERT_THR for s in segs)} with prob>={DESERT_THR} ({time.time()-t0:.0f}s)')
     except Exception:
@@ -74,7 +79,7 @@ def _main():
     jsave(f'{SITE}/viewpoints.json',V)
     dates=sorted(os.path.basename(p)[5:15] for p in glob.glob(f'{SITE}/risk_20*.geojson'))
     pub=vapid_public()
-    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3b',desert_alert_thr=DESERT_THR),1)
+    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3b',desert_geom_version='v5arava',desert_alert_thr=DESERT_THR),1)
     nal=sum(a['prob']>=(0.3 if a.get('region')=='north_center' else DESERT_THR) for a in A); print(f'alerts: {len(A)} points, {nal} with prob>={DESERT_THR} (engine {fe.__name__}); risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
     notify(A,g,now); return 0
 # Same 60 m cap as site/tap_basin.js NORTH_RESNAP_M / snapToleranceMeters. No zoom on the server.
@@ -127,6 +132,26 @@ def resolve_north_segment(lat,lon,old_seg=None):
         if d<=NORTH_SNAP_M and (nearest is None or d<nearest[0]): nearest=(d,sid)
     if mapped is not None and mapped_d is not None and mapped_d<=NORTH_SNAP_M: return mapped
     return None if nearest is None else nearest[1]
+_DESERT_IDS=None
+def desert_segments():
+    import gzip
+    with gzip.open(f'{ROOT}/data/channel_segments.json.gz','rt') as f: return json.load(f)['segments']
+def resolve_desert_segment(lat,lon,seg):
+    """Desert seg id if it still exists (v5arava). Removed ids re-snap to the nearest desert segment within 60 m, else None."""
+    global _DESERT_IDS
+    segs=None
+    if _DESERT_IDS is None:
+        segs=desert_segments(); _DESERT_IDS=set(int(s['id']) for s in segs)
+    if seg in _DESERT_IDS: return seg
+    segs=segs or desert_segments()
+    best=None
+    for s in segs:
+        co=s.get('coords') or []
+        if len(co)==1: co=co*2
+        if len(co)<2: continue
+        d=_seg_dist_m(lat,lon,co)
+        if d<=NORTH_SNAP_M and (best is None or d<best[0]): best=(d,int(s['id']))
+    return None if best is None else best[1]
 _PUSH_HOSTS=frozenset({'fcm.googleapis.com','updates.push.services.mozilla.com'})
 _PUSH_SUFFIXES=('.push.apple.com','.notify.windows.com')
 def push_endpoint_ok(url):
@@ -178,6 +203,8 @@ def clean_sub(s):
         try: seg=int(seg)
         except (TypeError,ValueError): seg=None
         if seg is not None and 0<=seg<=20000:
+            seg=resolve_desert_segment(lat,lon,seg)
+            if seg is None: continue
             item=dict(id=c['id'],seg=seg,sid=str(c.get('sid') or ''),lat=round(lat,5),lon=round(lon,5))
             if c.get('region')=='north_center': item['region']='north_center'
             custom.append(item)

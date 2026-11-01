@@ -30,7 +30,7 @@ function myPointsPayload() {
       if (p.region === 'north_center') {
         row.region = 'north_center';
         if (p.nd_geom_version) row.nd_geom_version = p.nd_geom_version;
-      }
+      } else if (p.dg_geom_version) row.dg_geom_version = p.dg_geom_version;
       return row;
     }
     return {id: p.id, sid: String(p.sid), along: Math.round(Number(p.along) * 1000) / 1000, lat: lat, lon: lon};
@@ -80,7 +80,7 @@ function loadTapData() {
       var sid = f.properties && f.properties.sid;
       if (sid != null) northSids[String(sid)] = 1;
     });
-    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], coverage: (pair[6] && pair[6].features) || [], northSids: northSids, idMap: pair[5] || {}, ndGeomVersion: geomVersion};
+    return {nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], coverage: (pair[6] && pair[6].features) || [], northSids: northSids, idMap: pair[5] || {}, ndGeomVersion: geomVersion, dgGeomVersion: (pair[1] && pair[1].desert_geom_version) || DESERT_GEOM_VERSION};
   });
   return tapCache;
 }
@@ -330,7 +330,7 @@ function fillSegment(root, hit, data, tol) {
       savedPoint.region = 'north_center';
       savedPoint.nd_geom_version = (data && data.ndGeomVersion) || ND_GEOM_VERSION;
       savedPoint.out_of_coverage = false;
-    }
+    } else savedPoint.dg_geom_version = (data && data.dgGeomVersion) || DESERT_GEOM_VERSION;
     list.unshift(savedPoint);
     storeMyPoints(list);
     btn.textContent = 'נשמרה. ההתראות יכללו את הערוץ.';
@@ -481,7 +481,9 @@ function resnapNorthPoints() {
     var next = list.map(function (p) {
       var res = resnapNorthPoint(p, data.northLines, data.idMap, ver);
       if (res.changed) changed = true;
-      return res.point;
+      var dres = resnapDesertPoint(res.point, data.lines, data.dgGeomVersion);
+      if (dres.changed) changed = true;
+      return dres.point;
     });
     if (changed) storeMyPoints(next);
     return changed;
