@@ -17,13 +17,17 @@ var lines = geo.features.map(function (f) {
 });
 var idMap = JSON.parse(fs.readFileSync(path.join(root, 'data/id_map_nondesert_v2_to_v3b.json'), 'utf8'));
 var nullIds = Object.keys(idMap).filter(function (k) { return idMap[k] == null; });
-assert(geo.nd_geom_version === 'v3b', 'channel file is stamped v3b');
-assert(lines.length === 3392, 'v3b segment count is 3392, got ' + lines.length);
+assert(geo.nd_geom_version === 'v3c', 'channel file is stamped v3c');
+var zlib = require('zlib');
+var full = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(root, 'data/channel_segments_nondesert.json.gz'))).toString('utf8')).segments;
+var shown = full.filter(function (s) { return !Number(s.hidden); }).length;
+assert(lines.length === shown, 'display segment count matches json.gz minus hidden (' + shown + '), got ' + lines.length);
+assert(geo.features.every(function (f) { return !Number(f.properties.hidden); }), 'no hidden segment in the display geojson');
 assert(nullIds.length === 73, 'id map has 73 unmapped v2 ids, got ' + nullIds.length);
 assert(ctx.NORTH_RESNAP_M === 60, 'resnap radius is the 60 m cap');
 
 function snap(seg, lat, lon) {
-  return ctx.resnapNorthPoint({id: 'Msample01', region: 'north_center', seg: seg, sid: '1', lat: lat, lon: lon, name: 'old'}, lines, idMap, 'v3b');
+  return ctx.resnapNorthPoint({id: 'Msample01', region: 'north_center', seg: seg, sid: '1', lat: lat, lon: lon, name: 'old'}, lines, idMap, 'v3c');
 }
 
 // v2 segment midpoints that the id map translates. Geometry still overlaps, so the mapped id wins.
@@ -34,7 +38,7 @@ var mapped = [
 mapped.forEach(function (s) {
   var r = snap(s.seg, s.lat, s.lon);
   assert(r.kind === 'snapped' && r.point.seg === s.expect && r.distM <= 60 && !r.point.out_of_coverage, 'v2 seg ' + s.seg + ' -> ' + s.expect + ' within 60 m (got ' + r.kind + ' seg ' + r.point.seg + ' dist ' + r.distM + ')');
-  assert(r.point.nd_geom_version === 'v3b', 'snapped point stores v3b');
+  assert(r.point.nd_geom_version === 'v3c', 'snapped point stores v3c');
 });
 
 // All 73 removed ids are absent from the map. Their old midpoints are farther than 60 m, so re-snap must not invent an id.
@@ -49,12 +53,12 @@ unmapped.forEach(function (s) {
 });
 
 var desert = {id: 'Mdesert01', seg: 12, sid: '55170', lat: 30.95, lon: 35.08, name: 'ימין'};
-var kept = ctx.resnapNorthPoint(desert, lines, idMap, 'v3b');
+var kept = ctx.resnapNorthPoint(desert, lines, idMap, 'v3c');
 assert(kept.kind === 'kept' && kept.changed === false && kept.point === desert && kept.point.seg === 12, 'desert point is not resnapped');
 
-var current = {id: 'Msample01', region: 'north_center', seg: 1, sid: '900079', lat: 32.74792, lon: 35.07458, nd_geom_version: 'v3b'};
-var again = ctx.resnapNorthPoint(current, lines, idMap, 'v3b');
-assert(again.changed === false && again.point.seg === 1, 'a point already stamped v3b is left alone');
+var current = {id: 'Msample01', region: 'north_center', seg: 1, sid: '900079', lat: 32.74792, lon: 35.07458, nd_geom_version: 'v3c'};
+var again = ctx.resnapNorthPoint(current, lines, idMap, 'v3c');
+assert(again.changed === false && again.point.seg === 1, 'a point already stamped v3c is left alone');
 
 var dgeo = JSON.parse(fs.readFileSync(path.join(root, 'site/data/channel_segments.geojson'), 'utf8'));
 var dlines = dgeo.features.map(function (f) { return {coords: f.geometry.coordinates, id: Number(f.properties.id), basin: String(f.properties.b), name: f.properties.name || ''}; });
@@ -77,3 +81,9 @@ assert(dgeo.features.filter(function (f) { return f.properties.dash; }).length =
 
 if (process.exitCode) process.exit(process.exitCode);
 console.log('all resnap checks passed');
+
+// v3b point on hidden segment 476 re-snaps to a displayed channel or goes out of coverage; never keeps 476.
+assert(!lines.some(function (l) { return l.id === 476; }), 'hidden 476 is not a display line');
+var h = ctx.resnapNorthPoint({id: 'Mh', region: 'north_center', seg: 476, sid: '1', lat: 31.47792, lon: 34.48125, nd_geom_version: 'v3b'}, lines, idMap, 'v3c');
+assert(h.changed && h.point.nd_geom_version === 'v3c' && (h.point.seg !== 476 || (h.kind === 'out' && h.point.out_of_coverage)), 'v3b point on hidden 476 moves (' + h.kind + ', seg ' + h.point.seg + ')');
+console.log('ok hidden 476 v3b point -> ' + h.kind + ' seg ' + h.point.seg + (h.distM != null ? ' ' + Math.round(h.distM) + ' m' : ''));
