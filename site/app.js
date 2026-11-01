@@ -417,7 +417,8 @@ $('#test-push').addEventListener('click',()=>testPush());
 $('#unsubscribe-all').addEventListener('click',()=>unsubscribeAll());
 $('#th').addEventListener('input',e=>{$('#thv').textContent=e.target.value;});
 $('#th').addEventListener('change',e=>{const v=Number(e.target.value);if(Number.isFinite(v)){OWN_THR=true;PREFS.threshold=Math.min(0.9,Math.max(0.05,v/100));savePrefs();}});
-if(localStorage.ack_disclaimer_v1==='1')$('#gate').hidden=true;
+// Gate starts hidden in HTML (no flash for users who already accepted); shown only if not yet accepted. Closes only via #gate-ok.
+$('#gate').hidden=localStorage.ack_disclaimer_v1==='1';
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
 init();
 
