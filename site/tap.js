@@ -75,7 +75,7 @@ function loadTapData() {
       if (!isFinite(id) || Number(p.hidden) === 1) return;
       northLines.push({coords: g.coordinates, id: id, name: p.name || '', nameHe: p.name_he || '', flowsInto: p.flows_into || '', mainNahal: p.main_nahal || '', area: Number(p.a), basin: p.b != null ? String(p.b) : '', region: 'north', perennial: p.perennial != null ? !!p.perennial : (p.p === 1 || p.p === true)});
     });
-    var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3b');
+    var geomVersion = (pair[3] && pair[3].nd_geom_version) || (typeof ND_GEOM_VERSION !== 'undefined' ? ND_GEOM_VERSION : 'v3c');
     var northSids = {};
     northLines.forEach(function (line) { if (line.basin) northSids[line.basin] = 1; });
     ((pair[7] && pair[7].features) || []).forEach(function (f) {
