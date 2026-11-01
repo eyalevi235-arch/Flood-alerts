@@ -50,6 +50,8 @@ input[type=range]{width:100%}
 .gate[hidden]{display:none}
 .gate .card{max-width:520px;margin:0}
 .gate h2{font-size:20px}
+.gate-cb{display:flex;align-items:center;gap:10px;min-height:44px;margin:8px 0 12px;cursor:pointer;font-size:16px}
+.gate-cb input{width:24px;height:24px;margin:0;flex:none}
 #report-map{height:200px;border-radius:8px;margin:8px 0}
 .choice{display:block;margin:6px 0}
 .field{display:block;margin:8px 0}

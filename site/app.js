@@ -410,7 +410,7 @@ async function testPush(){
  $('#pst').textContent='הוצגה התראת בדיקה מקומית. התראות אמיתיות נשלחות רק מהבדיקה השעתית.';
 }
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.p)));
-$('#gate-ok').addEventListener('click',()=>{localStorage.ack_disclaimer_v1='1';$('#gate').hidden=true;});
+$('#gate-ok').addEventListener('click',()=>{if($('#gate-hide').checked){try{localStorage.hide_disclaimer_v2='1';}catch(e){}}$('#gate').hidden=true;});
 $('#add-stream').addEventListener('click',addStream);
 $('#enable-push').addEventListener('click',()=>enablePush());
 $('#test-push').addEventListener('click',()=>testPush());
@@ -418,7 +418,8 @@ $('#unsubscribe-all').addEventListener('click',()=>unsubscribeAll());
 $('#th').addEventListener('input',e=>{$('#thv').textContent=e.target.value;});
 $('#th').addEventListener('change',e=>{const v=Number(e.target.value);if(Number.isFinite(v)){OWN_THR=true;PREFS.threshold=Math.min(0.9,Math.max(0.05,v/100));savePrefs();}});
 // Gate starts hidden in HTML (no flash for users who already accepted); shown only if not yet accepted. Closes only via #gate-ok.
-$('#gate').hidden=localStorage.ack_disclaimer_v1==='1';
+// Old ack_disclaimer_v1 is ignored on purpose: shown every visit unless "don't show again" was checked.
+$('#gate').hidden=(()=>{try{return localStorage.hide_disclaimer_v2==='1';}catch(e){return false;}})();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
 init();
 
