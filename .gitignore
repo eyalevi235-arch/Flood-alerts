@@ -6,3 +6,15 @@ __pycache__/
 
 # Push endpoints stay in the private sheet, never in this repo.
 subscriptions/*.json
+
+# Heavy/raw data and temporary outputs never go in the repo.
+*.h5
+*.npz
+*.parquet
+radar/
+*.zip
+*.tar
+*.tar.*
+*.tgz
+*.tmp.geojson
+tmp/

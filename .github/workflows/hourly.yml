@@ -2,7 +2,7 @@ name: hourly-forecast
 on:
   schedule: [{cron: '7 * * * *'}]   # hourly (GitHub may delay scheduled runs by minutes)
   workflow_dispatch: {}
-  push: {branches: [main], paths: ['site/**','engine/**','data/**','model/**']}
+  push: {branches: [main], paths: ['site/**','engine/**','data/**','model/**','!**.md','!docs/**']}  # negations = paths-ignore (GitHub forbids paths + paths-ignore together)
 # Job tokens stay minimal. Actions are pinned to commit SHAs (Node 24 majors).
 # Do not print secrets. GitHub masks secret values; debug logging is still unnecessary here.
 permissions: {}
@@ -15,7 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with: {python-version: '3.12'}
+        with: {python-version: '3.12', cache: 'pip', cache-dependency-path: requirements.txt}
+      - name: Fail-fast strict JSON/GeoJSON check (before model)
+        run: python tools/check_json_strict.py site/data
       - run: python -m pip install --require-hashes -r requirements.txt
       - name: Forecast + alerts + push
         env:
