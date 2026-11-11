@@ -1,8 +1,18 @@
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,"Segoe UI",Arial,sans-serif;background:#f3f6f8;color:#123}
-header{background:#0b4f6c;color:#fff;padding:10px 14px;font-weight:700;font-size:18px;display:flex;justify-content:space-between}
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;font-family:system-ui,"Segoe UI",Arial,sans-serif;background:#f3f6f8;color:#123}
+header{flex:none;background:#0b4f6c;color:#fff;padding:10px 14px;font-weight:700;font-size:18px;display:flex;justify-content:space-between}
 header small{font-weight:400;opacity:.8;font-size:12px}
-main{position:absolute;top:44px;bottom:112px;left:0;right:0;overflow:auto}
+.ims-credit{flex:none;margin:0;background:#e7eef2;color:#234;font-size:12px;line-height:1.4;padding:6px 12px;border-bottom:1px solid #ccd;z-index:600}
+.ims-credit a{color:#0b4f6c;text-decoration:underline}
+.ims-credit-short{display:none}
+.ims-credit-full{display:inline}
+@media (max-width:599px){
+ .ims-credit{font-size:11px;line-height:1.35;padding:5px 10px}
+ .ims-credit-full{display:none}
+ .ims-credit-short{display:inline}
+}
+main{position:relative;flex:1 1 auto;min-height:0;overflow:auto;margin-bottom:112px}
 #map{position:absolute;inset:0}
 .page{display:none;padding:12px}
 .page.on{display:block}
@@ -94,12 +104,11 @@ fieldset{border:1px solid #ccd;border-radius:8px;margin:8px 0;padding:8px}
 .ui-attr-wrap .leaflet-control-attribution{margin:0!important;float:none}
 .ui-x-attr{float:none;background:#fffe;margin:0;flex:none}
 .ui-chip-attr{width:22px;height:22px;padding:0;border-radius:50%;font-size:12px}
-body.hid-legal main{bottom:58px}
+body.hid-legal main{margin-bottom:58px}
 body.hid-legal .ui-chip-legend{bottom:40px}
 @media (max-width:480px){
  header{padding:6px 10px;font-size:15px;align-items:center}
  header small{font-size:10px}
- main{top:33px}
  .ctl{left:auto;right:6px;top:6px;max-width:62vw;font-size:11px;line-height:1.35;padding:4px 6px}
  .ctl select{font-size:11px;padding:1px 2px;width:auto;max-width:42vw;border-radius:4px}
  .ctl input[type=checkbox]{width:12px;height:12px;margin:0 0 0 3px;vertical-align:middle}
@@ -110,7 +119,7 @@ body.hid-legal .ui-chip-legend{bottom:40px}
  .ui-chip-legend{bottom:6px;right:6px}
  body.hid-legal .ui-chip-legend,body.hid-legal .legend{bottom:6px}
  .legal{font-size:10px;line-height:1.25;padding:4px 8px;max-height:44px}
- main{bottom:102px}
+ main{margin-bottom:102px}
  .leaflet-popup-content-wrapper{border-radius:8px}
  .leaflet-popup-content{margin:8px 10px;font-size:11.5px;line-height:1.3;max-width:calc(100vw - 60px)!important;max-height:30vh}
  .leaflet-popup-content .btn{font-size:11.5px;padding:5px 8px;margin:2px 0}

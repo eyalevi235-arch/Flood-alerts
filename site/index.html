@@ -15,12 +15,16 @@
   <p>זהו כלי עזר ניסיוני. הוא אינו מערכת התרעה רשמית, ואינו מחליף הנחיות של פיקוד העורף, רשות הטבע והגנים או השירות המטאורולוגי.</p>
   <p>אין להיכנס לנחל כשיש בו זרימה. ההתראות עלולות להיות שגויות או חסרות.</p>
   <p class="muted">פרטיות: במכשיר נשמרים הנקודות והנחלים שבחרתם וסף ההתראה. אם מפעילים התראות, נשמרת גם הרשמת ה-Push. דיווח שיטפון שולח מיקום, שעת דיווח ותמונה לגיליון פרטי של בעל האתר (לא למאגר הציבורי). התמונות עשויות לשמש לשיפור המודל. שם וטלפון לא נדרשים. ספירת ביקורים אנונימית (GoatCounter), ללא עוגיות וללא פרטים אישיים.</p>
-  <p class="muted">שמות הנחלים: OpenStreetMap (ODbL), GeoNames (CC BY 4.0), Wikidata (CC0). נתוני גשם: השירות המטאורולוגי.</p>
+  <p class="muted">שמות ומסלולי הנחלים: <a href="https://www.openstreetmap.org/copyright" rel="noopener" target="_blank">© OpenStreetMap contributors</a> (ODbL), GeoNames (CC BY 4.0), Wikidata (CC0).</p>
+  <p class="muted"><a href="https://open-meteo.com/" rel="noopener" target="_blank">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener" target="_blank">CC BY 4.0</a>), כולל מודלי DWD ICON ו-ECMWF דרך Open-Meteo.</p>
+  <p class="muted">החישוב עשוי להסתמך בין השאר על נתוני מכ״ם ותחנות מטאורולוגיות שמקורם ב<a href="https://ims.gov.il/he/ObservationDataAPI" rel="noopener" target="_blank">שירות המטאורולוגי לישראל</a>. השירות המטאורולוגי אינו נושא באחריות לתחזיות או להסתברויות המוצגות כאן, שהן עיבוד עצמאי של הפרויקט.</p>
+  <p class="muted">נתוני אימון למודל המדבר: <a href="https://chrsdata.eng.uci.edu/" rel="noopener" target="_blank">PDIR-Now</a> (CHRS, University of California, Irvine); <a href="https://power.larc.nasa.gov/" rel="noopener" target="_blank">NASA POWER</a>.</p>
   <label class="gate-cb" for="gate-hide"><input type="checkbox" id="gate-hide"> <span>אל תציג הודעה זאת יותר</span></label>
   <button type="button" class="btn" id="gate-ok">הבנתי, זה כלי עזר בלבד</button>
  </div>
 </div>
 <header><span>🌊 שיטפון בדרך</span><small id="hdr"></small></header>
+<p class="ims-credit" id="ims-credit"><a class="ims-credit-full" href="https://ims.gov.il/he/ObservationDataAPI" rel="noopener" target="_blank">החישוב עשוי להסתמך בין השאר על נתוני מכ״ם ותחנות מטאורולוגיות שמקורם בשירות המטאורולוגי לישראל. השירות המטאורולוגי אינו נושא באחריות לתחזיות או להסתברויות המוצגות כאן, שהן עיבוד עצמאי של הפרויקט.</a><a class="ims-credit-short" href="https://ims.gov.il/he/ObservationDataAPI" rel="noopener" target="_blank">מקור אפשרי לנתוני מכ״ם ותחנות: השירות המטאורולוגי לישראל, שאינו נושא באחריות לתחזיות האתר.</a></p>
 <main>
 <section id="p-map" class="page on"><div id="map"></div>
  <div class="ctl" id="ctl">רקע: <select id="base"><option value="topo">טופוגרפיה</option><option value="sat">לוויין</option></select><br><span class="muted" id="fc-label">תחזית 48 שעות</span><br><label><input type="checkbox" id="basins" checked> אגני ניקוז</label><br><label><input type="checkbox" id="per"> הצג נחלי איתן</label><br><label><input type="checkbox" id="north" checked> נחלי צפון ומרכז</label><div class="muted snap-hint" id="snap-hint">הצמדה לערוץ הקרוב עד 80 מ׳ (100 מ׳ במגע). מחוץ לאזור הכיסוי אין תחזית.</div></div>
@@ -35,7 +39,10 @@
  <div class="card"><h3>התראות לטלפון</h3><button type="button" class="btn" id="enable-push">הפעל התראות במכשיר הזה</button> <button type="button" class="btn alt" id="test-push">שלח בדיקה</button> <button type="button" class="btn alt" id="unsubscribe-all">בטל את כל ההתראות</button><div id="pst" class="muted"></div>
  <div class="muted">באייפון: יש להוסיף קודם את האתר למסך הבית (שיתוף ← "הוסף למסך הבית").</div>
  <p class="muted">פרטיות: נשמרים הרשמת ה-Push, הנקודות או הנחלים שנבחרו, וסף ההתראה. דיווח שומר מיקום, שעה ותמונה אצל בעל האתר בלבד. התמונות עשויות לשמש לשיפור המודל. אין חובה למסור שם או טלפון. ספירת ביקורים אנונימית (GoatCounter), ללא עוגיות וללא פרטים אישיים.</p>
- <p class="muted">שמות הנחלים: OpenStreetMap (ODbL), GeoNames (CC BY 4.0), Wikidata (CC0). נתוני גשם: השירות המטאורולוגי.</p>
+ <p class="muted">שמות ומסלולי הנחלים: <a href="https://www.openstreetmap.org/copyright" rel="noopener" target="_blank">© OpenStreetMap contributors</a> (ODbL), GeoNames (CC BY 4.0), Wikidata (CC0).</p>
+ <p class="muted"><a href="https://open-meteo.com/" rel="noopener" target="_blank">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener" target="_blank">CC BY 4.0</a>), כולל מודלי DWD ICON ו-ECMWF דרך Open-Meteo.</p>
+ <p class="muted">החישוב עשוי להסתמך בין השאר על נתוני מכ״ם ותחנות מטאורולוגיות שמקורם ב<a href="https://ims.gov.il/he/ObservationDataAPI" rel="noopener" target="_blank">שירות המטאורולוגי לישראל</a>. השירות המטאורולוגי אינו נושא באחריות לתחזיות או להסתברויות המוצגות כאן, שהן עיבוד עצמאי של הפרויקט.</p>
+ <p class="muted">נתוני אימון למודל המדבר: <a href="https://chrsdata.eng.uci.edu/" rel="noopener" target="_blank">PDIR-Now</a> (CHRS, University of California, Irvine); <a href="https://power.larc.nasa.gov/" rel="noopener" target="_blank">NASA POWER</a>.</p>
  <p class="muted" dir="ltr">Copernicus DEM GLO-30: © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved</p></div>
 </section>
 <section id="p-report" class="page">
