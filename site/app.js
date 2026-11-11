@@ -28,7 +28,7 @@ function addNameAttribution(target){
  box._names=1;
  box.addAttribution('שמות ומסלולי נחלים: <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
  box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
- box.addAttribution('נתוני גשם: השירות המטאורולוגי');
+ box.addAttribution('<a href="https://open-meteo.com/" rel="noopener noreferrer">Weather data by Open-Meteo.com</a>');
  box.addAttribution('גבולות: <a href="https://www.naturalearthdata.com/" rel="noopener noreferrer">Natural Earth</a>; קטע הערבה: <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
  box.addAttribution('גאולוגיה: <a href="https://macrostrat.org/" rel="noopener noreferrer">Macrostrat</a> (CC-BY)');
 }
