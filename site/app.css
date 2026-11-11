@@ -82,6 +82,12 @@ fieldset{border:1px solid #ccd;border-radius:8px;margin:8px 0;padding:8px}
 .ui-chip[hidden]{display:none}
 .ui-chip-ctl{position:absolute;top:10px;right:10px;z-index:500}
 .ui-chip-legend{position:absolute;bottom:10px;right:10px;z-index:500}
+.hot{position:absolute;top:10px;left:10px;z-index:500;background:#fffe;padding:6px 8px;border-radius:8px;font-size:12px;max-width:240px}
+.hot-list{max-height:34vh;overflow:auto;margin-top:2px}
+.hot-list .muted{font-size:12px}
+.hot-item{display:flex;justify-content:space-between;gap:8px;width:100%;border:0;background:none;padding:3px 0;font:inherit;text-align:right;cursor:pointer;color:#123;border-top:1px solid #0001}
+.hot-p{font-weight:700;color:#7b0000;flex:none}
+.ui-chip-hot{position:absolute;top:10px;left:10px;z-index:500}
 .ui-chip-legal{position:fixed;bottom:64px;right:8px;z-index:650;width:26px;height:26px;padding:0;border-radius:50%;font-size:15px}
 .ui-chip-snap{display:block;margin-top:4px;padding:1px 8px;font-size:11px;box-shadow:none;background:#e4eef3}
 .ui-attr-wrap{pointer-events:auto;clear:both;float:left;display:flex;align-items:flex-start;gap:2px;margin:0 0 0 10px}
@@ -112,6 +118,10 @@ body.hid-legal .ui-chip-legend{bottom:40px}
  .ui-attr-wrap .leaflet-control-attribution{font-size:9px;max-width:55vw}
  .ui-x{width:18px;height:18px;line-height:16px;font-size:13px}
  .ui-chip{font-size:11px;padding:3px 8px}
+ .hot{top:6px;left:6px;max-width:34vw;font-size:10.5px;padding:4px 6px}
+ .hot-list{max-height:22vh}
+ .hot-list .muted{font-size:10px}
+ .ui-chip-hot{top:6px;left:6px}
 }
 .leaflet-popup-close-button{right:auto!important;left:0}
 body.hid-legal .ui-chip-legend{right:40px}

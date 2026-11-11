@@ -207,6 +207,7 @@ async function init(){
  if(typeof bindTap==='function')bindTap(map);
  if(typeof drawMyPoints==='function')drawMyPoints();
  if(typeof resnapNorthPoints==='function')resnapNorthPoints();
+ if(typeof renderHot==='function'){renderHot();$('#per').addEventListener('change',renderHot);if(north)north.addEventListener('change',renderHot);}
 }
 async function loadRisk(){
  const g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
