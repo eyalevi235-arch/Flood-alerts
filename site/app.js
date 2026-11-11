@@ -29,7 +29,7 @@ function addNameAttribution(target){
  box.addAttribution('שמות ומסלולי נחלים: <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
  box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
  box.addAttribution('נתוני גשם: השירות המטאורולוגי');
- box.addAttribution('גבולות: <a href="https://www.naturalearthdata.com/" rel="noopener noreferrer">Natural Earth</a>');
+ box.addAttribution('גבולות: <a href="https://www.naturalearthdata.com/" rel="noopener noreferrer">Natural Earth</a>; קטע הערבה: <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
  box.addAttribution('גאולוגיה: <a href="https://macrostrat.org/" rel="noopener noreferrer">Macrostrat</a> (CC-BY)');
 }
 function northOn(){const n=$('#north');return !n||n.checked;}
@@ -117,7 +117,7 @@ async function loadNorth(){
  northL.setStyle(northStyle);
  raiseOverlays();
 }
-// Israel land border (Natural Earth, public domain): bold yellow on a thin dark casing. Above basins, below streams/points/popups.
+// Israel land border (Natural Earth, public domain; Arava stretch from OSM, ODbL – tools/splice_osm_arava_border.py): bold yellow on a thin dark casing. Above basins, below streams/points/popups.
 function loadBorder(){
  jget('data/israel_border.geojson',null).then(g=>{
   if(!g||!Array.isArray(g.features)||!map)return;
@@ -234,7 +234,8 @@ async function init(){
  if(typeof renderHot==='function'){renderHot();$('#per').addEventListener('change',renderHot);if(north)north.addEventListener('change',renderHot);}
 }
 async function loadRisk(){
- const g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
+ let g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
+ g0=applyBasinDisplayOverride(g0,await jget('data/basins_display_outside.geojson',null));
  const features=(g0&&Array.isArray(g0.features)?g0.features:[]).filter(x=>$('#per').checked||!(x.properties&&x.properties.perennial));
  const g={...g0,features};
  if(riskL)map.removeLayer(riskL);
