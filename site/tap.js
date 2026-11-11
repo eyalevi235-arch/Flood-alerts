@@ -544,3 +544,63 @@ function resnapNorthPoints() {
     return changed;
   });
 }
+// Panel: streams above 70% now (same segment probability the tap popup shows: segment_risk*.json p).
+// Light: only the two risk arrays load first; channel names/geometry load only if something is above 70%.
+var HOT_THR = 0.7, hotGen = 0;
+function hotRiskOnly() {
+  function j(u) { return fetch(u, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
+  return Promise.all([j('data/segment_risk.json'), northEnabled() ? j('data/segment_risk_nondesert.json') : Promise.resolve(null)]);
+}
+function anyHot(r) {
+  if (!r || !r.p) return false;
+  for (var i = 0; i < r.p.length; i++) { var v = Number(r.p[i]); if (isFinite(v) && v >= HOT_THR) return true; }
+  return false;
+}
+function hotGroups(data) {
+  var groups = {}, out = [];
+  linesForSnap(data).forEach(function (line) {
+    var north = line.region === 'north';
+    var r = north ? data.northRisk : data.risk;
+    if (!r || !r.p || line.id < 0 || line.id >= r.p.length) return;
+    var p = Number(r.p[line.id]);
+    if (!isFinite(p) || p < HOT_THR) return;
+    var titled = segmentTitle(line);
+    var label = titled ? titled.title : unnamedLabel(line, data.nahal || {});
+    var key = titled ? 'n:' + label : 'u:' + (line.region || 'desert') + ':' + line.basin + ':' + label;
+    var g = groups[key];
+    if (!g) { g = groups[key] = {label: label, p: p, s: 90, w: 180, n: -90, e: -180}; out.push(g); }
+    if (p > g.p) g.p = p;
+    line.coords.forEach(function (c) {
+      if (c[1] < g.s) g.s = c[1]; if (c[1] > g.n) g.n = c[1];
+      if (c[0] < g.w) g.w = c[0]; if (c[0] > g.e) g.e = c[0];
+    });
+  });
+  out.sort(function (a, b) { return b.p - a.p; });
+  return out;
+}
+function renderHot() {
+  var box = document.getElementById('hot-list');
+  if (!box || typeof map === 'undefined' || !map) return;
+  var gen = ++hotGen;
+  function msg(t) { while (box.firstChild) box.removeChild(box.firstChild); box.appendChild(el('div', 'muted', t)); }
+  hotRiskOnly().then(function (rr) {
+    if (gen !== hotGen) return null;
+    if (!anyHot(rr[0]) && !anyHot(rr[1])) { msg('אין כרגע נחלים מעל 70%'); return null; }
+    return loadTapData().then(function (data) {
+      if (gen !== hotGen) return;
+      var list = hotGroups(data);
+      if (!list.length) { msg('אין כרגע נחלים מעל 70%'); return; }
+      while (box.firstChild) box.removeChild(box.firstChild);
+      list.slice(0, 40).forEach(function (g) {
+        var b = el('button', 'hot-item');
+        b.type = 'button';
+        b.appendChild(el('span', 'hot-name', g.label));
+        b.appendChild(el('span', 'hot-p', Math.round(g.p * 100) + '%'));
+        b.addEventListener('click', function () {
+          map.fitBounds([[g.s, g.w], [g.n, g.e]], {maxZoom: 14, padding: [30, 30]});
+        });
+        box.appendChild(b);
+      });
+    });
+  }).catch(function () { if (gen === hotGen) msg('לא הצלחנו לטעון את רשימת הנחלים.'); });
+}

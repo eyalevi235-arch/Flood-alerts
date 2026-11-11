@@ -210,6 +210,7 @@ async function init(){
  if(typeof bindTap==='function')bindTap(map);
  if(typeof drawMyPoints==='function')drawMyPoints();
  if(typeof resnapNorthPoints==='function')resnapNorthPoints();
+ if(typeof renderHot==='function'){renderHot();$('#per').addEventListener('change',renderHot);if(north)north.addEventListener('change',renderHot);}
 }
 async function loadRisk(){
  const chosen=$('#date').value;
