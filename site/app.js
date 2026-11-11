@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s);
 const SRC=new URLSearchParams(location.search).get('src')==='demo'?'demo':'live';
 let UID=localStorage.uid;
 if(!/^u[a-z0-9]{6,20}$/.test(UID||'')){UID='u'+Math.random().toString(36).slice(2,10);localStorage.uid=UID;}
-let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL,baseL,borderL;
+let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL,baseL,borderL,jordanCtxL;
 const BASEMAPS={
  topo:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), GIS User Community',maxZoom:18,maxNativeZoom:16},
  sat:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, Maxar, Earthstar Geographics, GIS User Community',maxZoom:18,maxNativeZoom:17}
@@ -26,7 +26,7 @@ function addNameAttribution(target){
  var box=target.attributionControl;
  if(box._names)return;
  box._names=1;
- box.addAttribution('<a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
+ box.addAttribution('שמות ומסלולי נחלים: <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
  box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
  box.addAttribution('נתוני גשם: השירות המטאורולוגי');
  box.addAttribution('גבולות: <a href="https://www.naturalearthdata.com/" rel="noopener noreferrer">Natural Earth</a>');
@@ -87,6 +87,7 @@ function raiseOverlays(){
  if(baseL)baseL.bringToBack();
  if(riskL&&map.hasLayer(riskL))riskL.bringToFront();
  if(borderL)borderL.bringToFront();
+ if(jordanCtxL)jordanCtxL.bringToFront();
  if(streamL)streamL.bringToFront();
  if(northL)northL.bringToFront();
  if(vpL)vpL.eachLayer(l=>{if(l.bringToFront)l.bringToFront();});
@@ -123,6 +124,14 @@ function loadBorder(){
   const casing=L.geoJSON(g,{interactive:false,style:()=>({color:'#1a1a1a',weight:6,opacity:.55,lineCap:'round',lineJoin:'round'})});
   const line=L.geoJSON(g,{interactive:false,style:()=>({color:'#FFD400',weight:3.5,opacity:1,lineCap:'round',lineJoin:'round'})});
   borderL=L.featureGroup([casing,line]).addTo(map);
+  raiseOverlays();
+ });
+}
+// Upper Jordan + Dan context lines (no model segment, no probability): always on, fixed blue, not tappable, below the stream layers.
+function loadJordanContext(){
+ jget('data/rivers_context_upper_jordan.geojson',null).then(g=>{
+  if(!g||!Array.isArray(g.features)||!map)return;
+  jordanCtxL=L.geoJSON(g,{interactive:false,style:()=>({color:'#0b4f9c',weight:3,opacity:.9,lineCap:'round',lineJoin:'round'})}).addTo(map);
   raiseOverlays();
  });
 }
@@ -211,6 +220,7 @@ async function init(){
  loadNorth();
  await loadRisk();
  loadBorder();
+ loadJordanContext();
  VPS=await jget('data/viewpoints.json',[]);
  if(!Array.isArray(VPS))VPS=[];
  if(SRC==='demo'){const A=await allAlerts();const m={};(A.alerts||[]).forEach(a=>{if(a&&a.point)m[a.point]=a;});VPS.forEach(v=>{if(m[v.id])v.current=m[v.id];});}
