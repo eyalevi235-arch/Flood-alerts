@@ -93,6 +93,11 @@ def _main():
         _fdur.write_from_job(fe, g, now, R, nd_info, SITE)
     except Exception:
         traceback.print_exc(); print('flow duration failed')
+    try:
+        import fans as _fans
+        _fans.write_from_job(fe, now, SITE)
+    except Exception:
+        traceback.print_exc(); print('alluvial fans failed')
     # static viewpoints.json = viewpoints.csv + historical first waves + current alert (replaces /api/viewpoints)
     vp=pd.read_csv(f'{ROOT}/data/viewpoints.csv').fillna(''); fw=pd.read_csv(f'{ROOT}/data/first_wave_times.csv').fillna(''); al={a['point']:a for a in A}; V=[]
     for _,v in vp.iterrows():
