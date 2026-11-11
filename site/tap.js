@@ -325,6 +325,11 @@ function segDuration(data, seg, region) {
   var label = (Array.isArray(r.cat_labels) && cat != null) ? r.cat_labels[cat] : (r.cat_labels && cat != null ? r.cat_labels[String(cat)] : null);
   return {h: Number(h), lo: lo == null ? null : Number(lo), hi: hi == null ? null : Number(hi), label: label || null};
 }
+// Duration shows only at/above the site's alert threshold for the region (app.js thrFor: config desert_alert_thr, north/center, or the user's own).
+function atAlertThr(prob, region) {
+  if (prob == null || !isFinite(prob) || typeof thrFor !== 'function') return false;
+  return prob >= thrFor({region: region});
+}
 function durHours(h) { return h < 1 ? 'פחות משעה' : 'כ-' + Math.round(h) + ' שעות'; }
 function appendDuration(root, d) {
   if (!d || !isFinite(d.h)) return;
@@ -400,7 +405,7 @@ function fillSegment(root, hit, data, tol) {
       line += '.';
       root.appendChild(el('div', null, line));
     }
-    appendDuration(root, segDuration(data, hit.seg, hit.region));
+    if (atAlertThr(prob, hit.region === 'north' ? 'north_center' : 'desert')) appendDuration(root, segDuration(data, hit.seg, hit.region));
     if (hit.region === 'north' && risk.strong) root.appendChild(el('div', null, 'יש גם סימן לשיטפון חזק יותר בתחנה.'));
     if (prob >= 0.05 && risk.when) {
       var until = risk.lead != null ? risk.lead : (risk.when.getTime() - Date.now()) / 3600000;
@@ -465,7 +470,7 @@ function paintBasin(box, lat, lon, data, nearest) {
     box.appendChild(el('div', null, 'סיכוי לשיטפון באגן: ' + (prob == null ? '—' : Math.round(prob * 100) + '%') + (prob == null ? '' : ' · ' + riskClass(prob))));
     var rain = p.event_rain_mm;
     box.appendChild(el('div', null, 'גשם חזוי באגן: ' + (rain == null || rain === '' ? '—' : rain) + ' מ"מ'));
-    if (prob != null && prob >= 0.05) appendDuration(box, basinDuration(data, p));
+    if (atAlertThr(prob, data.northSids && data.northSids[String(p.sid)] ? 'north_center' : 'desert')) appendDuration(box, basinDuration(data, p));
     if (near) box.appendChild(el('div', 'muted', 'הערוץ המסומן הקרוב: ' + near.name + ', במרחק ' + distLabel(near.distM) + '.'));
     var saved = loadMyPoints().some(function (x) { return x.seg == null && x.sid === String(p.sid) && Math.abs(x.lat - lat) < 0.002 && Math.abs(x.lon - lon) < 0.002; });
     var btn = el('button', 'btn', saved ? 'הנקודה הזו כבר שמורה' : 'שמור כנקודה שלי');
