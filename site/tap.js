@@ -57,8 +57,10 @@ function loadTapData() {
     geo('data/channel_extensions_nondesert.geojson').catch(function () { return {features: []}; }),
     // Flow duration (model estimate). Missing until the first hourly run writes them: null, no error.
     fetch('data/segment_duration.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-    fetch('data/segment_duration_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    fetch('data/segment_duration_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    fetch('data/basins_display_outside.geojson', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
   ]).then(function (pair) {
+    pair[0] = applyBasinDisplayOverride(pair[0], pair[14]);
     var nahal = {};
     (pair[0].features || []).forEach(function (f) {
       var p = f.properties || {};

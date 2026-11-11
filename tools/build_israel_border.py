@@ -7,6 +7,7 @@ NE puts the Golan Heights inside ISR, so the Syria part follows the 1974 ceasefi
 
 Usage: python tools/build_israel_border.py SRC.geojson [OUT] [--no-gaza-egypt]
 SRC: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_0_countries.geojson
+Then run tools/splice_osm_arava_border.py to replace the Arava stretch (NE is 1-4 km off there) with OSM (ODbL).
 """
 import json, sys
 from shapely.geometry import shape, mapping

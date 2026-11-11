@@ -65,6 +65,11 @@ var dlines = dgeo.features.map(function (f) { return {coords: f.geometry.coordin
 assert(dgeo.desert_geom_version === 'v8p' && ctx.DESERT_GEOM_VERSION === 'v8p', 'desert file is stamped v8p');
 var dfull = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(root, 'data/channel_segments.json.gz'))).toString('utf8')).segments;
 var dvis = dfull.filter(function (s) { return Number(s.hidden) !== 1; }).length;
+// Display-only removal outside the border (Syria/Jordan): ids listed in basins_display_outside.geojson are not drawn.
+var outsideOv = fs.existsSync(path.join(root, 'site/data/basins_display_outside.geojson')) ? JSON.parse(fs.readFileSync(path.join(root, 'site/data/basins_display_outside.geojson'), 'utf8')) : null;
+var outsideIds = (outsideOv && outsideOv.removed_segment_ids && outsideOv.removed_segment_ids.desert) || [];
+dvis -= outsideIds.length;
+assert(!dgeo.features.some(function (f) { return outsideIds.indexOf(Number(f.properties.id)) >= 0; }), 'no outside-removed id in the desert display file (' + outsideIds.length + ')');
 assert(dlines.length === dvis, 'desert display count equals non-hidden segments (' + dvis + '), got ' + dlines.length);
 var dk = ctx.resnapDesertPoint({id: 'Mdesert01', seg: 12, sid: '55170', lat: 30.95, lon: 35.08}, dlines, 'v8p');
 assert(dk.kind === 'stamped' && dk.point.seg === 12 && dk.point.dg_geom_version === 'v8p', 'existing desert seg 12 is kept and stamped');
