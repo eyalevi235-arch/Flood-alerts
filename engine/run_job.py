@@ -28,7 +28,16 @@ def _clean(o):
         try: return _clean(o.item())
         except Exception: return o
     return o
-def jsave(p,o,indent=None): json.dump(_clean(o),open(p+'.tmp','w'),ensure_ascii=False,indent=indent,default=str,allow_nan=False,separators=None if indent else (',',':')); os.replace(p+'.tmp',p)
+# Public files under site/ carry no rain amounts: drop rain*/…_rain… and …_mm… keys (the engine still uses rain internally).
+_NO_PUBLIC=re.compile(r'(^|_)rain|(^|_)mm(_|$)')
+def _public(o):
+    if isinstance(o,dict): return {k:_public(v) for k,v in o.items() if not (isinstance(k,str) and _NO_PUBLIC.search(k))}
+    if isinstance(o,list): return [_public(v) for v in o]
+    return o
+def jsave(p,o,indent=None):
+    o=_clean(o)
+    if os.path.abspath(p).startswith(os.path.abspath(SITE)+os.sep): o=_public(o)
+    json.dump(o,open(p+'.tmp','w'),ensure_ascii=False,indent=indent,default=str,allow_nan=False,separators=None if indent else (',',':')); os.replace(p+'.tmp',p)
 norm=lambda x:str(x).replace('נחל ','').strip()
 def _main():
     t0=time.time(); now=pd.Timestamp.now('UTC').tz_localize(None).floor('h'); g=None; err=None
@@ -258,13 +267,10 @@ def push_payload(a):
     except (TypeError,ValueError): return None
     if pct<0 or pct>100: return None
     name=_clip(a.get('name'),80) or a['point']; nahal=_clip(a.get('nahal'),80) or 'נחל'
-    h=a.get('hours_until_first_wave'); rs=a.get('rain_summary') if isinstance(a.get('rain_summary'),dict) else {}
+    h=a.get('hours_until_first_wave')
     when=f"בעוד ~{_clip(h,8)} שעות" if h is not None else 'בלי שעת הגעה'
-    rain=_clip(rs.get('basin_mean_mm'),8) or '?'; intensity=_clip(rs.get('max_cell_mm_h'),8) or '?'
     title=_clip(('הערכה: ' if a.get('estimate') else '')+f"סיכוי גבוה לשיטפון ב{nahal} ({pct}%)",120)
-    where='גשם במעלה הערוץ' if a.get('channel') else 'גשם ממוצע באגן'
-    extra='' if a.get('channel') else f", עוצמה מרבית {intensity} מ\"מ/שעה"
-    body=_clip(('הערכה בלבד. ' if a.get('estimate') else '')+f"הגל צפוי להגיע לנקודה {name} {when} · {where} {rain} מ\"מ{extra}",240)
+    body=_clip(('הערכה בלבד. ' if a.get('estimate') else '')+f"הגל צפוי להגיע לנקודה {name} {when}",240)
     return dict(title=title,body=body,url='./#alerts')
 def prune_remote(endpoints):
     u=_store_url(); token=os.environ.get('SUBSCRIPTIONS_TOKEN','').strip()

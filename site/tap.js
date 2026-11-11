@@ -313,7 +313,7 @@ function segRisk(data, seg, region) {
   var em = r.em ? r.em[seg] : -1;
   var when = null;
   if (em != null && em !== -1 && r.t0) when = new Date((r.t0 + em * 60) * 1000);
-  return {p: Number(r.p[seg]), rain: r.rain ? Number(r.rain[seg]) : null, lead: r.lead ? r.lead[seg] : null, tp: r.tp ? r.tp[seg] : null, tm: r.tm ? r.tm[seg] : null, when: when, strong: r.strong ? r.strong[seg] : 0};
+  return {p: Number(r.p[seg]), lead: r.lead ? r.lead[seg] : null, tp: r.tp ? r.tp[seg] : null, tm: r.tm ? r.tm[seg] : null, when: when, strong: r.strong ? r.strong[seg] : 0};
 }
 var DUR_DISCLAIMER = 'הערכת משך זרימה בלבד; שגיאה טיפוסית כ-9 שעות בנחלי המדבר וכ-20 שעות בצפון ובמרכז.';
 function segDuration(data, seg, region) {
@@ -397,7 +397,6 @@ function fillSegment(root, hit, data, tol) {
   } else {
     var prob = risk.p;
     root.appendChild(el('div', null, 'סיכוי לשיטפון בנקודה: ' + Math.round(prob * 100) + '% · ' + riskClass(prob)));
-    root.appendChild(el('div', null, 'גשם חזוי במעלה: ' + (risk.rain == null || !isFinite(risk.rain) ? '—' : risk.rain) + ' מ"מ'));
     var medH = risk.tm != null ? risk.tm / 60 : null, p10H = risk.tp != null ? risk.tp / 60 : null;
     if (medH != null) {
       var line = 'הערכה בלבד: זמן הזרימה האופייני עד לקצה המקטע הוא ' + (fmtHours(medH) || '—');
@@ -468,8 +467,6 @@ function paintBasin(box, lat, lon, data, nearest) {
     box.appendChild(el('b', null, txt(p.name_he || p.main_nahal, 'אגן')));
     box.appendChild(el('div', 'muted', 'הנקודה אינה על ערוץ מסומן — מוצג לפי האגן'));
     box.appendChild(el('div', null, 'סיכוי לשיטפון באגן: ' + (prob == null ? '—' : Math.round(prob * 100) + '%') + (prob == null ? '' : ' · ' + riskClass(prob))));
-    var rain = p.event_rain_mm;
-    box.appendChild(el('div', null, 'גשם חזוי באגן: ' + (rain == null || rain === '' ? '—' : rain) + ' מ"מ'));
     if (atAlertThr(prob, data.northSids && data.northSids[String(p.sid)] ? 'north_center' : 'desert')) appendDuration(box, basinDuration(data, p));
     if (near) box.appendChild(el('div', 'muted', 'הערוץ המסומן הקרוב: ' + near.name + ', במרחק ' + distLabel(near.distM) + '.'));
     var saved = loadMyPoints().some(function (x) { return x.seg == null && x.sid === String(p.sid) && Math.abs(x.lat - lat) < 0.002 && Math.abs(x.lon - lon) < 0.002; });
@@ -532,7 +529,7 @@ async function appendMyPointAlerts(host) {
       return;
     }
     var onChannel = isFinite(parseInt(p.seg, 10));
-    var risk = onChannel ? (segRisk(data, p.seg, p.region) || {p: 0, rain: null, tm: null}) : null;
+    var risk = onChannel ? (segRisk(data, p.seg, p.region) || {p: 0, tm: null}) : null;
     var prop = onChannel ? null : (bySid[String(p.sid)] || {});
     var prob = onChannel ? (isFinite(risk.p) ? risk.p : 0) : Number(prop.risk);
     if (!isFinite(prob)) prob = 0;
@@ -540,8 +537,6 @@ async function appendMyPointAlerts(host) {
     card.appendChild(el('h3', null, txt(p.name, 'הנקודה שלי') + (prob >= (PREFS && PREFS.threshold || 0.3) ? ' · סיכוי מעל הסף' : '')));
     card.appendChild(el('div', 'muted', onChannel ? (p.region === 'north_center' ? 'מודל צפון/מרכז — פחות מדויק, מבוסס תחנות הידרומטריות' : 'נקודה על ערוץ. ההגעה היא הערכה לקצה המקטע.') : 'נקודה שאינה על ערוץ מסומן. ההערכה היא לפי האגן.'));
     card.appendChild(el('div', null, (onChannel ? 'סיכוי בנקודה: ' : 'סיכוי באגן: ') + Math.round(prob * 100) + '% · ' + riskClass(prob)));
-    var rain = onChannel ? risk.rain : prop.event_rain_mm;
-    card.appendChild(el('div', null, (onChannel ? 'גשם חזוי במעלה: ' : 'גשם חזוי באגן: ') + (rain == null || rain === '' || !isFinite(Number(rain)) && rain !== 0 ? '—' : rain) + ' מ"מ'));
     if (onChannel && risk.tm != null) card.appendChild(el('div', 'muted', 'זמן זרימה משוער עד לקצה המקטע: ' + fmtHours(risk.tm / 60) + '.'));
     host.appendChild(card);
   });

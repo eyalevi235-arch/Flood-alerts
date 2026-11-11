@@ -236,9 +236,7 @@ function riskPopup(p){
  box.appendChild(el('b',null,txt(p.name_he||p.main_nahal,'אגן')));
  const risk=num(p.risk),raw=num(p.risk_raw);
  box.appendChild(el('div',null,'סיכוי: '+(risk!=null?Math.round(risk*100)+'%':(raw!=null?Math.round(raw*100)+'% (גולמי)':'—'))));
- if(p.eta_peak_rain)box.appendChild(el('div',null,'שיא גשם צפוי: '+txt(p.eta_peak_rain)));
- const rain=num(p.event_rain_mm),area=num(p.area_dem);
- box.appendChild(el('div',null,'גשם באירוע: '+(rain!=null?String(rain):'—')+' מ"מ'));
+ const area=num(p.area_dem);
  box.appendChild(el('div',null,'שטח: '+Math.round(area||0)+' קמ"ר'));
  if(p.perennial)box.appendChild(el('div',null,'נחל איתן'));
  return box;
@@ -351,21 +349,6 @@ function renderSet(){
  if(th&&thv){th.value=String(Math.round(PREFS.threshold*100));thv.textContent=th.value;}
  if(typeof renderMyPointList==='function')renderMyPointList();
 }
-function distEl(c){
- if(!c||typeof c!=='object')return null;
- const entries=Array.isArray(c)?c.map((x,i)=>[x&&x.label!=null?x.label:i,x&&(x.mm!=null?x.mm:x.value)]):Object.entries(c);
- const rows=entries.filter(x=>x[0]!=null).slice(0,8);
- if(!rows.length)return null;
- const max=Math.max(...rows.map(x=>Number(x[1])||0))||1;
- const det=el('details');det.appendChild(el('summary',null,'פיזור הגשם באגן לפי זמן זרימה לנקודה'));
- rows.forEach(([k,v])=>{
-  const row=el('div','dist-row');row.appendChild(el('span','dist-k',txt(k)));
-  const slot=el('span','bar-slot');const bar=el('span','bar bar-w-'+Math.max(0,Math.min(10,Math.round((Number(v)||0)/max*10))));
-  slot.appendChild(bar);row.appendChild(slot);row.appendChild(el('span',null,typeof v==='number'?v.toFixed(1):txt(v)));
-  det.appendChild(row);
- });
- return det;
-}
 async function loadAlerts(){
  const L=await allAlerts();const alerts=Array.isArray(L.alerts)?L.alerts:[];
  const st={};PREFS.streams.forEach(s=>st[norm(s)]=s);const mine=[];
@@ -381,15 +364,13 @@ async function loadAlerts(){
  if(!mine.length && !(typeof loadMyPoints==='function' && loadMyPoints().length)){host.appendChild(el('div','card','אין נקודות מועדפות. סמנו ⭐ בנקודות, הוסיפו נחל, או הקישו על המפה ושמרו נקודה.'));return;}
  const conf={low:'נמוכה',medium:'בינונית',high:'גבוהה'};
  for(const a of mine){
-  const r=a.rain_summary||{};const prob=num(a.prob)||0;const cls=a.alert?(prob>=.5?'hi':'mid'):'';
+  const prob=num(a.prob)||0;const cls=a.alert?(prob>=.5?'hi':'mid'):'';
   const card=el('div','card al'+(cls?' '+cls:''));
   const title=a.alert?`סיכוי גבוה לשיטפון ב${txt(a.nahal)}, הגל צפוי להגיע לנקודה "${txt(a.name)}" בעוד ${fmtH(num(a.hours_until_first_wave))}`:`${txt(a.name)} – אין התראה`;
   card.appendChild(el('h3',null,title));
   if(a.via==='stream'&&a.stream)card.appendChild(el('div','muted','במעקב דרך: '+txt(a.stream)));
   card.appendChild(el('div',null,'סיכוי: '+Math.round(prob*100)+'% (סף '+Math.round(thrFor(a)*100)+'%) · ודאות: '+(conf[a.confidence]||'—')));
   card.appendChild(el('div',null,'גל ראשון: '+txt(a.eta_first_wave,'—')+' · שיא: '+txt(a.eta_peak,'—')));
-  card.appendChild(el('div','muted','גשם ממוצע באגן: '+txt(r.basin_mean_mm,'—')+' מ"מ · עוצמה מרבית: '+txt(r.max_cell_mm_h,'—')+' מ"מ/שעה · ספיקת שיא משוערת: '+txt(r.q_peak_m3s,'—')+' מק"ש'));
-  const dist=distEl(r.contributing_by_travel_time);if(dist)card.appendChild(dist);
   host.appendChild(card);
  }
  if(typeof appendMyPointAlerts==='function') await appendMyPointAlerts(host);

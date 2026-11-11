@@ -11,22 +11,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -40,22 +24,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -69,22 +37,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -98,22 +50,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -127,22 +63,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -156,22 +76,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -185,22 +89,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -214,22 +102,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -243,22 +115,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -272,22 +128,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -301,22 +141,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -330,22 +154,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -359,22 +167,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -388,22 +180,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -417,22 +193,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -446,22 +206,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -475,22 +219,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -504,22 +232,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -533,22 +245,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -562,22 +258,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -591,22 +271,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -620,22 +284,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -649,22 +297,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -678,22 +310,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -707,22 +323,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -736,22 +336,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -765,22 +349,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -794,22 +362,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -823,22 +375,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -852,22 +388,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -881,22 +401,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -910,22 +414,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -939,22 +427,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -968,22 +440,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -997,22 +453,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -1026,22 +466,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -1055,22 +479,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
@@ -1084,22 +492,6 @@
    "eta_first_wave": null,
    "eta_peak": null,
    "hours_until_first_wave": null,
-   "rain_summary": {
-    "basin_mean_mm": 0.0,
-    "max_cell_mm_h": 0.0,
-    "runoff_mm": 0.0,
-    "q_peak_m3s": 0.0,
-    "contributing_by_travel_time": {
-     "<1h": 0.0,
-     "1-3h": 0.0,
-     "3-6h": 0.0,
-     "6-12h": 0.0,
-     ">12h": 0.0
-    },
-    "top_rain_cells": [],
-    "cn_source": "curve_number.tif",
-    "model_r24_mm": 0.0
-   },
    "confidence": "low",
    "source": "openmeteo_icon_seamless",
    "issued": "2026-10-31 19:00",
