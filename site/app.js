@@ -169,9 +169,8 @@ function navLinks(lat,lon){
  const w=new URL('https://waze.com/ul');w.searchParams.set('ll',c[0]+','+c[1]);w.searchParams.set('navigate','yes');
  return [[g.href,'ניווט 🧭'],[w.href,'Waze']];
 }
-function dateOk(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);}
 async function init(){
- CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null,subscribe_url:''});
+ CFG=await jget('data/config.json',{vapid_public:'',live:null,subscribe_url:''});
  PREFS=loadPrefs();
  {const dt=num(CFG.desert_alert_thr);if(dt!=null&&dt>=0.05&&dt<=0.9)DESERT_THR=dt;try{OWN_THR=JSON.parse(localStorage.prefs||'{}').threshold!=null;}catch(e){}}
  map=L.map('map',{zoomControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:120,scrollWheelZoom:true,attributionControl:false}).setView([30.9,35.0],8);
@@ -183,10 +182,8 @@ async function init(){
  try{savedBase=localStorage.basemap||'topo';}catch(e){}
  setMainBase(savedBase);
  $('#base').onchange=()=>setMainBase($('#base').value);
- const date=$('#date');clear(date);
- const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
- (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
- date.onchange=loadRisk;$('#per').onchange=()=>{loadRisk();if(northL)northL.setStyle(northStyle);};
+ {const fl=$('#fc-label');if(fl)fl.textContent='תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':'');}
+ $('#per').onchange=()=>{loadRisk();if(northL)northL.setStyle(northStyle);};
  Promise.all([api('data/channel_segments.geojson'),jget('data/channel_extensions_desert.geojson',null)]).then(([g,x])=>{if(x&&Array.isArray(x.features))g.features=g.features.concat(x.features.filter(f=>f.properties&&Number(f.properties.ext)===1));streamL=L.geoJSON(dashSplit(g),{style:f=>({color:'#1565c0',weight:1.6,opacity:.85,dashArray:f.properties&&f.properties._dash?'6 5':null}),interactive:false}).addTo(map)});
  const north=$('#north');
  if(north){
@@ -212,9 +209,7 @@ async function init(){
  if(typeof resnapNorthPoints==='function')resnapNorthPoints();
 }
 async function loadRisk(){
- const chosen=$('#date').value;
- const file=chosen==='live'||!dateOk(chosen)?'data/risk_live.geojson':`data/risk_${chosen}.geojson`;
- const g0=await jget(file,null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
+ const g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
  const features=(g0&&Array.isArray(g0.features)?g0.features:[]).filter(x=>$('#per').checked||!(x.properties&&x.properties.perennial));
  const g={...g0,features};
  if(riskL)map.removeLayer(riskL);
