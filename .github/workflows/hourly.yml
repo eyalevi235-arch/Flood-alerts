@@ -14,6 +14,7 @@ jobs:
     permissions: {contents: write}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with: {ref: main}
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with: {python-version: '3.12', cache: 'pip', cache-dependency-path: requirements.txt}
       - name: Fail-fast strict JSON/GeoJSON check (before model)
@@ -45,7 +46,19 @@ jobs:
             exit 0
           fi
           git commit -m "push state [skip ci]"
-          git push || echo "state commit was not pushed; continuing so the site can still deploy"
+          # Rebase onto latest main before push. During a rebase, "ours" is
+          # upstream and "theirs" is this commit, so --strategy-option=theirs
+          # keeps this run's freshly generated state/push_sent.json on conflict.
+          for i in 1 2 3 4 5; do
+            if git pull --rebase --strategy-option=theirs origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "persist failed (attempt $i/5); retrying..."
+            git rebase --abort 2>/dev/null || true
+            sleep 8
+          done
+          echo "failed to persist push state after 5 attempts"
+          exit 1
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with: {path: site, include-hidden-files: 'true'}
   deploy:
