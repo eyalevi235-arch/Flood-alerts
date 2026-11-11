@@ -109,10 +109,15 @@ function riskClass(p) {
 function metersPerPixel(lat, zoom) {
   return 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
 }
-function snapToleranceMeters(lat, zoom) {
-  // Snap only when the channel is within 60 m and within 25 px (the 20–30 px cap). The smaller distance wins.
-  var screenM = 25 * metersPerPixel(lat, zoom);
-  return Math.min(60, screenM);
+// Snap reach, widened a little from 60 m / 25 px (11.11.26). Touch gets a bit more than a mouse.
+var SNAP_MOUSE = {px: 32, m: 80}, SNAP_TOUCH = {px: 42, m: 100};
+function isCoarsePointer() {
+  try { return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; }
+}
+function snapToleranceMeters(lat, zoom, coarse) {
+  // Snap only when the channel is within both the meter cap and the pixel cap. The smaller distance wins.
+  var c = (coarse == null ? isCoarsePointer() : coarse) ? SNAP_TOUCH : SNAP_MOUSE;
+  return Math.min(c.m, c.px * metersPerPixel(lat, zoom));
 }
 // Geometry stamp for north/center segment ids. Migration uses the 60 m cap, not the zoom-dependent screen cap.
 var ND_GEOM_VERSION = 'v3e';

@@ -49,7 +49,12 @@ assert(app.indexOf('fillOpacity:perennial?0.08:0.1') !== -1, 'basin fill stays l
 assert(app.indexOf('map.removeLayer(northL)') !== -1 && app.indexOf("id=\"north\"") !== -1 || html.indexOf('id="north"') !== -1, 'north toggle removes the layer');
 assert(html.indexOf('id="basins"') !== -1 && app.indexOf('basins_layer') !== -1, 'basin polygon toggle is wired');
 assert(Number((sw.match(/const C='flood-v(\d+)'/)||[])[1]) >= 13, 'service worker cache bumped');
-assert(ctx.snapToleranceMeters(32.5, 8) <= 60 && ctx.snapToleranceMeters(32.5, 16) <= 60, 'snap radius never exceeds 60 m');
+assert(ctx.snapToleranceMeters(32.5, 8, false) <= 80 && ctx.snapToleranceMeters(32.5, 16, false) <= 80, 'mouse snap radius never exceeds 80 m');
+assert(ctx.snapToleranceMeters(32.5, 8, true) <= 100 && ctx.snapToleranceMeters(32.5, 16, true) <= 100, 'touch snap radius never exceeds 100 m');
+assert(ctx.snapToleranceMeters(32.5, 14, true) > ctx.snapToleranceMeters(32.5, 14, false), 'touch reach is wider than mouse reach');
+assert(ctx.snapToleranceMeters(32.5, 14, false) > Math.min(60, 25 * ctx.metersPerPixel(32.5, 14)), 'mouse reach is wider than the old 60 m / 25 px');
+var _near = ctx.closestStreams([{coords: [[35.0, 32.0006], [35.01, 32.0006]]}, {coords: [[35.0, 32.0002], [35.01, 32.0002]]}], 32.0, 35.005, 4);
+assert(_near.length === 2 && _near[0].index === 1 && _near[0].distM < _near[1].distM, 'several streams in range: the nearest comes first');
 
 // Gilboa / Jenin. Inside coverage v2. The published polygons do not contain a Bezeq basin.
 assert(region(32.5, 35.35) === 'nondesert', '32.5, 35.35 is inside the nondesert coverage mask');

@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s);
 const SRC=new URLSearchParams(location.search).get('src')==='demo'?'demo':'live';
 let UID=localStorage.uid;
 if(!/^u[a-z0-9]{6,20}$/.test(UID||'')){UID='u'+Math.random().toString(36).slice(2,10);localStorage.uid=UID;}
-let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL,baseL;
+let CFG,PREFS=loadPrefs(),VPS=[],map,riskL,streamL,vpL,baseL,borderL;
 const BASEMAPS={
  topo:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), GIS User Community',maxZoom:18,maxNativeZoom:16},
  sat:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attr:'© Esri — Esri, Maxar, Earthstar Geographics, GIS User Community',maxZoom:18,maxNativeZoom:17}
@@ -29,6 +29,7 @@ function addNameAttribution(target){
  box.addAttribution('<a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">© OpenStreetMap contributors</a>');
  box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
  box.addAttribution('נתוני גשם: השירות המטאורולוגי');
+ box.addAttribution('גבולות: <a href="https://www.naturalearthdata.com/" rel="noopener noreferrer">Natural Earth</a>');
 }
 function northOn(){const n=$('#north');return !n||n.checked;}
 // North/center fields: `perennial` (model bot) wins over legacy `p`; `hidden`=1 is never drawn.
@@ -84,6 +85,7 @@ function raiseOverlays(){
  if(!map)return;
  if(baseL)baseL.bringToBack();
  if(riskL&&map.hasLayer(riskL))riskL.bringToFront();
+ if(borderL)borderL.bringToFront();
  if(streamL)streamL.bringToFront();
  if(northL)northL.bringToFront();
  if(vpL)vpL.eachLayer(l=>{if(l.bringToFront)l.bringToFront();});
@@ -112,6 +114,16 @@ async function loadNorth(){
  northL._probs=probs;
  northL.setStyle(northStyle);
  raiseOverlays();
+}
+// Israel land border (Natural Earth, public domain): bold yellow on a thin dark casing. Above basins, below streams/points/popups.
+function loadBorder(){
+ jget('data/israel_border.geojson',null).then(g=>{
+  if(!g||!Array.isArray(g.features)||!map)return;
+  const casing=L.geoJSON(g,{interactive:false,style:()=>({color:'#1a1a1a',weight:6,opacity:.55,lineCap:'round',lineJoin:'round'})});
+  const line=L.geoJSON(g,{interactive:false,style:()=>({color:'#FFD400',weight:3.5,opacity:1,lineCap:'round',lineJoin:'round'})});
+  borderL=L.featureGroup([casing,line]).addTo(map);
+  raiseOverlays();
+ });
 }
 function setMainBase(kind){
  kind=basemapKind(kind);
@@ -169,9 +181,8 @@ function navLinks(lat,lon){
  const w=new URL('https://waze.com/ul');w.searchParams.set('ll',c[0]+','+c[1]);w.searchParams.set('navigate','yes');
  return [[g.href,'ניווט 🧭'],[w.href,'Waze']];
 }
-function dateOk(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);}
 async function init(){
- CFG=await jget('data/config.json',{vapid_public:'',risk_dates:[],live:null,subscribe_url:''});
+ CFG=await jget('data/config.json',{vapid_public:'',live:null,subscribe_url:''});
  PREFS=loadPrefs();
  {const dt=num(CFG.desert_alert_thr);if(dt!=null&&dt>=0.05&&dt<=0.9)DESERT_THR=dt;try{OWN_THR=JSON.parse(localStorage.prefs||'{}').threshold!=null;}catch(e){}}
  map=L.map('map',{zoomControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:120,scrollWheelZoom:true,attributionControl:false}).setView([30.9,35.0],8);
@@ -183,10 +194,8 @@ async function init(){
  try{savedBase=localStorage.basemap||'topo';}catch(e){}
  setMainBase(savedBase);
  $('#base').onchange=()=>setMainBase($('#base').value);
- const date=$('#date');clear(date);
- const liveOpt=el('option',null,'תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':''));liveOpt.value='live';date.appendChild(liveOpt);
- (Array.isArray(CFG.risk_dates)?CFG.risk_dates:[]).filter(dateOk).slice().reverse().forEach(d=>{const o=el('option',null,d);o.value=d;date.appendChild(o);});
- date.onchange=loadRisk;$('#per').onchange=()=>{loadRisk();if(northL)northL.setStyle(northStyle);};
+ {const fl=$('#fc-label');if(fl)fl.textContent='תחזית 48 שעות'+(CFG.live?' ('+txt(CFG.live)+')':'');}
+ $('#per').onchange=()=>{loadRisk();if(northL)northL.setStyle(northStyle);};
  Promise.all([api('data/channel_segments.geojson'),jget('data/channel_extensions_desert.geojson',null)]).then(([g,x])=>{if(x&&Array.isArray(x.features))g.features=g.features.concat(x.features.filter(f=>f.properties&&Number(f.properties.ext)===1));streamL=L.geoJSON(dashSplit(g),{style:f=>({color:'#1565c0',weight:1.6,opacity:.85,dashArray:f.properties&&f.properties._dash?'6 5':null}),interactive:false}).addTo(map)});
  const north=$('#north');
  if(north){
@@ -200,6 +209,7 @@ async function init(){
  }
  loadNorth();
  await loadRisk();
+ loadBorder();
  VPS=await jget('data/viewpoints.json',[]);
  if(!Array.isArray(VPS))VPS=[];
  if(SRC==='demo'){const A=await allAlerts();const m={};(A.alerts||[]).forEach(a=>{if(a&&a.point)m[a.point]=a;});VPS.forEach(v=>{if(m[v.id])v.current=m[v.id];});}
@@ -210,11 +220,10 @@ async function init(){
  if(typeof bindTap==='function')bindTap(map);
  if(typeof drawMyPoints==='function')drawMyPoints();
  if(typeof resnapNorthPoints==='function')resnapNorthPoints();
+ if(typeof renderHot==='function'){renderHot();$('#per').addEventListener('change',renderHot);if(north)north.addEventListener('change',renderHot);}
 }
 async function loadRisk(){
- const chosen=$('#date').value;
- const file=chosen==='live'||!dateOk(chosen)?'data/risk_live.geojson':`data/risk_${chosen}.geojson`;
- const g0=await jget(file,null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
+ const g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
  const features=(g0&&Array.isArray(g0.features)?g0.features:[]).filter(x=>$('#per').checked||!(x.properties&&x.properties.perennial));
  const g={...g0,features};
  if(riskL)map.removeLayer(riskL);
