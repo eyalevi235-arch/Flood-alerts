@@ -234,7 +234,8 @@ async function init(){
  if(typeof renderHot==='function'){renderHot();$('#per').addEventListener('change',renderHot);if(north)north.addEventListener('change',renderHot);}
 }
 async function loadRisk(){
- const g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
+ let g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
+ g0=applyBasinDisplayOverride(g0,await jget('data/basins_display_outside.geojson',null));
  const features=(g0&&Array.isArray(g0.features)?g0.features:[]).filter(x=>$('#per').checked||!(x.properties&&x.properties.perennial));
  const g={...g0,features};
  if(riskL)map.removeLayer(riskL);

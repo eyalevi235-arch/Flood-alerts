@@ -24,6 +24,25 @@ function pointInFeature(lat, lon, feature) {
   }
   return false;
 }
+// Display-only override for basins outside the border (data/basins_display_outside.geojson):
+// hide_sids are not drawn/tapped; clip features replace the engine polygon. sid, probabilities and arrays are unchanged.
+function applyBasinDisplayOverride(fc, ov) {
+  if (!fc || !Array.isArray(fc.features) || !ov) return fc;
+  var hide = {}, clip = {};
+  (ov.hide_sids || []).forEach(function (s) { hide[String(s)] = 1; });
+  (ov.features || []).forEach(function (f) { if (f && f.properties && f.geometry) clip[String(f.properties.sid)] = f.geometry; });
+  var out = [];
+  fc.features.forEach(function (f) {
+    var sid = String((f.properties || {}).sid);
+    if (hide[sid]) return;
+    if (clip[sid]) f = {type: 'Feature', properties: f.properties, geometry: clip[sid]};
+    out.push(f);
+  });
+  var r = {};
+  for (var k in fc) if (Object.prototype.hasOwnProperty.call(fc, k)) r[k] = fc[k];
+  r.features = out;
+  return r;
+}
 // coverage.geojson is a union mask (desert / nondesert), not one polygon per basin.
 function coverageRegion(features, lat, lon) {
   var list = features || [];
