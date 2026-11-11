@@ -22,6 +22,7 @@
  wire('ctl',q('#ctl'),'⚙ שכבות','הצג את פאנל השכבות');
  wire('legend',q('#legend'),'🎨 מקרא','הצג את המקרא');
  wire('legal',q('#legal'),'ⓘ','הצג את הבהרת השימוש');
+ wire('hot',q('#hot'),'🔴 מעל 70%','הצג נחלים מעל 70%');
  wire('snap',q('#snap-hint'),'ⓘ הצמדה','הצג הסבר הצמדה',{inline:true});
  // Leaflet attribution is created asynchronously in init().
  var tries=0;
