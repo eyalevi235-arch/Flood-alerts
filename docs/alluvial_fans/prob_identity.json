@@ -1,22 +1,19 @@
 {
   "ok": true,
+  "synthetic_unchanged": true,
   "desert": {
     "unchanged": true,
     "diffs": [],
-    "n_flagged": 379,
+    "n_flagged": 260,
     "n_extensions": 12,
-    "hypothetic_p_overwrite_n": 0,
-    "hypothetic_examples": []
+    "hypothetic_p_overwrite_n": 0
   },
   "nondesert": {
     "unchanged": true,
     "diffs": [],
-    "n_flagged": 184,
-    "n_extensions": 10,
-    "hypothetic_p_overwrite_n": 0,
-    "hypothetic_examples": []
+    "n_flagged": 0,
+    "n_extensions": 0,
+    "hypothetic_p_overwrite_n": 0
   },
-  "note": "segment_risk*.json were not written by fans.py; p/lead/em/tp/tm stay identical. hypothetic_* shows how many model segments would change if Stage B/overwrite were applied.",
-  "synthetic_unchanged": true,
-  "issued_source": "checkout segment_risk*.json, p/lead/em/tp/tm identical; synthetic distinct p also unchanged"
+  "note": "segment_risk*.json were not written by fans.py; p/lead/em/tp/tm stay identical. hypothetic_* shows how many model segments would change if Stage B/overwrite were applied."
 }
