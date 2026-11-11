@@ -1,6 +1,6 @@
 name: hourly-forecast
 on:
-  schedule: [{cron: '7 * * * *'}]   # hourly (GitHub may delay scheduled runs by minutes)
+  schedule: [{cron: '7 * * * *'}, {cron: '37 * * * *'}]   # hourly; second slot if GitHub skips one
   workflow_dispatch: {}
   push: {branches: [main], paths: ['site/**','engine/**','data/**','model/**','!**.md','!docs/**']}  # negations = paths-ignore (GitHub forbids paths + paths-ignore together)
 # Job tokens stay minimal. Actions are pinned to commit SHAs (Node 24 majors).
