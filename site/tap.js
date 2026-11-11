@@ -54,7 +54,10 @@ function loadTapData() {
     geo('data/small_streams_nd.geojson').catch(function () { return {features: []}; }),
     geo('data/small_streams_de.geojson').catch(function () { return {features: []}; }),
     geo('data/channel_extensions_desert.geojson').catch(function () { return {features: []}; }),
-    geo('data/channel_extensions_nondesert.geojson').catch(function () { return {features: []}; })
+    geo('data/channel_extensions_nondesert.geojson').catch(function () { return {features: []}; }),
+    // Flow duration (model estimate). Missing until the first hourly run writes them: null, no error.
+    fetch('data/segment_duration.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    fetch('data/segment_duration_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
   ]).then(function (pair) {
     var nahal = {};
     (pair[0].features || []).forEach(function (f) {
@@ -104,7 +107,7 @@ function loadTapData() {
         if (g && g.type === 'LineString' && g.coordinates && g.coordinates.length > 1 && isFinite(d)) smallLines.push({coords: g.coordinates, d: d, region: pr[1]});
       });
     });
-    return {smallLines: smallLines, nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], fc: pair[0], coverage: (pair[6] && pair[6].features) || [], northSids: northSids, idMap: pair[5] || {}, ndGeomVersion: geomVersion, dgGeomVersion: (pair[1] && pair[1].desert_geom_version) || DESERT_GEOM_VERSION};
+    return {smallLines: smallLines, nahal: nahal, lines: lines, northLines: northLines, risk: pair[2], northRisk: pair[4], dur: pair[12], northDur: pair[13], fc: pair[0], coverage: (pair[6] && pair[6].features) || [], northSids: northSids, idMap: pair[5] || {}, ndGeomVersion: geomVersion, dgGeomVersion: (pair[1] && pair[1].desert_geom_version) || DESERT_GEOM_VERSION};
   });
   return tapCache;
 }
@@ -312,6 +315,44 @@ function segRisk(data, seg, region) {
   if (em != null && em !== -1 && r.t0) when = new Date((r.t0 + em * 60) * 1000);
   return {p: Number(r.p[seg]), rain: r.rain ? Number(r.rain[seg]) : null, lead: r.lead ? r.lead[seg] : null, tp: r.tp ? r.tp[seg] : null, tm: r.tm ? r.tm[seg] : null, when: when, strong: r.strong ? r.strong[seg] : 0};
 }
+var DUR_DISCLAIMER = 'הערכת משך זרימה בלבד; שגיאה טיפוסית כ-9 שעות בנחלי המדבר וכ-20 שעות בצפון ובמרכז.';
+function segDuration(data, seg, region) {
+  var r = (region === 'north' || region === 'north_center') ? data.northDur : data.dur;
+  if (!r || !Array.isArray(r.dur) || seg == null || seg < 0 || seg >= r.dur.length) return null;
+  var h = r.dur[seg];
+  if (h == null || !isFinite(Number(h))) return null;
+  var lo = r.lo ? r.lo[seg] : null, hi = r.hi ? r.hi[seg] : null, cat = r.cat ? r.cat[seg] : null;
+  var label = (Array.isArray(r.cat_labels) && cat != null) ? r.cat_labels[cat] : (r.cat_labels && cat != null ? r.cat_labels[String(cat)] : null);
+  return {h: Number(h), lo: lo == null ? null : Number(lo), hi: hi == null ? null : Number(hi), label: label || null};
+}
+// Duration shows only at/above the site's alert threshold for the region (app.js thrFor: config desert_alert_thr, north/center, or the user's own).
+function atAlertThr(prob, region) {
+  if (prob == null || !isFinite(prob) || typeof thrFor !== 'function') return false;
+  return prob >= thrFor({region: region});
+}
+function durHours(h) { return h < 1 ? 'פחות משעה' : 'כ-' + Math.round(h) + ' שעות'; }
+function appendDuration(root, d) {
+  if (!d || !isFinite(d.h)) return;
+  var line = 'משך זרימה משוער: ' + durHours(d.h);
+  if (d.lo != null && d.hi != null && isFinite(d.lo) && isFinite(d.hi)) line += ' (טווח טיפוסי ' + Math.round(d.lo) + '–' + Math.round(d.hi) + ' שעות)';
+  root.appendChild(el('div', null, line));
+  if (d.label) root.appendChild(el('div', 'muted', String(d.label)));
+  root.appendChild(el('div', 'muted dur-note', DUR_DISCLAIMER));
+}
+// Basin popup: flow_duration_* merged into the basin feature if present, else the basin's own segments (they inherit the basin outlet value).
+function basinDuration(data, p) {
+  var h = Number(p.flow_duration_h);
+  if (p.flow_duration_h != null && isFinite(h)) {
+    var lo = p.flow_duration_lo != null ? p.flow_duration_lo : p.flow_duration_h_lo, hi = p.flow_duration_hi != null ? p.flow_duration_hi : p.flow_duration_h_hi;
+    return {h: h, lo: lo == null ? null : Number(lo), hi: hi == null ? null : Number(hi), label: p.flow_duration_cat_he || null};
+  }
+  var sid = String(p.sid), pools = [[data.lines, 'desert'], [data.northLines, 'north']];
+  for (var i = 0; i < pools.length; i++) {
+    var ls = pools[i][0] || [];
+    for (var k = 0; k < ls.length; k++) if (ls[k].basin === sid) { var d = segDuration(data, ls[k].id, pools[i][1]); if (d) return d; }
+  }
+  return null;
+}
 function paintTap(box, tapLat, tapLon, picked, choices, data, lat, lon, tol) {
   while (box.firstChild) box.removeChild(box.firstChild);
   if (map._popup) map._popup.setLatLng([lat, lon]);
@@ -364,6 +405,7 @@ function fillSegment(root, hit, data, tol) {
       line += '.';
       root.appendChild(el('div', null, line));
     }
+    if (atAlertThr(prob, hit.region === 'north' ? 'north_center' : 'desert')) appendDuration(root, segDuration(data, hit.seg, hit.region));
     if (hit.region === 'north' && risk.strong) root.appendChild(el('div', null, 'יש גם סימן לשיטפון חזק יותר בתחנה.'));
     if (prob >= 0.05 && risk.when) {
       var until = risk.lead != null ? risk.lead : (risk.when.getTime() - Date.now()) / 3600000;
@@ -428,6 +470,7 @@ function paintBasin(box, lat, lon, data, nearest) {
     box.appendChild(el('div', null, 'סיכוי לשיטפון באגן: ' + (prob == null ? '—' : Math.round(prob * 100) + '%') + (prob == null ? '' : ' · ' + riskClass(prob))));
     var rain = p.event_rain_mm;
     box.appendChild(el('div', null, 'גשם חזוי באגן: ' + (rain == null || rain === '' ? '—' : rain) + ' מ"מ'));
+    if (atAlertThr(prob, data.northSids && data.northSids[String(p.sid)] ? 'north_center' : 'desert')) appendDuration(box, basinDuration(data, p));
     if (near) box.appendChild(el('div', 'muted', 'הערוץ המסומן הקרוב: ' + near.name + ', במרחק ' + distLabel(near.distM) + '.'));
     var saved = loadMyPoints().some(function (x) { return x.seg == null && x.sid === String(p.sid) && Math.abs(x.lat - lat) < 0.002 && Math.abs(x.lon - lon) < 0.002; });
     var btn = el('button', 'btn', saved ? 'הנקודה הזו כבר שמורה' : 'שמור כנקודה שלי');

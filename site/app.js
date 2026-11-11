@@ -30,6 +30,7 @@ function addNameAttribution(target){
  box.addAttribution('<a href="https://www.geonames.org/" rel="noopener noreferrer">GeoNames</a> (CC BY 4.0)');
  box.addAttribution('נתוני גשם: השירות המטאורולוגי');
  box.addAttribution('גבולות: <a href="https://www.naturalearthdata.com/" rel="noopener noreferrer">Natural Earth</a>');
+ box.addAttribution('גאולוגיה: <a href="https://macrostrat.org/" rel="noopener noreferrer">Macrostrat</a> (CC-BY)');
 }
 function northOn(){const n=$('#north');return !n||n.checked;}
 // North/center fields: `perennial` (model bot) wins over legacy `p`; `hidden`=1 is never drawn.
