@@ -59,11 +59,12 @@ def _main():
         traceback.print_exc(); print('segment scoring failed')
     R,n=fe.live_risk(g,now,f'{ROOT}/data/basins_simplified.geojson'); jsave(f'{SITE}/risk_live.geojson',R)
     nd_dt=None
+    nd_info=None
     try:
         import nondesert as nd
         t_nd=time.time()
         gN=fe.openmeteo_grid(m, past_days=31)
-        info=nd.score_all(gN, now)
+        info=nd.score_all(gN, now); nd_info=info
         geo, compact=nd.write_outputs(info, fe.il(now), now)
         compact['t0']=int(pd.Timestamp(now).tz_localize('UTC').timestamp())
         jsave(f'{SITE}/risk_nondesert.geojson', geo)
@@ -78,6 +79,11 @@ def _main():
         print(f'nondesert: {info["n_basins"]} basins, {info["n_segs"]} segments, {info["n_alert"]} over threshold, grid {gN.t[0]}..{gN.t[-1]} ({nd_dt:.0f}s, job {time.time()-t0:.0f}s)')
     except Exception:
         traceback.print_exc(); print('nondesert scoring failed')
+    try:
+        import duration as _fdur
+        _fdur.write_from_job(fe, g, now, R, nd_info, SITE)
+    except Exception:
+        traceback.print_exc(); print('flow duration failed')
     # static viewpoints.json = viewpoints.csv + historical first waves + current alert (replaces /api/viewpoints)
     vp=pd.read_csv(f'{ROOT}/data/viewpoints.csv').fillna(''); fw=pd.read_csv(f'{ROOT}/data/first_wave_times.csv').fillna(''); al={a['point']:a for a in A}; V=[]
     for _,v in vp.iterrows():
