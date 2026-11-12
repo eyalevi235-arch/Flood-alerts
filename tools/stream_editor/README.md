@@ -14,6 +14,12 @@ python3 tools/stream_editor/server.py
 
 נפתח בדפדפן: <http://127.0.0.1:8765/>
 
+אותו עורך, בלי שרת, יושב בעמוד נסתר באתר: `/editor-e9uh8mcp8g/`. אין אליו קישור מהאתר הציבורי. הוא קורא את `site/data` שכבר מפורסם, ומוריד רק קובץ `geometry-review-*.json` למכשיר. אחרי שינוי בממשק המקומי:
+
+```bash
+python3 tools/stream_editor/build_static_page.py
+```
+
 השרת מאזין רק ל-`127.0.0.1`. לטלפון באותה רשת אלחוטית:
 
 ```bash
@@ -95,7 +101,7 @@ From the repo root:
 python3 tools/stream_editor/server.py
 ```
 
-Open <http://127.0.0.1:8765/>. The default bind is `127.0.0.1` only. For a phone on the same Wi-Fi:
+Open <http://127.0.0.1:8765/>. The default bind is `127.0.0.1` only. The same editor is also published as an unlisted static page at `/editor-e9uh8mcp8g/` (no link from the public site, `noindex`). It reads the GeoJSON already in `site/data` and still only downloads a `geometry-review-*.json` file. Rebuild that page after a local UI change with `python3 tools/stream_editor/build_static_page.py`. For a phone on the same Wi-Fi:
 
 ```bash
 python3 tools/stream_editor/server.py --host 0.0.0.0 --port 8765
