@@ -221,6 +221,34 @@
     return cleaned.length >= 2 ? cleaned : null;
   }
 
+  var TOUCH_SLOP_PX = 24;
+  var POINTER_SLOP_PX = 8;
+
+  function tapSlopPx(hasTouch) {
+    return hasTouch ? TOUCH_SLOP_PX : POINTER_SLOP_PX;
+  }
+
+  function acceptTap(mode, kind) {
+    if (mode === 'basins') return kind === 'basin';
+    if (mode === 'streams') return kind === 'stream';
+    return false;
+  }
+
+  function searchMatchesMode(mode, layer) {
+    var kind = layer === 'basin' ? 'basin' : 'stream';
+    return acceptTap(mode, kind);
+  }
+
+  function basinChrome(active) {
+    if (active) return {opacity: 1, fillOpacity: 0.16, interactive: true};
+    return {opacity: 0.4, fillOpacity: 0.05, interactive: false};
+  }
+
+  function streamChrome(active) {
+    if (active) return {opacity: 0.9, interactive: true};
+    return {opacity: 0.55, interactive: false};
+  }
+
   function editTransition(dirty, action, choice) {
     if (action === 'finish') {
       return {commit: !!dirty, revert: false, deselect: true, stay: false, prompt: false};
@@ -285,6 +313,11 @@
     keptMidpoints: keptMidpoints,
     redrawSection: redrawSection,
     editTransition: editTransition,
+    tapSlopPx: tapSlopPx,
+    acceptTap: acceptTap,
+    searchMatchesMode: searchMatchesMode,
+    basinChrome: basinChrome,
+    streamChrome: streamChrome,
     mergeLines: mergeLines
   };
 });

@@ -97,4 +97,47 @@ assert.deepStrictEqual(transition(true, 'select-other', 'discard'), {commit: fal
 assert.deepStrictEqual(transition(true, 'select-other', 'stay'), {commit: false, revert: false, deselect: false, stay: true, prompt: false});
 assert.strictEqual(transition(true, 'nope'), null);
 
+assert.ok(Logic.tapSlopPx(true) >= 16, 'touch tap slop is at least 16px');
+assert.ok(Logic.tapSlopPx(false) > 0 && Logic.tapSlopPx(false) < Logic.tapSlopPx(true));
+assert.ok(2.5 / 2 + Logic.tapSlopPx(true) >= 16, 'a thin stream stays hittable with a finger');
+
+assert.strictEqual(Logic.acceptTap('streams', 'stream'), true);
+assert.strictEqual(Logic.acceptTap('streams', 'basin'), false);
+assert.strictEqual(Logic.acceptTap('basins', 'basin'), true);
+assert.strictEqual(Logic.acceptTap('basins', 'stream'), false);
+assert.strictEqual(Logic.acceptTap('other', 'stream'), false);
+assert.strictEqual(Logic.searchMatchesMode('streams', 'desert'), true);
+assert.strictEqual(Logic.searchMatchesMode('streams', 'nondesert_extension'), true);
+assert.strictEqual(Logic.searchMatchesMode('streams', 'basin'), false);
+assert.strictEqual(Logic.searchMatchesMode('basins', 'basin'), true);
+assert.strictEqual(Logic.searchMatchesMode('basins', 'desert'), false);
+assert.strictEqual(Logic.basinChrome(false).interactive, false);
+assert.ok(Logic.basinChrome(false).fillOpacity < Logic.basinChrome(true).fillOpacity);
+assert.strictEqual(Logic.basinChrome(true).interactive, true);
+assert.strictEqual(Logic.streamChrome(true).interactive, true);
+assert.strictEqual(Logic.streamChrome(false).interactive, false);
+
+// Touch tap with nothing open: the stream is accepted and select-other does not prompt.
+var idle = Logic.editTransition(false, 'select-other', null);
+assert.ok(idle, 'select-other returns a decision when the edit is clean');
+assert.strictEqual(idle.prompt, false);
+assert.strictEqual(idle.deselect, true);
+assert.strictEqual(Logic.acceptTap('streams', 'stream'), true);
+
+// Finish, then another stream: the cleared edit does not prompt.
+var finished = Logic.editTransition(true, 'finish');
+assert.deepStrictEqual(finished, {commit: true, revert: false, deselect: true, stay: false, prompt: false});
+var nextStream = Logic.editTransition(false, 'select-other', null);
+assert.strictEqual(nextStream.prompt, false);
+assert.strictEqual(nextStream.deselect, true);
+
+// Switching tabs during a dirty edit uses the same save / discard / stay decision.
+var tabPrompt = Logic.editTransition(true, 'select-other', null);
+assert.strictEqual(tabPrompt.prompt, true);
+assert.strictEqual(tabPrompt.stay, true);
+assert.strictEqual(Logic.editTransition(true, 'select-other', 'commit').deselect, true);
+assert.strictEqual(Logic.editTransition(true, 'select-other', 'discard').revert, true);
+assert.strictEqual(Logic.editTransition(true, 'select-other', 'stay').stay, true);
+assert.ok(Logic.editTransition(false, 'select-other', 'stay'), 'select-other with a choice still returns');
+
 console.log('edit logic ok');

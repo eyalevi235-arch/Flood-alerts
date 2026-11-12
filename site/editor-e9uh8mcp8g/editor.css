@@ -49,6 +49,31 @@ header {
   font-size: 13px;
 }
 #search-form { display: flex; gap: 6px; flex: 1; min-width: 180px; }
+.mode-tabs {
+  display: flex;
+  direction: rtl;
+  flex: 1 1 100%;
+  gap: 0;
+  padding: 2px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.mode-tabs button {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+}
+.mode-tabs button[aria-selected="true"] {
+  background: #fff;
+  color: var(--teal-dark);
+}
+.mode-tabs button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
 #q, select, textarea, button { font: inherit; }
 #q, select, textarea {
   width: 100%;

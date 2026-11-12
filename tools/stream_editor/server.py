@@ -164,12 +164,17 @@ class Catalog:
                 stream["basin_name"] = basin["name"]
                 stream["hay"] = (stream["hay"] + " " + basin["hay"]).strip()
 
-    def search(self, query: str, limit: int = 12) -> list[dict[str, Any]]:
+    def search(self, query: str, limit: int = 12, kind: str | None = None) -> list[dict[str, Any]]:
         needle = _norm(query)
         if len(needle) < 1:
             return []
         scored: list[tuple[int, dict[str, Any]]] = []
         for item in self.streams + self.basins:
+            layer = item["layer"]
+            if kind == "basin" and layer != "basin":
+                continue
+            if kind == "stream" and layer == "basin":
+                continue
             hay = item["hay"]
             name = _norm(item.get("name") or "")
             if needle == str(item["id"]):
@@ -369,7 +374,11 @@ def make_handler(catalog: Catalog) -> type[BaseHTTPRequestHandler]:
                 return
             if path == "/api/search":
                 text = (query.get("q") or [""])[0][:80]
-                self._send_json(200, {"results": catalog.search(text)})
+                kind = (query.get("kind") or [""])[0]
+                if kind not in ("", "stream", "basin"):
+                    self._send_json(400, {"error": "bad kind"})
+                    return
+                self._send_json(200, {"results": catalog.search(text, kind=kind or None)})
                 return
             if path == "/api/basins":
                 self._send_json(200, catalog.basins_payload())

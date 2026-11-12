@@ -55,7 +55,10 @@ def python_answers(catalog: server.Catalog, queries: dict) -> dict:
             "streams": len(catalog.streams),
             "basins": len(catalog.basins),
         },
-        "search": [catalog.search(text) for text in queries.get("search", [])],
+        "search": [
+            catalog.search(text) if isinstance(text, str) else catalog.search(text["q"], kind=text.get("kind"))
+            for text in queries.get("search", [])
+        ],
         "view": [
             catalog.view(
                 item["west"], item["south"], item["east"], item["north"], item["zoom"],
@@ -119,7 +122,7 @@ class StaticCatalogTests(unittest.TestCase):
         box = sample["bbox"]
         pad = 0.05
         queries = {
-            "search": ["צין", "כישון", str(sample["id"])],
+            "search": ["צין", "כישון", str(sample["id"]), {"q": "צין", "kind": "basin"}, {"q": "צין", "kind": "stream"}],
             "view": [{
                 "west": box[0] - pad, "south": box[1] - pad, "east": box[2] + pad, "north": box[3] + pad,
                 "zoom": 12, "desert": True, "north_on": True, "ext": True,
@@ -132,6 +135,13 @@ class StaticCatalogTests(unittest.TestCase):
         feature = got["feature"][0]
         self.assertEqual(feature["geometry"]["type"], "LineString")
         self.assertGreaterEqual(len(feature["geometry"]["coordinates"]), 2)
+        basin_hits = got["search"][3]
+        stream_hits = got["search"][4]
+        self.assertTrue(basin_hits)
+        self.assertTrue(all(item["layer"] == "basin" for item in basin_hits))
+        self.assertTrue(any("צין" in (item.get("name") or "") for item in basin_hits))
+        self.assertTrue(stream_hits)
+        self.assertTrue(all(item["layer"] != "basin" for item in stream_hits))
 
 
 class HiddenPageTests(unittest.TestCase):
@@ -140,6 +150,16 @@ class HiddenPageTests(unittest.TestCase):
         folder = ROOT / "site" / build_static_page.FOLDER
         html = (folder / "index.html").read_text(encoding="utf-8")
         self.assertIn('content="noindex,nofollow"', html)
+        self.assertIn('id="tab-streams"', html)
+        self.assertIn(">נחלים<", html)
+        self.assertIn('id="tab-basins"', html)
+        self.assertIn(">אגנים<", html)
+        self.assertIn('role="tablist"', html)
+        editor_js = (folder / "editor.js").read_text(encoding="utf-8")
+        self.assertIn("Logic.tapSlopPx", editor_js)
+        self.assertIn("Logic.acceptTap", editor_js)
+        self.assertIn("Logic.searchMatchesMode", editor_js)
+        self.assertIn('target="_blank"', editor_js)
         self.assertIn("static_catalog.js", html)
         self.assertNotIn("serviceWorker", html)
         self.assertNotIn("/api/", html)
