@@ -11,14 +11,14 @@
       maxZoom: 18,
       maxNativeZoom: 17,
       label: 'esri-world-imagery',
-      credit: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community. <a href="https://www.esri.com/en-us/legal/terms/data-attributions" rel="noopener noreferrer">Esri data attributions</a>'
+      credit: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community. <a href="https://www.esri.com/en-us/legal/terms/data-attributions" target="_blank" rel="noopener noreferrer">Esri data attributions</a>'
     },
     sentinel: {
       url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
       maxZoom: 18,
       maxNativeZoom: 16,
       label: 'sentinel-2-cloudless',
-      credit: 'Sentinel-2 cloudless by <a href="https://s2maps.eu" rel="noopener noreferrer">EOX</a> (CC BY 4.0). Contains modified Copernicus Sentinel data 2020.'
+      credit: 'Sentinel-2 cloudless by <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">EOX</a> (CC BY 4.0). Contains modified Copernicus Sentinel data 2020.'
     }
   };
 
@@ -52,7 +52,8 @@
     redraw: null,
     pendingNav: null,
     dragging: false,
-    suppressClick: false
+    suppressClick: false,
+    mode: 'streams'
   };
 
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -86,15 +87,67 @@
     state.filters.basins = $('chk-basins').checked;
   }
 
+  function coarsePointer() {
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+    if (navigator.maxTouchPoints > 0) return true;
+    return !!(window.L && L.Browser && L.Browser.mobile);
+  }
+
   function styleStream(feature) {
     var ext = feature.properties.extension;
     var north = feature.properties.layer === 'nondesert';
+    var chrome = Logic.streamChrome(state.mode === 'streams');
     return {
       color: ext ? '#00838f' : (north ? '#1a365d' : '#1565c0'),
       weight: ext ? 3 : 2.5,
-      opacity: 0.9,
+      opacity: chrome.opacity,
+      interactive: chrome.interactive,
       dashArray: north && !feature.properties.perennial ? '6 4' : null
     };
+  }
+
+  function styleBasin(feature) {
+    var desert = feature.properties.desert === 1;
+    var chrome = Logic.basinChrome(state.mode === 'basins');
+    return {
+      color: desert ? '#6d4c41' : '#455a64',
+      weight: 1.2,
+      opacity: chrome.opacity,
+      fillColor: desert ? '#c4a574' : '#90a4ae',
+      fillOpacity: chrome.fillOpacity,
+      interactive: chrome.interactive
+    };
+  }
+
+  function syncModeTabs() {
+    var streams = state.mode !== 'basins';
+    $('tab-streams').setAttribute('aria-selected', streams ? 'true' : 'false');
+    $('tab-basins').setAttribute('aria-selected', streams ? 'false' : 'true');
+    $('q').placeholder = streams ? 'חיפוש נחל' : 'חיפוש אגן';
+    var label = document.querySelector('label[for="q"]');
+    if (label) label.textContent = streams ? 'חיפוש נחל' : 'חיפוש אגן';
+  }
+
+  function applyMode(mode) {
+    state.mode = mode;
+    syncModeTabs();
+    $('results').hidden = true;
+    clearFeatureSelection();
+    setStatus(mode === 'basins'
+      ? 'מצב אגנים. הקישו בתוך אגן.'
+      : 'מצב נחלים. הקישו על נחל. האגנים מוצגים ברקע.');
+  }
+
+  function switchMode(mode) {
+    if (mode !== 'streams' && mode !== 'basins') return;
+    if (state.mode === mode) return;
+    var prompt = $('switch-prompt');
+    if (prompt && !prompt.hidden) return;
+    if (state.merge) {
+      setStatus('אשרו או בטלו את המיזוג לפני מעבר לשונית.');
+      return;
+    }
+    requestSwitch(function () { applyMode(mode); });
   }
 
   function remember(full) {
@@ -666,7 +719,7 @@
     if (state.focus === 'basin' && basin) $('sel-title').textContent = basinTitle(state.basin);
     else if (stream) $('sel-title').textContent = streamTitle(state.stream);
     else if (basin) $('sel-title').textContent = basinTitle(state.basin);
-    else $('sel-title').textContent = 'לא נבחר נחל';
+    else $('sel-title').textContent = state.mode === 'basins' ? 'לא נבחר אגן' : 'לא נבחר נחל';
     if (state.focus !== 'basin' && stream && (!state.live || state.live.kind !== 'stream')) {
       var basinName = state.stream.basin_name || state.stream.basin || 'ללא אגן';
       $('sel-meta').textContent = (LAYER_HE[state.stream.layer] || '') + ' · מזהה ' + state.stream.id + ' · אגן ' + basinName;
@@ -885,6 +938,7 @@
 
   function requestSwitch(run) {
     var decision = Logic.editTransition(selectionDirty(), 'select-other', null);
+    if (!decision) return Promise.resolve();
     if (!decision.prompt) return Promise.resolve(run());
     state.pendingNav = run;
     $('switch-prompt').hidden = false;
@@ -1184,12 +1238,15 @@
   function showResults(results) {
     var list = $('results');
     list.textContent = '';
-    if (!results.length) {
+    var kept = (results || []).filter(function (item) {
+      return Logic.searchMatchesMode(state.mode, item.layer);
+    });
+    if (!kept.length) {
       list.hidden = true;
       setStatus('אין תוצאות.');
       return;
     }
-    results.forEach(function (item) {
+    kept.forEach(function (item) {
       var li = document.createElement('li');
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -1213,25 +1270,32 @@
 
   function boot() {
     restore();
-    var canvas = L.canvas({padding: 0.4});
+    syncModeTabs();
+    var slop = Logic.tapSlopPx(coarsePointer());
+    var canvas = L.canvas({padding: 0.4, tolerance: slop});
     state.map = L.map('map', {
       zoomControl: true,
       attributionControl: false,
-      preferCanvas: true,
+      // Edit marks stay SVG. Another full-size canvas would stay up and swallow later taps.
       tap: true,
       maxZoom: 18
     }).setView([31.2, 35.2], 8);
     state.map.zoomControl.setPosition('topleft');
+    if (coarsePointer() && state.map.dragging && state.map.dragging._draggable) {
+      state.map.dragging._draggable.options.clickTolerance = Math.max(
+        state.map.dragging._draggable.options.clickTolerance || 0,
+        16
+      );
+    }
     L.control.scale({imperial: false, position: 'bottomleft'}).addTo(state.map);
     setBasemap('esri');
     state.basinLayer = L.geoJSON({type: 'FeatureCollection', features: []}, {
       renderer: canvas,
-      style: function (feature) {
-        var desert = feature.properties.desert === 1;
-        return {color: desert ? '#6d4c41' : '#455a64', weight: 1.2, fillColor: desert ? '#c4a574' : '#90a4ae', fillOpacity: 0.16};
-      },
+      style: styleBasin,
       onEachFeature: function (feature, layer) {
+        layer.options.interactive = Logic.basinChrome(state.mode === 'basins').interactive;
         layer.on('click', function (ev) {
+          if (!Logic.acceptTap(state.mode, 'basin')) return;
           L.DomEvent.stopPropagation(ev);
           selectBasin(feature.properties.id);
         });
@@ -1241,7 +1305,9 @@
       renderer: canvas,
       style: styleStream,
       onEachFeature: function (feature, layer) {
+        layer.options.interactive = Logic.streamChrome(state.mode === 'streams').interactive;
         layer.on('click', function (ev) {
+          if (!Logic.acceptTap(state.mode, 'stream')) return;
           L.DomEvent.stopPropagation(ev);
           selectStream(feature.properties.layer, feature.properties.id);
         });
@@ -1275,7 +1341,8 @@
       ev.preventDefault();
       var q = $('q').value.trim();
       if (!q) return;
-      api('/api/search?q=' + encodeURIComponent(q)).then(function (data) {
+      var kind = state.mode === 'basins' ? 'basin' : 'stream';
+      api('/api/search?q=' + encodeURIComponent(q) + '&kind=' + kind).then(function (data) {
         showResults(data.results || []);
       }).catch(function () { setStatus('החיפוש נכשל.'); });
     });
@@ -1426,6 +1493,8 @@
       setStatus('הרשימה נוקתה במכשיר הזה. המאגר לא השתנה.');
     });
     $('file-note').addEventListener('input', persist);
+    $('tab-streams').addEventListener('click', function () { switchMode('streams'); });
+    $('tab-basins').addEventListener('click', function () { switchMode('basins'); });
     $('sheet-toggle').addEventListener('click', function () {
       document.body.classList.toggle('sheet-min');
       var open = !document.body.classList.contains('sheet-min');
@@ -1444,7 +1513,7 @@
       return loadView();
     }).then(function () {
       renderList();
-      setStatus('בחרו נחל או אגן. השינויים נשארים ברשימה עד להורדת הקובץ.');
+      setStatus('מצב נחלים. הקישו על נחל. האגנים מוצגים ברקע.');
     }).catch(function () {
       setStatus('לא הצלחתי לטעון את נתוני המאגר.');
     });

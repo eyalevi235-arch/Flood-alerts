@@ -12,13 +12,17 @@
 </head>
 <body>
 <header>
+  <div class="mode-tabs" role="tablist" aria-label="מה בוחרים במפה">
+    <button type="button" id="tab-streams" role="tab" aria-selected="true" aria-controls="map">נחלים</button>
+    <button type="button" id="tab-basins" role="tab" aria-selected="false" aria-controls="map">אגנים</button>
+  </div>
   <div class="brand">
     <strong>עורך נתיבים</strong>
     <span class="badge">פרטי · לא באתר</span>
   </div>
   <form id="search-form" role="search">
-    <label class="sr" for="q">חיפוש נחל או אגן</label>
-    <input id="q" type="search" placeholder="חיפוש נחל או אגן" autocomplete="off" enterkeyhint="search">
+    <label class="sr" for="q">חיפוש נחל</label>
+    <input id="q" type="search" placeholder="חיפוש נחל" autocomplete="off" enterkeyhint="search">
     <button type="submit">חפש</button>
   </form>
   <ul id="results" hidden></ul>
@@ -63,7 +67,7 @@
       <span><i class="sw basin"></i>אגן</span>
       <span><i class="sw edit"></i>עריכה</span>
     </div>
-    <p class="hint">גררו קודקוד כדי להזיז. נקודה מקווקוות באמצע צלע מוסיפה קודקוד, ולחיצה ארוכה מוחקת. «סיים עריכה» שומר לרשימה ומשחרר את הבחירה.</p>
+    <p class="hint">בלשונית נחלים בוחרים נחל, ובלשונית אגנים בוחרים אגן. גררו קודקוד כדי להזיז. נקודה מקווקוות באמצע צלע מוסיפה קודקוד, ולחיצה ארוכה מוחקת. «סיים עריכה» שומר לרשימה ומשחרר את הבחירה. מעבר לשונית באמצע שינוי שואל אם לשמור.</p>
     <div id="stream-tools" class="tools" hidden>
       <button type="button" id="btn-extend-end">הארך מהסוף</button>
       <button type="button" id="btn-extend-start">הארך מההתחלה</button>

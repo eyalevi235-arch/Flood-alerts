@@ -200,12 +200,14 @@
       }
     });
 
-    function search(query, limit) {
+    function search(query, limit, kind) {
       var needle = norm(query);
       var cap = limit == null ? 12 : limit;
       if (needle.length < 1) return [];
       var scored = [];
       streams.concat(basins).forEach(function (item) {
+        if (kind === 'basin' && item.layer !== 'basin') return;
+        if (kind === 'stream' && item.layer === 'basin') return;
         var name = norm(item.name || '');
         var score;
         if (needle === String(item.id)) score = 0;
@@ -345,7 +347,11 @@
     function answer(pathname, params) {
       if (pathname === '/api/health') return {status: 200, body: health()};
       if (pathname === '/api/search') {
-        return {status: 200, body: {results: search((params.get('q') || '').slice(0, 80))}};
+        var kind = params.get('kind') || '';
+        if (kind !== '' && kind !== 'stream' && kind !== 'basin') {
+          return {status: 400, body: {error: 'bad kind'}};
+        }
+        return {status: 200, body: {results: search((params.get('q') || '').slice(0, 80), null, kind)}};
       }
       if (pathname === '/api/basins') return {status: 200, body: basinsPayload()};
       if (pathname === '/api/view') {

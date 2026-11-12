@@ -22,7 +22,10 @@ function main() {
   const catalog = load(root);
   const queries = JSON.parse(fs.readFileSync(0, 'utf8'));
   const out = {health: catalog.health()};
-  out.search = (queries.search || []).map(function (text) { return catalog.search(text); });
+  out.search = (queries.search || []).map(function (text) {
+    if (text && typeof text === 'object') return catalog.search(text.q, text.limit, text.kind);
+    return catalog.search(text);
+  });
   out.view = (queries.view || []).map(function (item) {
     return catalog.view(item.west, item.south, item.east, item.north, item.zoom, item.desert, item.north_on, item.ext);
   });
