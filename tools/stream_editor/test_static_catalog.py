@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import struct
 import subprocess
 import tempfile
 import unittest
@@ -156,6 +157,118 @@ class HiddenPageTests(unittest.TestCase):
             self.assertNotIn(build_static_page.FOLDER, text, str(path))
             self.assertNotIn("stream_editor", text, str(path))
         server.assert_private(ROOT)
+
+    def test_editor_manifest_is_scoped_and_distinct(self) -> None:
+        folder = ROOT / "site" / build_static_page.FOLDER
+        html = (folder / "index.html").read_text(encoding="utf-8")
+        self.assertIn('rel="manifest" href="./manifest.webmanifest"', html)
+        self.assertIn('rel="apple-touch-icon" href="./apple-touch-icon.png"', html)
+        self.assertIn('name="apple-mobile-web-app-title" content="עורך נחלים"', html)
+        self.assertIn('name="apple-mobile-web-app-capable" content="yes"', html)
+        self.assertIn('name="mobile-web-app-capable" content="yes"', html)
+        self.assertIn('name="theme-color" content="#0f4c5c"', html)
+        manifest = json.loads((folder / "manifest.webmanifest").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["name"], "עורך נחלים")
+        self.assertEqual(manifest["short_name"], "עורך נחלים")
+        self.assertEqual(manifest["dir"], "rtl")
+        self.assertEqual(manifest["lang"], "he")
+        self.assertEqual(manifest["start_url"], "./")
+        self.assertEqual(manifest["scope"], "./")
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertEqual(manifest["theme_color"], "#0f4c5c")
+        sizes = {icon["sizes"] for icon in manifest["icons"]}
+        self.assertIn("192x192", sizes)
+        self.assertIn("512x512", sizes)
+        site_manifest = json.loads((ROOT / "site" / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(site_manifest["name"], "שיטפון בדרך – חיזוי שיטפונות")
+        self.assertNotIn("עורך נחלים", site_manifest["name"])
+        self.assertEqual(png_size(folder / "icon-192.png"), (192, 192))
+        self.assertEqual(png_size(folder / "icon-512.png"), (512, 512))
+        self.assertEqual(png_size(folder / "apple-touch-icon.png"), (180, 180))
+        self.assertNotEqual((folder / "icon-192.png").read_bytes(), (ROOT / "site" / "icon-192.png").read_bytes())
+        self.assertNotEqual((folder / "icon-512.png").read_bytes(), (ROOT / "site" / "icon-512.png").read_bytes())
+        self.assertGreater(png_redness(folder / "icon-192.png"), png_redness(ROOT / "site" / "icon-192.png"))
+
+
+def png_size(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()
+    if data[1:4] != b"PNG":
+        raise AssertionError("not a png: %s" % path)
+    return struct.unpack(">II", data[16:24])
+
+
+def png_redness(path: Path) -> int:
+    pixel = png_center(path)
+    return pixel[0] - pixel[2]
+
+
+def _paeth(left: int, up: int, up_left: int) -> int:
+    estimate = left + up - up_left
+    da = abs(estimate - left)
+    db = abs(estimate - up)
+    dc = abs(estimate - up_left)
+    if da <= db and da <= dc:
+        return left
+    if db <= dc:
+        return up
+    return up_left
+
+
+def png_center(path: Path) -> tuple[int, int, int, int]:
+    data = path.read_bytes()
+    pos = 8
+    compressed = b""
+    width = height = 0
+    color_type = 0
+    while pos + 8 <= len(data):
+        length = struct.unpack(">I", data[pos:pos + 4])[0]
+        kind = data[pos + 4:pos + 8]
+        chunk = data[pos + 8:pos + 8 + length]
+        if kind == b"IHDR":
+            width, height, _depth, color_type = struct.unpack(">IIBB", chunk[:10])
+        elif kind == b"IDAT":
+            compressed += chunk
+        elif kind == b"IEND":
+            break
+        pos += 12 + length
+    raw = __import__("zlib").decompress(compressed)
+    stride = {2: 3, 6: 4}.get(color_type)
+    if stride is None:
+        raise AssertionError("unsupported png color type %s" % color_type)
+    rows: list[bytearray] = []
+    cursor = 0
+    row_bytes = width * stride
+    for _y in range(height):
+        filt = raw[cursor]
+        cursor += 1
+        row = bytearray(raw[cursor:cursor + row_bytes])
+        cursor += row_bytes
+        prev = rows[-1] if rows else bytearray(row_bytes)
+        for i in range(row_bytes):
+            left = row[i - stride] if i >= stride else 0
+            up = prev[i]
+            up_left = prev[i - stride] if i >= stride else 0
+            if filt == 0:
+                extra = 0
+            elif filt == 1:
+                extra = left
+            elif filt == 2:
+                extra = up
+            elif filt == 3:
+                extra = (left + up) // 2
+            elif filt == 4:
+                extra = _paeth(left, up, up_left)
+            else:
+                raise AssertionError("unsupported png filter %s" % filt)
+            row[i] = (row[i] + extra) & 255
+        rows.append(row)
+    x = width // 2
+    y = height // 2
+    start = x * stride
+    px = rows[y][start:start + stride]
+    if stride == 3:
+        return px[0], px[1], px[2], 255
+    return px[0], px[1], px[2], px[3]
 
 
 if __name__ == "__main__":

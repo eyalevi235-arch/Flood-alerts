@@ -34,7 +34,11 @@
       <strong id="sel-title">לא נבחר נחל</strong>
       <div id="sel-meta" class="muted"></div>
     </div>
-    <button type="button" id="sheet-toggle" aria-expanded="true">כלים</button>
+    <div class="bar-actions">
+      <button type="button" id="btn-finish" class="primary" hidden>סיים עריכה</button>
+      <button type="button" id="btn-cancel" hidden>בטל</button>
+      <button type="button" id="sheet-toggle" aria-expanded="true">כלים</button>
+    </div>
   </div>
   <div id="sheet-body">
     <p id="status" class="status" aria-live="polite">טוען את הנחלים ואת אגני הניקוז.</p>
@@ -59,16 +63,24 @@
       <span><i class="sw basin"></i>אגן</span>
       <span><i class="sw edit"></i>עריכה</span>
     </div>
-    <p class="hint">גררו קודקוד כדי להזיז את הנתיב על התצלום. הקשה על הקו מוסיפה קודקוד. מזהי הקטעים נשארים כמו שהם.</p>
+    <p class="hint">גררו קודקוד כדי להזיז. נקודה מקווקוות באמצע צלע מוסיפה קודקוד, ולחיצה ארוכה מוחקת. «סיים עריכה» שומר לרשימה ומשחרר את הבחירה.</p>
     <div id="stream-tools" class="tools" hidden>
       <button type="button" id="btn-extend-end">הארך מהסוף</button>
       <button type="button" id="btn-extend-start">הארך מההתחלה</button>
       <button type="button" id="btn-shorten-end">קצר מהסוף</button>
       <button type="button" id="btn-shorten-start">קצר מההתחלה</button>
       <button type="button" id="btn-delete-vertex" class="wide">מחק קודקוד נבחר</button>
+      <button type="button" id="btn-redraw" class="wide">צייר קטע מחדש</button>
       <button type="button" id="btn-merge" class="wide">מזג עם נחל אחר</button>
       <button type="button" id="btn-reassign" class="wide">שייך לאגן שנבחר</button>
       <button type="button" id="btn-fit" class="wide">התאם תצוגה</button>
+    </div>
+    <div id="redraw-box" class="block" hidden>
+      <p id="redraw-text"></p>
+      <div class="tools">
+        <button type="button" id="btn-redraw-done" class="primary">סיום קטע</button>
+        <button type="button" id="btn-redraw-cancel">ביטול קטע</button>
+      </div>
     </div>
     <div id="merge-box" class="block" hidden>
       <p id="merge-text"></p>
@@ -80,7 +92,7 @@
     <div id="basin-tools" class="tools" hidden>
       <button type="button" id="btn-delete-basin-vertex" class="wide">מחק קודקוד בגבול</button>
       <button type="button" id="btn-fit-basin" class="wide">התאם תצוגה לאגן</button>
-      <p class="hint">חורים פנימיים בגבול נשמרים. עורכים את הטבעת החיצונית.</p>
+      <p class="hint">נקודה מקווקוות על צלע מוסיפה קודקוד. לחיצה ארוכה מוחקת. חורים פנימיים נשמרים.</p>
     </div>
     <label class="block" for="note">הערה לשינוי הזה
       <textarea id="note" maxlength="500" rows="3"></textarea>
@@ -111,6 +123,14 @@
     </details>
   </div>
 </aside>
+<div id="switch-prompt" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="switch-prompt-text">
+  <p id="switch-prompt-text">יש עריכה פתוחה. מה לעשות לפני המעבר?</p>
+  <div class="tools">
+    <button type="button" id="btn-switch-commit" class="primary wide">סיים ושמור</button>
+    <button type="button" id="btn-switch-discard" class="wide">בטל ועבור</button>
+    <button type="button" id="btn-switch-stay" class="wide">המשך כאן</button>
+  </div>
+</div>
 <script src="/vendor/leaflet.js"></script>
 <script src="/edit_logic.js"></script>
 <script src="/editor.js"></script>

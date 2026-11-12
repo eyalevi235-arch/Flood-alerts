@@ -20,6 +20,7 @@ SITE = REPO / "site"
 PAGE = EDITOR / "page" / "index.html"
 CATALOG = EDITOR / "static_catalog.js"
 COPIES = ("editor.css", "editor.js", "edit_logic.js")
+ASSETS = ("manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png")
 
 
 def target_dir(site: Path | None = None) -> Path:
@@ -33,6 +34,8 @@ def publish(site: Path | None = None) -> Path:
         shutil.copyfile(EDITOR / "static" / name, folder / name)
     shutil.copyfile(CATALOG, folder / "static_catalog.js")
     shutil.copyfile(PAGE, folder / "index.html")
+    for name in ASSETS:
+        shutil.copyfile(EDITOR / "page" / name, folder / name)
     return folder
 
 
@@ -44,6 +47,8 @@ def stale(site: Path | None = None) -> list[str]:
     }
     for name in COPIES:
         expected[name] = EDITOR / "static" / name
+    for name in ASSETS:
+        expected[name] = EDITOR / "page" / name
     missing = []
     for name, source in expected.items():
         dest = folder / name

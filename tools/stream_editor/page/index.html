@@ -5,10 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://server.arcgisonline.com https://services.arcgisonline.com https://tiles.maps.eox.at; connect-src 'self'; font-src 'self'; worker-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://server.arcgisonline.com https://services.arcgisonline.com https://tiles.maps.eox.at; connect-src 'self'; font-src 'self'; worker-src 'none'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">
 <meta name="theme-color" content="#0f4c5c">
-<title>עורך נתיבים — פרטי</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect fill='%230f4c5c' width='16' height='16'/%3E%3C/svg%3E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="עורך נחלים">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>עורך נחלים</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" sizes="180x180">
+<link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect fill='%23e65100' width='16' height='16'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../vendor/leaflet.css">
 <link rel="stylesheet" href="./editor.css">
 </head>
@@ -36,7 +43,11 @@
       <strong id="sel-title">לא נבחר נחל</strong>
       <div id="sel-meta" class="muted"></div>
     </div>
-    <button type="button" id="sheet-toggle" aria-expanded="true">כלים</button>
+    <div class="bar-actions">
+      <button type="button" id="btn-finish" class="primary" hidden>סיים עריכה</button>
+      <button type="button" id="btn-cancel" hidden>בטל</button>
+      <button type="button" id="sheet-toggle" aria-expanded="true">כלים</button>
+    </div>
   </div>
   <div id="sheet-body">
     <p id="status" class="status" aria-live="polite">טוען את הנחלים ואת אגני הניקוז.</p>
@@ -61,16 +72,24 @@
       <span><i class="sw basin"></i>אגן</span>
       <span><i class="sw edit"></i>עריכה</span>
     </div>
-    <p class="hint">גררו קודקוד כדי להזיז את הנתיב על התצלום. הקשה על הקו מוסיפה קודקוד. מזהי הקטעים נשארים כמו שהם.</p>
+    <p class="hint">גררו קודקוד כדי להזיז. נקודה מקווקוות באמצע צלע מוסיפה קודקוד, ולחיצה ארוכה מוחקת. «סיים עריכה» שומר לרשימה ומשחרר את הבחירה.</p>
     <div id="stream-tools" class="tools" hidden>
       <button type="button" id="btn-extend-end">הארך מהסוף</button>
       <button type="button" id="btn-extend-start">הארך מההתחלה</button>
       <button type="button" id="btn-shorten-end">קצר מהסוף</button>
       <button type="button" id="btn-shorten-start">קצר מההתחלה</button>
       <button type="button" id="btn-delete-vertex" class="wide">מחק קודקוד נבחר</button>
+      <button type="button" id="btn-redraw" class="wide">צייר קטע מחדש</button>
       <button type="button" id="btn-merge" class="wide">מזג עם נחל אחר</button>
       <button type="button" id="btn-reassign" class="wide">שייך לאגן שנבחר</button>
       <button type="button" id="btn-fit" class="wide">התאם תצוגה</button>
+    </div>
+    <div id="redraw-box" class="block" hidden>
+      <p id="redraw-text"></p>
+      <div class="tools">
+        <button type="button" id="btn-redraw-done" class="primary">סיום קטע</button>
+        <button type="button" id="btn-redraw-cancel">ביטול קטע</button>
+      </div>
     </div>
     <div id="merge-box" class="block" hidden>
       <p id="merge-text"></p>
@@ -82,7 +101,7 @@
     <div id="basin-tools" class="tools" hidden>
       <button type="button" id="btn-delete-basin-vertex" class="wide">מחק קודקוד בגבול</button>
       <button type="button" id="btn-fit-basin" class="wide">התאם תצוגה לאגן</button>
-      <p class="hint">חורים פנימיים בגבול נשמרים. עורכים את הטבעת החיצונית.</p>
+      <p class="hint">נקודה מקווקוות על צלע מוסיפה קודקוד. לחיצה ארוכה מוחקת. חורים פנימיים נשמרים.</p>
     </div>
     <label class="block" for="note">הערה לשינוי הזה
       <textarea id="note" maxlength="500" rows="3"></textarea>
@@ -113,6 +132,14 @@
     </details>
   </div>
 </aside>
+<div id="switch-prompt" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="switch-prompt-text">
+  <p id="switch-prompt-text">יש עריכה פתוחה. מה לעשות לפני המעבר?</p>
+  <div class="tools">
+    <button type="button" id="btn-switch-commit" class="primary wide">סיים ושמור</button>
+    <button type="button" id="btn-switch-discard" class="wide">בטל ועבור</button>
+    <button type="button" id="btn-switch-stay" class="wide">המשך כאן</button>
+  </div>
+</div>
 <script src="../vendor/leaflet.js"></script>
 <script src="./edit_logic.js"></script>
 <script src="./static_catalog.js"></script>
