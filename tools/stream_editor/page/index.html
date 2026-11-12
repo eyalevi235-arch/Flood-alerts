@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://server.arcgisonline.com https://services.arcgisonline.com https://tiles.maps.eox.at; connect-src 'self'; font-src 'self'; worker-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">
+<meta name="theme-color" content="#0f4c5c">
+<title>עורך נתיבים — פרטי</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect fill='%230f4c5c' width='16' height='16'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../vendor/leaflet.css">
+<link rel="stylesheet" href="./editor.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <strong>עורך נתיבים</strong>
+    <span class="badge">פרטי · לא מקושר</span>
+  </div>
+  <form id="search-form" role="search">
+    <label class="sr" for="q">חיפוש נחל או אגן</label>
+    <input id="q" type="search" placeholder="חיפוש נחל או אגן" autocomplete="off" enterkeyhint="search">
+    <button type="submit">חפש</button>
+  </form>
+  <ul id="results" hidden></ul>
+</header>
+<div id="map"></div>
+<div id="credit">
+  <div>כלי פרטי לבעל המאגר. התצלום מוצג רק כאן, והעריכה לא נכתבת לאתר ולא למודל.</div>
+  <div id="credit-en" dir="ltr"></div>
+</div>
+<aside id="sheet">
+  <div class="sheet-bar">
+    <div>
+      <strong id="sel-title">לא נבחר נחל</strong>
+      <div id="sel-meta" class="muted"></div>
+    </div>
+    <button type="button" id="sheet-toggle" aria-expanded="true">כלים</button>
+  </div>
+  <div id="sheet-body">
+    <p id="status" class="status" aria-live="polite">טוען את הנחלים ואת אגני הניקוז.</p>
+    <div class="block">
+      <label for="imagery">רקע</label>
+      <select id="imagery">
+        <option value="esri">לוויין Esri</option>
+        <option value="sentinel">Sentinel-2 ללא עננים</option>
+      </select>
+      <div class="checks">
+        <label><input type="checkbox" id="chk-desert" checked> נחלי מדבר</label>
+        <label><input type="checkbox" id="chk-north" checked> נחלי צפון ומרכז</label>
+        <label><input type="checkbox" id="chk-ext" checked> הארכות</label>
+        <label><input type="checkbox" id="chk-basins" checked> אגני ניקוז</label>
+      </div>
+      <p id="count" class="muted"></p>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span><i class="sw desert"></i>מדבר</span>
+      <span><i class="sw north"></i>צפון</span>
+      <span><i class="sw ext"></i>הארכה</span>
+      <span><i class="sw basin"></i>אגן</span>
+      <span><i class="sw edit"></i>עריכה</span>
+    </div>
+    <p class="hint">גררו קודקוד כדי להזיז את הנתיב על התצלום. הקשה על הקו מוסיפה קודקוד. מזהי הקטעים נשארים כמו שהם.</p>
+    <div id="stream-tools" class="tools" hidden>
+      <button type="button" id="btn-extend-end">הארך מהסוף</button>
+      <button type="button" id="btn-extend-start">הארך מההתחלה</button>
+      <button type="button" id="btn-shorten-end">קצר מהסוף</button>
+      <button type="button" id="btn-shorten-start">קצר מההתחלה</button>
+      <button type="button" id="btn-delete-vertex" class="wide">מחק קודקוד נבחר</button>
+      <button type="button" id="btn-merge" class="wide">מזג עם נחל אחר</button>
+      <button type="button" id="btn-reassign" class="wide">שייך לאגן שנבחר</button>
+      <button type="button" id="btn-fit" class="wide">התאם תצוגה</button>
+    </div>
+    <div id="merge-box" class="block" hidden>
+      <p id="merge-text"></p>
+      <div class="tools">
+        <button type="button" id="btn-merge-confirm" class="primary">אישור מיזוג</button>
+        <button type="button" id="btn-merge-cancel">ביטול מיזוג</button>
+      </div>
+    </div>
+    <div id="basin-tools" class="tools" hidden>
+      <button type="button" id="btn-delete-basin-vertex" class="wide">מחק קודקוד בגבול</button>
+      <button type="button" id="btn-fit-basin" class="wide">התאם תצוגה לאגן</button>
+      <p class="hint">חורים פנימיים בגבול נשמרים. עורכים את הטבעת החיצונית.</p>
+    </div>
+    <label class="block" for="note">הערה לשינוי הזה
+      <textarea id="note" maxlength="500" rows="3"></textarea>
+    </label>
+    <div class="tools">
+      <button type="button" id="btn-save" class="primary wide">שמור לרשימת הביקורת</button>
+      <button type="button" id="btn-discard" class="wide">בטל עריכה פתוחה</button>
+    </div>
+    <div class="block">
+      <div class="row">
+        <strong>רשימת שינויים</strong>
+        <span id="change-count" class="muted">0</span>
+      </div>
+      <ul id="change-list"></ul>
+      <label for="file-note">הערה כללית לקובץ
+        <textarea id="file-note" maxlength="500" rows="2" placeholder="למשל: תיקון נחל צין לפי התצלום"></textarea>
+      </label>
+      <div class="tools">
+        <button type="button" id="btn-export" class="primary wide">הורדת קובץ שינויים</button>
+        <button type="button" id="btn-undo">בטל אחרון</button>
+        <button type="button" id="btn-clear">נקה רשימה</button>
+      </div>
+      <p class="hint">ההורדה נשארת אצלכם. כדי לעדכן את המאגר אחר כך, ורק אחרי אישור, מריצים את <span dir="ltr">apply_change.py</span> עם <span dir="ltr">--write --yes</span>.</p>
+    </div>
+    <details id="preview-wrap">
+      <summary>תצוגת הקובץ</summary>
+      <pre id="preview" dir="ltr"></pre>
+    </details>
+  </div>
+</aside>
+<script src="../vendor/leaflet.js"></script>
+<script src="./edit_logic.js"></script>
+<script src="./static_catalog.js"></script>
+<script src="./editor.js"></script>
+</body>
+</html>
