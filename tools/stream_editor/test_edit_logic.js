@@ -140,4 +140,30 @@ assert.strictEqual(Logic.editTransition(true, 'select-other', 'discard').revert,
 assert.strictEqual(Logic.editTransition(true, 'select-other', 'stay').stay, true);
 assert.ok(Logic.editTransition(false, 'select-other', 'stay'), 'select-other with a choice still returns');
 
+var deleted = Logic.deleteStreamChange({
+  mode: 'streams',
+  layer: 'desert',
+  id: 5620,
+  name: 'אזור בוקק',
+  note: 'מחיקה',
+  coordinates: [[35.34458, 31.17208], [35.35542, 31.18292]],
+  basin: 48188
+});
+assert.strictEqual(deleted.op, 'delete_stream');
+assert.strictEqual(deleted.layer, 'desert');
+assert.strictEqual(deleted.id, 5620);
+assert.strictEqual(deleted.name, 'אזור בוקק');
+assert.strictEqual(deleted.old_basin, '48188');
+assert.strictEqual(deleted.old_geometry.type, 'LineString');
+assert.strictEqual(deleted.old_geometry.coordinates.length, 2);
+assert.strictEqual(Logic.deleteStreamChange({
+  mode: 'basins', layer: 'desert', id: 1, note: 'מחיקה', coordinates: [[35, 30], [35.1, 30]]
+}), null);
+assert.strictEqual(Logic.deleteStreamChange({
+  mode: 'streams', layer: 'basin', id: 1, note: 'מחיקה', coordinates: [[35, 30], [35.1, 30]]
+}), null);
+assert.strictEqual(Logic.deleteStreamChange({
+  mode: 'streams', layer: 'desert', id: 1, note: '   ', coordinates: [[35, 30], [35.1, 30]]
+}), null);
+
 console.log('edit logic ok');

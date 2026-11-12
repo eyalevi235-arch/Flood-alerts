@@ -38,10 +38,10 @@ def basin(ident: int, ring: list, name: str, hole: list | None = None) -> dict:
     }
 
 
-def segment(ident: int, coords: list, basin_id: str = "10", display: list | None = None) -> dict:
+def segment(ident: int, coords: list, basin_id: str = "10", display: list | None = None, ds: int = -1) -> dict:
     return {
         "id": ident,
-        "ds": -1,
+        "ds": ds,
         "basin": basin_id,
         "name": "נחל",
         "coords": coords,
@@ -108,9 +108,9 @@ def build_repo(root: Path) -> None:
     dump(root / "data/channel_segments.json.gz", {
         "meta": {"version": 1},
         "segments": [
-            segment(1, [[35.1, 30.5], [35.2, 30.6]], display=[[35.1, 30.5], [35.15, 30.55], [35.2, 30.6]]),
-            segment(2, [[35.2, 30.6], [35.3, 30.7]]),
-            segment(3, [[35.4, 30.8], [35.5, 30.9]], "11"),
+            segment(1, [[35.1, 30.5], [35.2, 30.6]], display=[[35.1, 30.5], [35.15, 30.55], [35.2, 30.6]], ds=2),
+            segment(2, [[35.2, 30.6], [35.3, 30.7]], ds=3),
+            segment(3, [[35.4, 30.8], [35.5, 30.9]], "11", ds=9),
             segment(9, [[35.8, 31.2], [35.9, 31.3]]),
         ],
     })
@@ -393,6 +393,96 @@ class ApplyTests(unittest.TestCase):
         ext = load(self.dir / "site/data/channel_extensions_desert.geojson")
         self.assertEqual([ft["properties"]["id"] for ft in ext["features"]], [10])
         self.assertEqual(gz_before, digest(self.dir / "data/channel_segments.json.gz"))
+
+    def test_delete_stream_removes_id_and_skips_downstream(self) -> None:
+        ext = load(self.dir / "site/data/channel_extensions_desert.geojson")
+        ext["features"][0]["properties"]["src_seg"] = 2
+        dump(self.dir / "site/data/channel_extensions_desert.geojson", ext)
+        doc = {
+            "format": apply_change.FORMAT,
+            "version": 1,
+            "changes": [
+                {
+                    "op": "delete_stream",
+                    "layer": "desert",
+                    "id": 3,
+                    "name": "אחר",
+                    "note": "מחיקה של קטע אמצעי",
+                    "old_geometry": {"type": "LineString", "coordinates": [[35.4, 30.8], [35.5, 30.9]]},
+                    "old_basin": "11",
+                },
+                {
+                    "op": "delete_stream",
+                    "layer": "desert",
+                    "id": 2,
+                    "name": "יובל",
+                    "note": "מחיקה של היובל",
+                    "old_geometry": {"type": "LineString", "coordinates": [[35.2, 30.6], [35.3, 30.7]]},
+                    "old_basin": "10",
+                },
+            ],
+        }
+        result = apply_change.apply_document(self.dir, doc, write=True)
+        self.assertTrue(any("ds עודכן אצל 1" in line for line in result["report"]))
+        site = load(self.dir / "site/data/channel_segments.geojson")
+        self.assertEqual([ft["properties"]["id"] for ft in site["features"]], [1])
+        data = load(self.dir / "data/channel_segments.geojson")
+        self.assertEqual([ft["properties"]["id"] for ft in data["features"]], [1, 4])
+        blob = load(self.dir / "data/channel_segments.json.gz")
+        self.assertEqual([seg["id"] for seg in blob["segments"]], [1, 9])
+        kept = blob["segments"][0]
+        self.assertEqual(kept["ds"], 9)
+        self.assertEqual(kept["lat"], 30.6)
+        self.assertEqual(kept["lon"], 35.2)
+        self.assertEqual(kept["cells"], [[3, 4, 1.0]])
+        self.assertEqual(kept["coords"], [[35.1, 30.5], [35.2, 30.6]])
+        extensions = load(self.dir / "site/data/channel_extensions_desert.geojson")
+        self.assertEqual([ft["properties"]["id"] for ft in extensions["features"]], [11])
+        self.assert_untouched_model()
+
+    def test_delete_rejects_mismatch_and_degenerate_update_is_allowed(self) -> None:
+        before = digest(self.dir / "site/data/channel_segments.geojson")
+        bad = {
+            "format": apply_change.FORMAT,
+            "version": 1,
+            "changes": [{
+                "op": "delete_stream",
+                "layer": "desert",
+                "id": 1,
+                "name": "צין",
+                "note": "גאומטריה לא תואמת",
+                "old_geometry": {"type": "LineString", "coordinates": [[35.0, 30.0], [35.2, 30.6]]},
+                "old_basin": "10",
+            }],
+        }
+        with self.assertRaises(apply_change.ApplyError):
+            apply_change.apply_document(self.dir, bad, write=True)
+        self.assertEqual(before, digest(self.dir / "site/data/channel_segments.geojson"))
+        site = load(self.dir / "site/data/channel_segments.geojson")
+        site["features"][0]["geometry"]["coordinates"] = [[35.1, 30.5], [35.1, 30.5]]
+        dump(self.dir / "site/data/channel_segments.geojson", site)
+        doc = {
+            "format": apply_change.FORMAT,
+            "version": 1,
+            "changes": [{
+                "op": "update_stream",
+                "layer": "desert",
+                "id": 1,
+                "note": "החלפת קו מנוון",
+                "old_geometry": {"type": "LineString", "coordinates": [[35.1, 30.5], [35.1, 30.5]]},
+                "new_geometry": {"type": "LineString", "coordinates": [[35.1, 30.5], [35.2, 30.62]]},
+                "old_basin": "10",
+                "new_basin": "10",
+            }],
+        }
+        apply_change.apply_document(self.dir, doc, write=True)
+        updated = load(self.dir / "site/data/channel_segments.geojson")
+        self.assertEqual(updated["features"][0]["geometry"]["coordinates"][1], [35.2, 30.62])
+        blob = load(self.dir / "data/channel_segments.json.gz")
+        self.assertEqual(blob["segments"][0]["lat"], 30.6)
+        self.assertEqual(blob["segments"][0]["cells"], [[3, 4, 1.0]])
+        self.assertEqual([seg["id"] for seg in blob["segments"]], [1, 2, 3, 9])
+        self.assert_untouched_model()
 
 
 class ServerTests(unittest.TestCase):
