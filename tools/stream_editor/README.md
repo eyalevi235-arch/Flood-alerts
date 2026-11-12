@@ -33,11 +33,14 @@ python3 tools/stream_editor/server.py --host 0.0.0.0 --port 8765
 ## שימוש
 
 1. מחפשים נחל או אגן. הנחלים הגדולים מופיעים מרחוק; מתקרבים כדי לראות קטעים קטנים.
-2. גוררים קודקוד כדי להזיז את הנתיב על התצלום. הקשה על הקו מוסיפה קודקוד.
-3. **הארך** מוסיף קודקוד בקצה. **קצר** מוריד קודקוד קצה. חייבים להישאר לפחות שני קודקודים.
+2. גוררים קודקוד כדי להזיז את הנתיב או את גבול האגן. נקודה מקווקוות באמצע צלע מוסיפה קודקוד, ואז אפשר לגרור אותו. לחיצה ארוכה על קודקוד, או **מחק קודקוד נבחר**, מוחקת אותו. כשמתקרבים רואים יותר קודקודים.
+3. **צייר קטע מחדש** מחליף קטע בין שני קודקודים בנקודות שמקישים על המפה. **הארך** מוסיף קודקוד בקצה. **קצר** מוריד קודקוד קצה. בנחל נשארים לפחות שני קודקודים, ובגבול אגן לפחות שלושה.
 4. **מזג עם נחל אחר** מחבר שני קטעים מאותה שכבה. המזהה של הנחל הראשון נשאר. המזהה של הנחל השני לא נמחק ולא ממספר מחדש את השאר; בקובץ הביקורת הוא מסומן כנבלע.
 5. בוחרים אגן וגוררים את הגבול החיצוני. חורים פנימיים נשמרים. **שייך לאגן שנבחר** משנה רק את תווית האגן של הנחל.
-6. כותבים הערה קצרה ולוחצים **שמור לרשימת הביקורת**. **הורדת קובץ שינויים** מוריד JSON למכשיר. הרשימה נשמרת רק בלשונית, עד שסוגרים אותה.
+6. **סיים עריכה** שומר את השינוי לרשימה ומשחרר את הבחירה, כדי לעבור לנחל או לאגן אחר. **בטל** מוחק את העריכה הפתוחה וגם משחרר את הבחירה. אם מקישים על נחל אחר באמצע עריכה, מופיעה בחירה: לשמור, לבטל, או להישאר. **שמור לרשימת הביקורת** שומר בלי לשחרר את הבחירה.
+7. **הורדת קובץ שינויים** מוריד JSON למכשיר. הרשימה נשמרת רק בלשונית, עד שסוגרים אותה.
+
+אפשר להוסיף את העמוד הנסתר למסך הבית. האייקון כתום, עם קו וקודקודים. באנדרואיד: Chrome, תפריט, «הוסף למסך הבית» או «התקנת אפליקציה». באייפון: Safari, כפתור השיתוף, «הוסף למסך הבית». השם שמופיע הוא «עורך נחלים».
 
 הקובץ הוא `geometry-review-YYYYMMDD-HHMM.json`. לכל שינוי יש `op`, מזהה, הערה, וגיאומטריה ישנה וחדשה.
 
@@ -114,11 +117,14 @@ The basemap switch also offers Sentinel-2 cloudless (EOX). Esri World Imagery is
 ## Use it
 
 1. Search for a stream or a basin. Large streams are drawn when zoomed out; zoom in for the smaller segments.
-2. Drag a vertex to move the path onto the imagery. Tap the line to insert a vertex.
-3. **Extend** adds a vertex at one end. **Shorten** removes an end vertex. A line keeps at least two vertices.
+2. Drag a vertex to move a stream or a basin edge. A dashed midpoint handle inserts a vertex; drag the new vertex into place. A long-press, or **Delete selected vertex**, removes one. Zoom in to see a denser set of handles.
+3. **Redraw section** replaces the path between two vertices with points tapped on the map. **Extend** adds a vertex at one end. **Shorten** removes an end vertex. A line keeps at least two vertices, and a basin ring keeps at least three.
 4. **Merge** joins two segments from the same layer. The first segment keeps its id. The second id is not deleted and the other ids are not renumbered; the review file records it as absorbed.
 5. Select a basin and drag the outer boundary. Interior rings are kept. **Reassign** changes only the stream's basin label.
-6. Write a short note and choose **Save to the review list**. **Download** saves a JSON file on the device. The list lives in that browser tab until the tab is closed.
+6. **סיים עריכה** commits the edit to the review list and clears the selection, so another stream or basin can be chosen. **בטל** drops the open edit and clears the selection. Tapping a different feature while an edit is open asks whether to save, discard, or stay. **Save to the review list** keeps the selection.
+7. **Download** saves a JSON file on the device. The list lives in that browser tab until the tab is closed.
+
+The unlisted page can be added to a phone home screen. Its icon is an orange path with vertices. Android: Chrome menu, Add to Home screen or Install app. iPhone: Safari share sheet, Add to Home Screen. The name is עורך נחלים, and the installed app stays inside the editor path.
 
 Each change has an `op`, an id, a note, and the old and new geometry: `update_stream`, `merge_streams`, or `update_basin`.
 

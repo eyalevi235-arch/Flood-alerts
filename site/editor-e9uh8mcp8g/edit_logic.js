@@ -114,20 +114,136 @@
     return pts;
   }
 
-  function removeIndex(coords, index) {
-    if (coords.length <= 2) return null;
+  function removeIndex(coords, index, minKeep) {
+    var keep = minKeep == null ? 2 : minKeep;
+    if (!coords || coords.length <= keep) return null;
     if (index < 0 || index >= coords.length) return null;
     var pts = coords.map(function (c) { return [c[0], c[1]]; });
     pts.splice(index, 1);
-    return dropDuplicates(pts).length >= 2 ? pts : null;
+    return dropDuplicates(pts).length >= keep ? pts : null;
+  }
+
+  function insertAfter(coords, index, point) {
+    if (!coords || index < 0 || index >= coords.length) return null;
+    var pts = coords.map(function (c) { return [c[0], c[1]]; });
+    var before = dropDuplicates(pts).length;
+    pts.splice(index + 1, 0, roundCoord(point));
+    var cleaned = dropDuplicates(pts);
+    return cleaned.length > before ? cleaned : null;
   }
 
   function insertOnSegment(coords, point) {
     var hit = closestSegment(coords, point);
     if (!hit) return null;
-    var pts = coords.map(function (c) { return [c[0], c[1]]; });
-    pts.splice(hit.index + 1, 0, roundCoord(hit.proj));
-    return pts;
+    return insertAfter(coords, hit.index, hit.proj);
+  }
+
+  function edgeMidpoints(coords, closed) {
+    var n = coords ? coords.length : 0;
+    if (n < 2) return [];
+    var count = closed ? n : n - 1;
+    var out = [];
+    for (var i = 0; i < count; i++) {
+      var j = (i + 1) % n;
+      out.push({
+        after: i,
+        coord: roundCoord([
+          (Number(coords[i][0]) + Number(coords[j][0])) / 2,
+          (Number(coords[i][1]) + Number(coords[j][1])) / 2
+        ])
+      });
+    }
+    return out;
+  }
+
+  function visibleIndices(points, minPx, minCount, keepEnds) {
+    var gap = minPx == null ? 48 : minPx;
+    var least = minCount == null ? 4 : minCount;
+    var shown = [];
+    var last = null;
+    for (var i = 0; i < points.length; i++) {
+      var pt = points[i];
+      if (!pt || !pt.inView) continue;
+      if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < gap) continue;
+      shown.push(i);
+      last = pt;
+    }
+    if (shown.length < least && points.length) {
+      shown = [];
+      var step = Math.max(1, Math.ceil(points.length / 12));
+      for (var j = 0; j < points.length; j += step) shown.push(j);
+      if (shown[shown.length - 1] !== points.length - 1) shown.push(points.length - 1);
+    }
+    if (keepEnds && points.length) {
+      if (points[0] && points[0].inView && shown.indexOf(0) < 0) shown.unshift(0);
+      var end = points.length - 1;
+      if (points[end] && points[end].inView && shown.indexOf(end) < 0) shown.push(end);
+    }
+    return shown;
+  }
+
+  function keptMidpoints(items, minPx) {
+    var gap = minPx == null ? 56 : minPx;
+    var kept = [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (!item || !item.inView || !(item.len >= gap)) continue;
+      var close = false;
+      for (var k = 0; k < kept.length; k++) {
+        if (Math.hypot(item.x - kept[k].x, item.y - kept[k].y) < gap) {
+          close = true;
+          break;
+        }
+      }
+      if (!close) kept.push(item);
+    }
+    return kept;
+  }
+
+  function redrawSection(coords, start, end, points) {
+    if (!coords || coords.length < 2) return null;
+    if (start == null || end == null) return null;
+    if (start < 0 || end < 0 || start >= coords.length || end >= coords.length) return null;
+    if (start === end) return null;
+    var a = Math.min(start, end);
+    var b = Math.max(start, end);
+    var anchorA = roundCoord(coords[a]);
+    var anchorB = roundCoord(coords[b]);
+    var mid = dropDuplicates((points || []).map(function (p) { return roundCoord(p); }));
+    mid = mid.filter(function (p) {
+      var onA = p[0] === anchorA[0] && p[1] === anchorA[1];
+      var onB = p[0] === anchorB[0] && p[1] === anchorB[1];
+      return !onA && !onB;
+    });
+    if (start > end) mid = mid.slice().reverse();
+    var next = coords.slice(0, a + 1).concat(mid).concat(coords.slice(b));
+    var cleaned = dropDuplicates(next);
+    return cleaned.length >= 2 ? cleaned : null;
+  }
+
+  function editTransition(dirty, action, choice) {
+    if (action === 'finish') {
+      return {commit: !!dirty, revert: false, deselect: true, stay: false, prompt: false};
+    }
+    if (action === 'cancel') {
+      return {commit: false, revert: true, deselect: true, stay: false, prompt: false};
+    }
+    if (action === 'select-other') {
+      if (!dirty) {
+        return {commit: false, revert: false, deselect: true, stay: false, prompt: false};
+      }
+      if (choice === 'commit') {
+        return {commit: true, revert: false, deselect: true, stay: false, prompt: false};
+      }
+      if (choice === 'discard') {
+        return {commit: false, revert: true, deselect: true, stay: false, prompt: false};
+      }
+      if (choice === 'stay') {
+        return {commit: false, revert: false, deselect: false, stay: true, prompt: false};
+      }
+      return {commit: false, revert: false, deselect: false, stay: true, prompt: true};
+    }
+    return null;
   }
 
   function mergeLines(a, b) {
@@ -162,7 +278,13 @@
     extend: extend,
     shorten: shorten,
     removeIndex: removeIndex,
+    insertAfter: insertAfter,
     insertOnSegment: insertOnSegment,
+    edgeMidpoints: edgeMidpoints,
+    visibleIndices: visibleIndices,
+    keptMidpoints: keptMidpoints,
+    redrawSection: redrawSection,
+    editTransition: editTransition,
     mergeLines: mergeLines
   };
 });
