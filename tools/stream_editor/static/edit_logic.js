@@ -274,6 +274,30 @@
     return null;
   }
 
+  function deleteStreamChange(spec) {
+    if (!spec || spec.mode !== 'streams') return null;
+    if (typeof spec.layer !== 'string' || !spec.layer || spec.layer === 'basin') return null;
+    if (typeof spec.id !== 'number' || !isFinite(spec.id)) return null;
+    if (!Array.isArray(spec.coordinates) || spec.coordinates.length < 2) return null;
+    var note = typeof spec.note === 'string' ? spec.note.trim() : '';
+    if (!note || note.length > 500) return null;
+    var coords = [];
+    for (var i = 0; i < spec.coordinates.length; i++) {
+      coords.push(roundCoord(spec.coordinates[i]));
+    }
+    if (coords.length < 2) return null;
+    var basin = spec.basin == null || spec.basin === '' ? null : String(spec.basin);
+    return {
+      op: 'delete_stream',
+      layer: spec.layer,
+      id: spec.id,
+      name: spec.name == null ? '' : String(spec.name),
+      note: note,
+      old_geometry: {type: 'LineString', coordinates: coords},
+      old_basin: basin
+    };
+  }
+
   function mergeLines(a, b) {
     var A = dropDuplicates(a);
     var B = dropDuplicates(b);
@@ -318,6 +342,7 @@
     searchMatchesMode: searchMatchesMode,
     basinChrome: basinChrome,
     streamChrome: streamChrome,
-    mergeLines: mergeLines
+    mergeLines: mergeLines,
+    deleteStreamChange: deleteStreamChange
   };
 });

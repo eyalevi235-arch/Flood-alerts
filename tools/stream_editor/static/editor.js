@@ -172,7 +172,9 @@
 
   function isHidden(layer, id) {
     return state.saved.some(function (change) {
-      return change.op === 'merge_streams' && change.layer === layer && change.absorbed_id === id;
+      if (change.layer !== layer) return false;
+      if (change.op === 'merge_streams' && change.absorbed_id === id) return true;
+      return change.op === 'delete_stream' && change.id === id;
     });
   }
 
@@ -267,6 +269,9 @@
   function changeLabel(change) {
     if (change.op === 'merge_streams') {
       return 'מיזוג ' + change.survivor_id + ' + ' + change.absorbed_id + ' (' + (LAYER_HE[change.layer] || '') + ')';
+    }
+    if (change.op === 'delete_stream') {
+      return 'מחיקה ' + change.id + ' · ' + (change.name || '') + ' (' + (LAYER_HE[change.layer] || '') + ')';
     }
     if (change.op === 'update_basin') return 'אגן ' + change.id;
     var basin = change.old_basin !== change.new_basin ? ' · שיוך ' + change.new_basin : '';
@@ -715,6 +720,7 @@
     var basin = !!state.basin;
     $('stream-tools').hidden = !stream;
     $('basin-tools').hidden = !basin;
+    if ($('btn-delete-stream')) $('btn-delete-stream').hidden = state.mode !== 'streams';
     $('merge-box').hidden = !state.merge;
     if (state.focus === 'basin' && basin) $('sel-title').textContent = basinTitle(state.basin);
     else if (stream) $('sel-title').textContent = streamTitle(state.stream);
@@ -909,6 +915,7 @@
     stopRedraw();
     $('note').value = '';
     hideSwitchPrompt();
+    if ($('delete-prompt')) $('delete-prompt').hidden = true;
     redraw();
   }
 
@@ -1073,6 +1080,71 @@
     $('merge-box').hidden = false;
     redraw();
     setStatus(merged.gapM > 500 ? 'הקצוות רחוקים. אפשר לאשר ואז לגרור את החיבור.' : 'בדקו את החיבור הירוק ואשרו.');
+  }
+
+  function openDeletePrompt() {
+    if (state.mode !== 'streams' || !state.stream) {
+      setStatus('מחיקה זמינה רק בלשונית נחלים, אחרי בחירת נחל.');
+      return;
+    }
+    if (state.merge) {
+      setStatus('אשרו או בטלו את המיזוג לפני מחיקה.');
+      return;
+    }
+    var stream = state.stream;
+    var blocked = state.saved.some(function (change) {
+      return change.op === 'merge_streams' && change.layer === stream.layer &&
+        (change.survivor_id === stream.id || change.absorbed_id === stream.id);
+    });
+    if (blocked) {
+      setStatus('הנחל מופיע במיזוג שברשימה. הסירו את המיזוג לפני המחיקה.');
+      return;
+    }
+    $('delete-prompt-text').textContent = 'למחוק את ' + streamTitle(stream) +
+      ' (מזהה ' + stream.id + ')? המחיקה נשמרת בקובץ הביקורת בלבד, עד שמחילים אותו.';
+    $('delete-prompt').hidden = false;
+  }
+
+  function confirmDeleteStream() {
+    $('delete-prompt').hidden = true;
+    if (state.mode !== 'streams' || !state.stream) return;
+    var stream = state.stream;
+    var orig = state.originals[keyOf(stream.layer, stream.id)];
+    if (!orig) {
+      setStatus('אין גאומטריה מקורית למחיקה.');
+      return;
+    }
+    var note = $('note').value.trim() || ('מחיקה ' + streamTitle(stream) + ' (' +
+      (LAYER_HE[stream.layer] || '') + ', מזהה ' + stream.id + ')');
+    var change = Logic.deleteStreamChange({
+      mode: 'streams',
+      layer: stream.layer,
+      id: stream.id,
+      name: stream.name || stream.name_he || orig.name || '',
+      note: note,
+      coordinates: orig.geometry.coordinates,
+      basin: orig.basin
+    });
+    if (!change) {
+      setStatus('לא ניתן למחוק את הנחל הזה.');
+      return;
+    }
+    pushUndo();
+    state.saved = state.saved.filter(function (item) {
+      if (item.layer !== stream.layer) return true;
+      if (item.op === 'update_stream' && item.id === stream.id) return false;
+      if (item.op === 'delete_stream' && item.id === stream.id) return false;
+      return true;
+    });
+    state.saved.push(change);
+    state.live = null;
+    state.stream = null;
+    state.focus = null;
+    stopRedraw();
+    $('note').value = '';
+    renderList();
+    redraw();
+    setStatus('המחיקה נכנסה לרשימה. הנחל יוסר מהמאגר רק אחרי החלת הקובץ.');
   }
 
   function confirmMerge() {
@@ -1455,6 +1527,12 @@
         return;
       }
       deleteBasinVertex(state.live.vertex);
+    });
+    $('btn-delete-stream').addEventListener('click', openDeletePrompt);
+    $('btn-delete-stream-confirm').addEventListener('click', confirmDeleteStream);
+    $('btn-delete-stream-cancel').addEventListener('click', function () {
+      $('delete-prompt').hidden = true;
+      setStatus('המחיקה בוטלה.');
     });
     $('btn-fit').addEventListener('click', function () {
       if (!state.stream) return;

@@ -94,6 +94,7 @@ header {
 }
 #search-form button { background: #08323c; color: #fff; border-color: #08323c; }
 button.primary { background: var(--teal); color: #fff; }
+button.danger { color: #8f1d1d; border-color: #c44545; }
 button:disabled { opacity: 0.45; }
 #results {
   position: absolute;

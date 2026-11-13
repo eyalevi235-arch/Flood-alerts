@@ -7,6 +7,10 @@ catchment rasters, rain cells, or travel-time fields.
 
 Segment ids stay as they are. A merge keeps both ids in the model table; the
 absorbed id is marked hidden and is removed only from the display GeoJSON.
+``delete_stream`` removes that id from the display layers and from the model
+table. Other ids are not renumbered. Upstream ``ds`` pointers skip to the
+deleted segment's downstream id. Rain cells, travel times, ``lat`` and ``lon``
+on the remaining segments are left as they are.
 """
 from __future__ import annotations
 
@@ -185,6 +189,24 @@ def line_geometry(coords: Any) -> dict[str, Any]:
     return {"type": "LineString", "coordinates": clean_line(coords.get("coordinates"))}
 
 
+def stored_line(coords: Any) -> dict[str, Any]:
+    """Old geometry as stored, including a degenerate line of two equal points."""
+    if not isinstance(coords, dict) or coords.get("type") != "LineString":
+        raise ApplyError("expected a LineString")
+    raw = coords.get("coordinates")
+    if not isinstance(raw, list) or len(raw) < 2:
+        raise ApplyError("a line needs at least two vertices")
+    if len(raw) > MAX_VERTICES:
+        raise ApplyError("too many vertices")
+    distinct = canon_line(raw)
+    if len(distinct) >= 2:
+        return {"type": "LineString", "coordinates": distinct}
+    if len(distinct) == 1:
+        point = distinct[0]
+        return {"type": "LineString", "coordinates": [point, point]}
+    raise ApplyError("a line needs at least two vertices")
+
+
 def polygon_geometry(coords: Any) -> dict[str, Any]:
     if not isinstance(coords, dict) or coords.get("type") != "Polygon":
         raise ApplyError("expected a Polygon")
@@ -193,7 +215,7 @@ def polygon_geometry(coords: Any) -> dict[str, Any]:
 
 def geometries_equal(kind: str, left: Any, right: Any) -> bool:
     if kind == "line":
-        return clean_line(left["coordinates"]) == clean_line(right["coordinates"])
+        return canon_line(left["coordinates"]) == canon_line(right["coordinates"])
     return clean_polygon(left["coordinates"]) == clean_polygon(right["coordinates"])
 
 
@@ -380,7 +402,7 @@ def _remove_feature(collection: dict[str, Any], prop: str, ident: int) -> None:
 def apply_update_stream(ws: Workspace, change: dict[str, Any]) -> str:
     _note, layer = _note_and_layer(change, "line")
     ident = parse_id(change.get("id"))
-    old = line_geometry(change.get("old_geometry"))
+    old = stored_line(change.get("old_geometry"))
     new = line_geometry(change.get("new_geometry"))
     feature = ws.site_feature(layer, ident)
     _match_old("line", feature, old, layer.site)
@@ -391,7 +413,7 @@ def apply_update_stream(ws: Workspace, change: dict[str, Any]) -> str:
     current_b = str((feature.get("properties") or {}).get("b") or "")
     if old_basin is not None and current_b and old_basin != current_b:
         raise ApplyError("old basin does not match id %s" % ident)
-    geom_changed = clean_line(new["coordinates"]) != clean_line(old["coordinates"])
+    geom_changed = clean_line(new["coordinates"]) != canon_line(old["coordinates"])
     basin_changed = new_basin is not None and new_basin != current_b
     if not geom_changed and not basin_changed:
         raise ApplyError("change for id %s does not modify geometry or basin" % ident)
@@ -422,8 +444,8 @@ def apply_merge(ws: Workspace, change: dict[str, Any]) -> str:
     absorbed_id = parse_id(change.get("absorbed_id"))
     if survivor_id == absorbed_id:
         raise ApplyError("a stream cannot be merged with itself")
-    old_survivor = line_geometry(change.get("survivor_old_geometry"))
-    old_absorbed = line_geometry(change.get("absorbed_old_geometry"))
+    old_survivor = stored_line(change.get("survivor_old_geometry"))
+    old_absorbed = stored_line(change.get("absorbed_old_geometry"))
     new = line_geometry(change.get("new_geometry"))
     new_line = clean_line(new["coordinates"])
     survivor = ws.site_feature(layer, survivor_id)
@@ -492,10 +514,129 @@ def apply_update_basin(ws: Workspace, change: dict[str, Any]) -> str:
     return "עדכון גבול אגן %s. תאי הגשם והמודל לא שונו." % ident
 
 
+SOURCE_EXTENSIONS = {
+    "desert": "desert_extension",
+    "nondesert": "nondesert_extension",
+}
+
+
+def _src_seg(feature: dict[str, Any]) -> int | None:
+    props = feature.get("properties") or {}
+    try:
+        return int(props.get("src_seg"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _remove_line_features(ws: Workspace, layer: Layer, ident: int) -> None:
+    _remove_feature(ws.docs[layer.site], layer.id_prop, ident)
+    ws.dirty.add(layer.site)
+    want = str(ident)
+    for rel in layer.copies:
+        features = ws.docs[rel].get("features") or []
+        if any(feature_id(feature, layer.id_prop) == want for feature in features):
+            _remove_feature(ws.docs[rel], layer.id_prop, ident)
+            ws.dirty.add(rel)
+
+
+def _drop_extensions_sourced_from(ws: Workspace, source_layer: str, ident: int) -> int:
+    ext_name = SOURCE_EXTENSIONS.get(source_layer)
+    if ext_name is None:
+        return 0
+    layer = LAYERS[ext_name]
+    removed = 0
+    for rel in (layer.site, *layer.copies):
+        collection = ws.docs[rel]
+        features = collection.get("features") or []
+        kept: list[dict[str, Any]] = []
+        changed = False
+        for feature in features:
+            if _src_seg(feature) == ident:
+                changed = True
+                removed += 1
+            else:
+                kept.append(feature)
+        if changed:
+            collection["features"] = kept
+            ws.dirty.add(rel)
+    return removed
+
+
+def _delete_model_segment(ws: Workspace, layer: Layer, ident: int) -> list[int]:
+    if not layer.model:
+        return []
+    blob = ws.docs[layer.model]
+    found: dict[str, Any] | None = None
+    kept: list[dict[str, Any]] = []
+    for segment in blob.get("segments") or []:
+        try:
+            sid = int(segment.get("id"))
+        except (TypeError, ValueError):
+            kept.append(segment)
+            continue
+        if sid == ident:
+            found = segment
+        else:
+            kept.append(segment)
+    if found is None:
+        raise ApplyError("id %s is missing from %s" % (ident, layer.model))
+    if int(found.get("hidden") or 0) == 1:
+        raise ApplyError("id %s is already hidden" % ident)
+    try:
+        nxt = int(found.get("ds"))
+    except (TypeError, ValueError):
+        nxt = -1
+    if nxt == ident:
+        nxt = -1
+    retargeted: list[int] = []
+    for segment in kept:
+        try:
+            sid = int(segment.get("id"))
+            downstream = int(segment.get("ds"))
+        except (TypeError, ValueError):
+            continue
+        if downstream == ident:
+            segment["ds"] = nxt
+            retargeted.append(sid)
+    blob["segments"] = kept
+    ws.dirty.add(layer.model)
+    return retargeted
+
+
+def apply_delete_stream(ws: Workspace, change: dict[str, Any]) -> str:
+    _note, layer = _note_and_layer(change, "line")
+    ident = parse_id(change.get("id"))
+    if change.get("name") is not None and not isinstance(change.get("name"), str):
+        raise ApplyError("name must be a string")
+    old = stored_line(change.get("old_geometry"))
+    feature = ws.site_feature(layer, ident)
+    _match_old("line", feature, old, layer.site)
+    old_basin = None if change.get("old_basin") is None else str(change.get("old_basin"))
+    current_b = str((feature.get("properties") or {}).get("b") or "")
+    if old_basin is not None and current_b and old_basin != current_b:
+        raise ApplyError("old basin does not match id %s" % ident)
+    if layer.model:
+        segment = ws.model_segment(layer, ident)
+        if segment is not None and int(segment.get("hidden") or 0) == 1:
+            raise ApplyError("id %s is already hidden" % ident)
+    _remove_line_features(ws, layer, ident)
+    retargeted = _delete_model_segment(ws, layer, ident)
+    dropped = _drop_extensions_sourced_from(ws, str(change.get("layer")), ident)
+    where = "מהתצוגה ומהטבלה" if layer.model else "מהתצוגה"
+    parts = ["מחיקה %s מזהה %s. הוסר %s." % (change.get("layer"), ident, where)]
+    if retargeted:
+        parts.append("ds עודכן אצל %s." % ", ".join(str(item) for item in retargeted))
+    if dropped:
+        parts.append("הוסרו %s הארכות שמקורן במזהה." % dropped)
+    parts.append("שאר המזהים לא מוספרו מחדש. lat, lon, cells וזמני זרימה לא שונו.")
+    return " ".join(parts)
+
+
 OPS = {
     "update_stream": apply_update_stream,
     "merge_streams": apply_merge,
     "update_basin": apply_update_basin,
+    "delete_stream": apply_delete_stream,
 }
 
 
