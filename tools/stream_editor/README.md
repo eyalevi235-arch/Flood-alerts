@@ -39,6 +39,7 @@ python3 tools/stream_editor/server.py --host 0.0.0.0 --port 8765
 5. בוחרים אגן וגוררים את הגבול החיצוני. חורים פנימיים נשמרים. **שייך לאגן שנבחר** משנה רק את תווית האגן של הנחל.
 6. **סיים עריכה** שומר את השינוי לרשימה ומשחרר את הבחירה, כדי לעבור לנחל או לאגן אחר. **בטל** מוחק את העריכה הפתוחה וגם משחרר את הבחירה. אם מקישים על נחל אחר באמצע עריכה, מופיעה בחירה: לשמור, לבטל, או להישאר. **שמור לרשימת הביקורת** שומר בלי לשחרר את הבחירה.
 7. **הורדת קובץ שינויים** מוריד JSON למכשיר. הרשימה נשמרת רק בלשונית, עד שסוגרים אותה.
+8. **שלח לפרוייקטור** שולח את אותו JSON. גלגל השיניים «הגדרת שליחה» שומר במכשיר, פעם אחת, כתובת Webhook ומפתח (אפשר להדביק `Bearer …` או את המפתח לבד). אין כתובת ואין מפתח בקוד. לפני השליחה יש אישור עם מספר השינויים. אם השליחה נכשלת, ההורדה נשארת. אחרי הצלחה אפשר לנקות את הרשימה, והיא לא נמחקת לבד.
 
 אפשר להוסיף את העמוד הנסתר למסך הבית. האייקון כתום, עם קו וקודקודים. באנדרואיד: Chrome, תפריט, «הוסף למסך הבית» או «התקנת אפליקציה». באייפון: Safari, כפתור השיתוף, «הוסף למסך הבית». השם שמופיע הוא «עורך נחלים».
 
@@ -88,6 +89,18 @@ python3 tools/stream_editor/apply_change.py geometry-review-YYYYMMDD-HHMM.json -
 
 ![העורך ברוחב טלפון](screenshots/mobile-390.png)
 
+שליחה לפרוייקטור באותו רוחב: הכפתור ליד ההורדה, הגדרת הכתובת והמפתח, אישור עם מספר השינויים, ושגיאה עם סטטוס. ההורדה נשארת.
+
+![כפתור שלח לפרוייקטור](screenshots/send-button-390.png)
+
+![הגדרת שליחה](screenshots/send-settings-390.png)
+
+![אישור שליחה](screenshots/send-confirm-390.png)
+
+![שגיאת שליחה](screenshots/send-error-390.png)
+
+![נשלח, ואפשר להשאיר את הרשימה](screenshots/send-success-390.png)
+
 ---
 
 # Stream path editor (private)
@@ -104,7 +117,7 @@ From the repo root:
 python3 tools/stream_editor/server.py
 ```
 
-Open <http://127.0.0.1:8765/>. The default bind is `127.0.0.1` only. The same editor is also published as an unlisted static page at `/editor-e9uh8mcp8g/` (no link from the public site, `noindex`). It reads the GeoJSON already in `site/data` and still only downloads a `geometry-review-*.json` file. Rebuild that page after a local UI change with `python3 tools/stream_editor/build_static_page.py`. For a phone on the same Wi-Fi:
+Open <http://127.0.0.1:8765/>. The default bind is `127.0.0.1` only. The same editor is also published as an unlisted static page at `/editor-e9uh8mcp8g/` (no link from the public site, `noindex`). It reads the GeoJSON already in `site/data` and downloads a `geometry-review-*.json` file. The same JSON can be posted to a webhook the user pastes on that device. Rebuild that page after a local UI change with `python3 tools/stream_editor/build_static_page.py`. For a phone on the same Wi-Fi:
 
 ```bash
 python3 tools/stream_editor/server.py --host 0.0.0.0 --port 8765
@@ -123,6 +136,7 @@ The basemap switch also offers Sentinel-2 cloudless (EOX). Esri World Imagery is
 5. Select a basin and drag the outer boundary. Interior rings are kept. **Reassign** changes only the stream's basin label.
 6. **סיים עריכה** commits the edit to the review list and clears the selection, so another stream or basin can be chosen. **בטל** drops the open edit and clears the selection. Tapping a different feature while an edit is open asks whether to save, discard, or stay. **Save to the review list** keeps the selection.
 7. **Download** saves a JSON file on the device. The list lives in that browser tab until the tab is closed.
+8. **שלח לפרוייקטור** posts that same JSON. The gear opens **הגדרת שליחה**, where the webhook address and the Authorization value are pasted once and kept only in that browser's `localStorage`. Nothing is committed. A confirm step shows how many changes will be sent. A failed send leaves the download in place. After a success, clearing the list is offered and is not done by itself.
 
 The unlisted page can be added to a phone home screen. Its icon is an orange path with vertices. Android: Chrome menu, Add to Home screen or Install app. iPhone: Safari share sheet, Add to Home Screen. The name is עורך נחלים, and the installed app stays inside the editor path.
 
@@ -165,3 +179,15 @@ After a stream edit and a basin-boundary edit. The review list holds both change
 Mobile 390: the same tool. **כלים** opens the sheet; the map and the imagery credit stay visible.
 
 ![Editor at phone width](screenshots/mobile-390.png)
+
+Send at the same width: the button beside download, the address and key panel, the confirm step, and an error that includes the HTTP status. Download stays available.
+
+![Send button](screenshots/send-button-390.png)
+
+![Send settings](screenshots/send-settings-390.png)
+
+![Send confirm](screenshots/send-confirm-390.png)
+
+![Send error](screenshots/send-error-390.png)
+
+![Sent, list kept unless chosen](screenshots/send-success-390.png)

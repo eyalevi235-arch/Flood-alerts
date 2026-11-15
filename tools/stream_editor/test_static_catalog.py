@@ -169,6 +169,38 @@ class HiddenPageTests(unittest.TestCase):
         self.assertIn("Logic.acceptTap", editor_js)
         self.assertIn("Logic.searchMatchesMode", editor_js)
         self.assertIn('target="_blank"', editor_js)
+        self.assertIn('id="btn-send"', html)
+        self.assertIn(">שלח לפרוייקטור<", html)
+        self.assertIn('aria-label="הגדרת שליחה"', html)
+        self.assertIn('id="webhook-url"', html)
+        self.assertIn('id="webhook-key"', html)
+        self.assertIn('type="password"', html)
+        self.assertIn('id="btn-send-settings-clear"', html)
+        self.assertIn(">נקה<", html)
+        self.assertIn('id="send-confirm"', html)
+        self.assertIn('id="send-done"', html)
+        self.assertIn(">נשלח ✓<", html)
+        self.assertIn("connect-src 'self' https: http:", html)
+        self.assertNotIn("serviceWorker", html)
+        logic = (folder / "edit_logic.js").read_text(encoding="utf-8")
+        self.assertIn("function normalizeAuthorization", logic)
+        self.assertIn("נשלח ✓", logic)
+        self.assertEqual(editor_js.count("reviewJsonText()"), 3)
+        self.assertIn("var json = reviewJsonText();", editor_js)
+        self.assertIn("new Blob([reviewJsonText()]", editor_js)
+        self.assertIn("localStorage.setItem(Logic.SEND_AUTH_KEY", editor_js)
+        self.assertNotIn("sessionStorage.setItem(Logic.SEND_AUTH_KEY", editor_js)
+        self.assertNotIn("Bearer ", editor_js)
+        self.assertNotIn("console.", editor_js)
+        self.assertIn("method: 'POST'", editor_js)
+        self.assertIn("'Authorization': value", editor_js)
+        page = (ROOT / "tools/stream_editor/page/index.html").read_text(encoding="utf-8")
+        server_src = (ROOT / "tools/stream_editor/server.py").read_text(encoding="utf-8")
+        self.assertIn("connect-src 'self' https: http:", page)
+        self.assertIn("connect-src 'self' https: http:", server_src)
+        public = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        self.assertNotIn("https: http:", public)
+        self.assertNotIn("שלח לפרוייקטור", public)
         self.assertIn("static_catalog.js", html)
         self.assertNotIn("serviceWorker", html)
         self.assertNotIn("/api/", html)
@@ -186,6 +218,18 @@ class HiddenPageTests(unittest.TestCase):
             self.assertNotIn(build_static_page.FOLDER, text, str(path))
             self.assertNotIn("stream_editor", text, str(path))
         server.assert_private(ROOT)
+
+    def test_edit_logic_covers_webhook_header(self) -> None:
+        proc = subprocess.run(
+            ["node", str(ROOT / "tools/stream_editor/test_edit_logic.js")],
+            cwd=ROOT / "tools/stream_editor",
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise AssertionError(proc.stderr or proc.stdout)
+        self.assertIn("edit logic ok", proc.stdout)
 
     def test_editor_manifest_is_scoped_and_distinct(self) -> None:
         folder = ROOT / "site" / build_static_page.FOLDER

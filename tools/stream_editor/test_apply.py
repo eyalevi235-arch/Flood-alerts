@@ -518,6 +518,10 @@ class ServerTests(unittest.TestCase):
                 health = json.load(res)
             self.assertTrue(health["private"])
             self.assertFalse(health["writes"])
+            with urllib.request.urlopen("http://127.0.0.1:%s/" % port) as res:
+                csp = res.headers["Content-Security-Policy"]
+            self.assertIn("connect-src 'self' https: http:", csp)
+            self.assertNotIn("שלח לפרוייקטור", csp)
             with urllib.request.urlopen("http://127.0.0.1:%s/api/feature?layer=desert&id=1" % port) as res:
                 body = json.load(res)
             self.assertEqual(body["id"], 1)

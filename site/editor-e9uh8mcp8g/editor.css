@@ -165,6 +165,36 @@ button:disabled { opacity: 0.45; }
 .checks label { min-height: 44px; display: flex; align-items: center; gap: 6px; }
 .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .tools .wide { grid-column: 1 / -1; }
+.send-row {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.send-row #btn-send { flex: 1 1 auto; min-width: 0; }
+button.icon-btn {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.send-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 15px;
+}
+.send-status.error { color: #8f1d1d; font-weight: 700; }
+.send-status.ok { color: #0b3944; font-weight: 700; }
+.prompt .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 0;
+}
+.prompt .field input { min-height: 44px; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 13px; }
 .sw {
   display: inline-block;
@@ -230,7 +260,7 @@ button:disabled { opacity: 0.45; }
 .vx { -webkit-touch-callout: none; user-select: none; touch-action: none; }
 .prompt {
   position: fixed;
-  z-index: 900;
+  z-index: 1200;
   left: 12px;
   right: 12px;
   top: 64px;

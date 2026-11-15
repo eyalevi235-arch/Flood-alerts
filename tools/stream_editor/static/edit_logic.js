@@ -1,4 +1,4 @@
-/* Pure geometry helpers for the private stream editor. No DOM. */
+/* Pure helpers for the private stream editor. No DOM, no storage, no network. */
 (function (root, factory) {
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -298,6 +298,49 @@
     };
   }
 
+  var SEND_URL_KEY = 'flood-editor-send-url';
+  var SEND_AUTH_KEY = 'flood-editor-send-auth';
+  var SEND_OK_TEXT = 'נשלח ✓';
+
+  function normalizeAuthorization(raw) {
+    var value = String(raw == null ? '' : raw).trim();
+    if (!value || /^bearer$/i.test(value)) return '';
+    var match = /^Bearer\s+/i.exec(value);
+    if (match) {
+      var token = value.slice(match[0].length).trim();
+      if (!token) return '';
+      return 'Bearer ' + token;
+    }
+    return 'Bearer ' + value;
+  }
+
+  function webhookUrl(raw) {
+    var value = String(raw == null ? '' : raw).trim();
+    if (!value || /\s/.test(value)) return '';
+    var parsed;
+    try {
+      parsed = new URL(value);
+    } catch (err) {
+      return '';
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    if (!parsed.hostname) return '';
+    return value;
+  }
+
+  function sendConfirmLabel(count) {
+    var n = Number(count);
+    if (n === 1) return 'לשלוח שינוי אחד לפרוייקטור?';
+    return 'לשלוח ' + n + ' שינויים לפרוייקטור?';
+  }
+
+  function sendFailureText(status) {
+    if (typeof status === 'number' && isFinite(status)) {
+      return 'השליחה נכשלה (סטטוס ' + status + '). אפשר להוריד את הקובץ במקום.';
+    }
+    return 'השליחה נכשלה (רשת או CORS, אין סטטוס HTTP). אפשר להוריד את הקובץ במקום.';
+  }
+
   function mergeLines(a, b) {
     var A = dropDuplicates(a);
     var B = dropDuplicates(b);
@@ -343,6 +386,13 @@
     basinChrome: basinChrome,
     streamChrome: streamChrome,
     mergeLines: mergeLines,
-    deleteStreamChange: deleteStreamChange
+    deleteStreamChange: deleteStreamChange,
+    SEND_URL_KEY: SEND_URL_KEY,
+    SEND_AUTH_KEY: SEND_AUTH_KEY,
+    SEND_OK_TEXT: SEND_OK_TEXT,
+    normalizeAuthorization: normalizeAuthorization,
+    webhookUrl: webhookUrl,
+    sendConfirmLabel: sendConfirmLabel,
+    sendFailureText: sendFailureText
   };
 });
