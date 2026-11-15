@@ -166,4 +166,30 @@ assert.strictEqual(Logic.deleteStreamChange({
   mode: 'streams', layer: 'desert', id: 1, note: '   ', coordinates: [[35, 30], [35.1, 30]]
 }), null);
 
+assert.strictEqual(Logic.normalizeAuthorization('abc'), 'Bearer abc');
+assert.strictEqual(Logic.normalizeAuthorization('  Bearer abc  '), 'Bearer abc');
+assert.strictEqual(Logic.normalizeAuthorization('bearer abc'), 'Bearer abc');
+assert.strictEqual(Logic.normalizeAuthorization('BEARER abc'), 'Bearer abc');
+assert.strictEqual(Logic.normalizeAuthorization('Bearer   abc'), 'Bearer abc');
+assert.strictEqual(Logic.normalizeAuthorization(''), '');
+assert.strictEqual(Logic.normalizeAuthorization('   '), '');
+assert.strictEqual(Logic.normalizeAuthorization('Bearer'), '');
+assert.strictEqual(Logic.normalizeAuthorization('Bearer   '), '');
+assert.strictEqual(Logic.normalizeAuthorization(null), '');
+assert.strictEqual(Logic.webhookUrl('https://example.com/hook'), 'https://example.com/hook');
+assert.strictEqual(Logic.webhookUrl(' http://127.0.0.1:9/fail '), 'http://127.0.0.1:9/fail');
+assert.strictEqual(Logic.webhookUrl('ftp://example.com/hook'), '');
+assert.strictEqual(Logic.webhookUrl('javascript:alert(1)'), '');
+assert.strictEqual(Logic.webhookUrl(''), '');
+assert.strictEqual(Logic.webhookUrl('https://example.com/hook extra'), '');
+assert.strictEqual(Logic.sendConfirmLabel(1), 'לשלוח שינוי אחד לפרוייקטור?');
+assert.strictEqual(Logic.sendConfirmLabel(3), 'לשלוח 3 שינויים לפרוייקטור?');
+assert.strictEqual(Logic.SEND_OK_TEXT, 'נשלח ✓');
+assert.ok(Logic.sendFailureText(403).indexOf('סטטוס 403') > 0);
+assert.ok(Logic.sendFailureText(500).indexOf('להוריד את הקובץ') > 0);
+assert.ok(Logic.sendFailureText(null).indexOf('אין סטטוס') > 0);
+assert.ok(Logic.sendFailureText(null).indexOf('403') < 0);
+assert.strictEqual(Logic.SEND_URL_KEY, 'flood-editor-send-url');
+assert.strictEqual(Logic.SEND_AUTH_KEY, 'flood-editor-send-auth');
+
 console.log('edit logic ok');

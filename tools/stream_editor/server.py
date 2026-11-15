@@ -435,7 +435,7 @@ def make_handler(catalog: Catalog) -> type[BaseHTTPRequestHandler]:
                 extra["Content-Security-Policy"] = (
                     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
                     "img-src 'self' data: https://server.arcgisonline.com https://services.arcgisonline.com "
-                    "https://tiles.maps.eox.at; connect-src 'self'; font-src 'self'; "
+                    "https://tiles.maps.eox.at; connect-src 'self' https: http:; font-src 'self'; "
                     "worker-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
                 )
                 extra["X-Robots-Tag"] = "noindex, nofollow"

@@ -53,7 +53,8 @@
     pendingNav: null,
     dragging: false,
     suppressClick: false,
-    mode: 'streams'
+    mode: 'streams',
+    sending: false
   };
 
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -260,6 +261,7 @@
     });
     $('change-count').textContent = String(state.saved.length);
     $('btn-export').disabled = state.saved.length === 0;
+    $('btn-send').disabled = state.sending || state.saved.length === 0;
     $('btn-undo').disabled = state.undo.length === 0;
     var doc = state.saved.length ? buildDocument() : {changes: []};
     $('preview').textContent = JSON.stringify(doc, null, 2);
@@ -1265,6 +1267,163 @@
     setStatus('העריכה הפתוחה בוטלה. הבחירה נשארה, והרשימה השמורה לא נמחקה.');
   }
 
+  function reviewJsonText() {
+    return JSON.stringify(buildDocument(), null, 2);
+  }
+
+  function setSendStatus(text, kind) {
+    var el = $('send-status');
+    el.textContent = text || '';
+    el.hidden = !text;
+    el.classList.toggle('error', kind === 'error');
+    el.classList.toggle('ok', kind === 'ok');
+  }
+
+  function readSendSettings() {
+    var rawUrl = '';
+    var rawKey = '';
+    try {
+      rawUrl = localStorage.getItem(Logic.SEND_URL_KEY) || '';
+      rawKey = localStorage.getItem(Logic.SEND_AUTH_KEY) || '';
+    } catch (err) { /* private mode can refuse storage */ }
+    return {
+      rawUrl: String(rawUrl).trim(),
+      url: Logic.webhookUrl(rawUrl),
+      value: Logic.normalizeAuthorization(rawKey)
+    };
+  }
+
+  function writeSendSettings(url, key) {
+    try {
+      if (url) localStorage.setItem(Logic.SEND_URL_KEY, url);
+      else localStorage.removeItem(Logic.SEND_URL_KEY);
+      if (key) localStorage.setItem(Logic.SEND_AUTH_KEY, key);
+      else localStorage.removeItem(Logic.SEND_AUTH_KEY);
+    } catch (err) { /* private mode can refuse storage */ }
+  }
+
+  function storeSendFields() {
+    writeSendSettings($('webhook-url').value.trim(), $('webhook-key').value.trim());
+  }
+
+  function openSendSettings() {
+    var rawUrl = '';
+    var rawKey = '';
+    try {
+      rawUrl = localStorage.getItem(Logic.SEND_URL_KEY) || '';
+      rawKey = localStorage.getItem(Logic.SEND_AUTH_KEY) || '';
+    } catch (err) { /* private mode can refuse storage */ }
+    $('webhook-url').value = rawUrl;
+    $('webhook-key').value = rawKey;
+    $('send-settings').hidden = false;
+    $('btn-send-settings').setAttribute('aria-expanded', 'true');
+    $('webhook-url').focus();
+  }
+
+  function closeSendSettings() {
+    storeSendFields();
+    $('send-settings').hidden = true;
+    $('btn-send-settings').setAttribute('aria-expanded', 'false');
+    var settings = readSendSettings();
+    if (settings.url && settings.value) {
+      setSendStatus('', '');
+      setStatus('ההגדרות נשמרו במכשיר הזה.');
+    }
+  }
+
+  function clearSendSettings() {
+    try {
+      localStorage.removeItem(Logic.SEND_URL_KEY);
+      localStorage.removeItem(Logic.SEND_AUTH_KEY);
+    } catch (err) { /* private mode can refuse storage */ }
+    $('webhook-url').value = '';
+    $('webhook-key').value = '';
+    setSendStatus('הכתובת והמפתח נמחקו מהמכשיר הזה.', '');
+    setStatus('הכתובת והמפתח נמחקו מהמכשיר הזה.');
+  }
+
+  function requestSend() {
+    if (state.sending) return;
+    if (selectionDirty()) {
+      setStatus('שמרו את העריכה הפתוחה לרשימה לפני השליחה.');
+      return;
+    }
+    if (!state.saved.length) {
+      setStatus('הרשימה ריקה.');
+      return;
+    }
+    var settings = readSendSettings();
+    if (!settings.rawUrl || !settings.value) {
+      openSendSettings();
+      setSendStatus('כדי לשלוח, הדביקו כתובת Webhook ומפתח. הם נשמרים רק במכשיר הזה.', '');
+      setStatus('כדי לשלוח, הדביקו כתובת Webhook ומפתח.');
+      return;
+    }
+    if (!settings.url) {
+      openSendSettings();
+      setSendStatus('כתובת ה-Webhook צריכה להתחיל ב-http:// או ב-https://.', 'error');
+      setStatus('כתובת ה-Webhook צריכה להתחיל ב-http:// או ב-https://.');
+      return;
+    }
+    $('send-confirm-text').textContent = Logic.sendConfirmLabel(state.saved.length);
+    $('send-confirm').hidden = false;
+    $('btn-send-confirm').focus();
+  }
+
+  function postReview() {
+    $('send-confirm').hidden = true;
+    if (state.sending) return;
+    if (selectionDirty()) {
+      setStatus('שמרו את העריכה הפתוחה לרשימה לפני השליחה.');
+      return;
+    }
+    if (!state.saved.length) {
+      setStatus('הרשימה ריקה.');
+      return;
+    }
+    var settings = readSendSettings();
+    if (!settings.url || !settings.value) {
+      openSendSettings();
+      setStatus('כדי לשלוח, הדביקו כתובת Webhook ומפתח.');
+      return;
+    }
+    var url = settings.url;
+    var value = settings.value;
+    var json = reviewJsonText();
+    state.sending = true;
+    $('btn-send').setAttribute('aria-busy', 'true');
+    renderList();
+    setSendStatus('שולח…', '');
+    setStatus('שולח לפרוייקטור…');
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': value
+      },
+      body: json
+    }).then(function (res) {
+      if (res.ok) {
+        setSendStatus(Logic.SEND_OK_TEXT, 'ok');
+        setStatus(Logic.SEND_OK_TEXT);
+        $('send-done').hidden = false;
+        $('btn-send-keep').focus();
+        return;
+      }
+      var failed = Logic.sendFailureText(res.status);
+      setSendStatus(failed, 'error');
+      setStatus(failed);
+    }).catch(function () {
+      var failed = Logic.sendFailureText(null);
+      setSendStatus(failed, 'error');
+      setStatus(failed);
+    }).then(function () {
+      state.sending = false;
+      $('btn-send').removeAttribute('aria-busy');
+      renderList();
+    });
+  }
+
   function exportFile() {
     if (selectionDirty()) {
       setStatus('שמרו את העריכה הפתוחה לרשימה לפני ההורדה.');
@@ -1274,8 +1433,7 @@
       setStatus('הרשימה ריקה.');
       return;
     }
-    var doc = buildDocument();
-    var blob = new Blob([JSON.stringify(doc, null, 2)], {type: 'application/json'});
+    var blob = new Blob([reviewJsonText()], {type: 'application/json'});
     var link = document.createElement('a');
     var now = new Date();
     var pad = function (n) { return String(n).padStart(2, '0'); };
@@ -1553,6 +1711,35 @@
     $('btn-switch-discard').addEventListener('click', function () { resolveSwitch('discard'); });
     $('btn-switch-stay').addEventListener('click', function () { resolveSwitch('stay'); });
     $('btn-export').addEventListener('click', exportFile);
+    $('btn-send').addEventListener('click', requestSend);
+    $('btn-send-settings').addEventListener('click', function () {
+      if ($('send-settings').hidden) openSendSettings();
+      else closeSendSettings();
+    });
+    $('webhook-url').addEventListener('input', storeSendFields);
+    $('webhook-key').addEventListener('input', storeSendFields);
+    $('webhook-url').addEventListener('change', storeSendFields);
+    $('webhook-key').addEventListener('change', storeSendFields);
+    $('btn-send-settings-close').addEventListener('click', closeSendSettings);
+    $('btn-send-settings-clear').addEventListener('click', clearSendSettings);
+    $('btn-send-confirm').addEventListener('click', postReview);
+    $('btn-send-cancel').addEventListener('click', function () {
+      $('send-confirm').hidden = true;
+      setStatus('השליחה בוטלה. הרשימה נשארה.');
+    });
+    $('btn-send-keep').addEventListener('click', function () {
+      $('send-done').hidden = true;
+      setStatus('נשלח ✓ הרשימה נשארה במכשיר.');
+    });
+    $('btn-send-clear-list').addEventListener('click', function () {
+      $('send-done').hidden = true;
+      if (!state.saved.length) return;
+      pushUndo();
+      state.saved = [];
+      renderList();
+      redraw();
+      setStatus('נשלח ✓ הרשימה נוקתה במכשיר הזה. המאגר לא השתנה.');
+    });
     $('btn-undo').addEventListener('click', function () {
       var prev = state.undo.pop();
       if (!prev) return;

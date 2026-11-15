@@ -117,10 +117,19 @@
       </label>
       <div class="tools">
         <button type="button" id="btn-export" class="primary wide">הורדת קובץ שינויים</button>
+        <div class="send-row">
+          <button type="button" id="btn-send" class="primary" disabled>שלח לפרוייקטור</button>
+          <button type="button" id="btn-send-settings" class="icon-btn" aria-haspopup="dialog" aria-controls="send-settings" aria-expanded="false" aria-label="הגדרת שליחה" title="הגדרת שליחה">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.22-1.14.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.49.4 1.04.72 1.63.94l.36 2.54c.05.24.26.42.5.42h3.84c.24 0 .45-.18.5-.42l.36-2.54c.59-.22 1.14-.54 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
+            </svg>
+          </button>
+        </div>
+        <p id="send-status" class="send-status" role="status" aria-live="polite" hidden></p>
         <button type="button" id="btn-undo">בטל אחרון</button>
         <button type="button" id="btn-clear">נקה רשימה</button>
       </div>
-      <p class="hint">ההורדה נשארת אצלכם. כדי לעדכן את המאגר אחר כך, ורק אחרי אישור, מריצים את <span dir="ltr">apply_change.py</span> עם <span dir="ltr">--write --yes</span>.</p>
+      <p class="hint">ההורדה נשארת אצלכם. «שלח לפרוייקטור» שולח את אותו קובץ לכתובת שתדביקו בהגדרת השליחה. הכתובת והמפתח נשמרים רק במכשיר הזה. כדי לעדכן את המאגר אחר כך, ורק אחרי אישור, מריצים את <span dir="ltr">apply_change.py</span> עם <span dir="ltr">--write --yes</span>.</p>
     </div>
     <details id="preview-wrap">
       <summary>תצוגת הקובץ</summary>
@@ -128,6 +137,36 @@
     </details>
   </div>
 </aside>
+<div id="send-settings" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="send-settings-title">
+  <p id="send-settings-title"><strong>הגדרת שליחה</strong></p>
+  <p class="muted">הכתובת והמפתח נשמרים רק במכשיר הזה, לא בקוד.</p>
+  <label class="field" for="webhook-url">כתובת Webhook
+    <input id="webhook-url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr" placeholder="https://">
+  </label>
+  <label class="field" for="webhook-key">מפתח (כותרת Authorization)
+    <input id="webhook-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr">
+  </label>
+  <p class="muted">אפשר להדביק מפתח לבד, או ערך מלא שמתחיל ב-<span dir="ltr">Bearer</span>.</p>
+  <div class="tools">
+    <button type="button" id="btn-send-settings-clear" class="wide">נקה</button>
+    <button type="button" id="btn-send-settings-close" class="primary wide">סגור</button>
+  </div>
+</div>
+<div id="send-confirm" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="send-confirm-text">
+  <p id="send-confirm-text">לשלוח את השינויים לפרוייקטור?</p>
+  <div class="tools">
+    <button type="button" id="btn-send-confirm" class="primary wide">שלח</button>
+    <button type="button" id="btn-send-cancel" class="wide">ביטול</button>
+  </div>
+</div>
+<div id="send-done" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="send-done-title">
+  <p id="send-done-title"><strong>נשלח ✓</strong></p>
+  <p>אפשר לנקות את רשימת השינויים במכשיר. הרשימה נשארת אם לא תבחרו בזה.</p>
+  <div class="tools">
+    <button type="button" id="btn-send-keep" class="primary wide">השאר את הרשימה</button>
+    <button type="button" id="btn-send-clear-list" class="wide">נקה רשימה</button>
+  </div>
+</div>
 <div id="delete-prompt" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="delete-prompt-text">
   <p id="delete-prompt-text">למחוק את הנחל? המחיקה נשמרת בקובץ הביקורת בלבד.</p>
   <div class="tools">
