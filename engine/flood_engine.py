@@ -3,6 +3,7 @@ using precomputed per-point tables (data/catchments.json) on the fixed Open-Mete
 Pipeline: Open-Meteo hourly precip grid -> basin rain features -> LightGBM (desert PDIR-feature model) + Platt -> dry gate
           -> rain-weighted time-area routing with SCS-CN -> first wave / peak ETA."""
 import os,json,time,numpy as np,pandas as pd,requests,lightgbm as lgb
+import om_client
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT=json.load(open(f'{ROOT}/data/catchments.json'))
 LAT=np.array(CAT['grid']['lat']); LON=np.array(CAT['grid']['lon']); RES=CAT['grid']['res']; P=CAT['routing_params']
@@ -19,14 +20,9 @@ class Grid:
     def wsum(s,T,h):
         if h<s.step: return None
         b=s.t.searchsorted(pd.Timestamp(T),'right'); a=s.t.searchsorted(pd.Timestamp(T)-pd.Timedelta(hours=h),'right'); return s.cs[b]-s.cs[a]
+DailyLimitExceeded=om_client.DailyLimitExceeded
 def _get(url,params,tries=4):
-    for k in range(tries):
-        try:
-            r=requests.get(url,params=params,timeout=60)
-            if r.status_code==200: return r.json()
-        except requests.RequestException: pass
-        time.sleep(5*(k+1))
-    r.raise_for_status()
+    return om_client.get(url,params,tries=tries)
 def openmeteo_grid(model='icon_seamless',days=3,chunk=150,past_days=1):
     la,lo=np.meshgrid(LAT,LON,indexing='ij'); la=la.ravel(); lo=lo.ravel(); out=[]
     for i in range(0,len(la),chunk):
