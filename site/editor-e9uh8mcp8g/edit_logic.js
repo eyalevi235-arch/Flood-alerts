@@ -1,4 +1,5 @@
-/* Pure helpers for the private stream editor. No DOM, no storage, no network. */
+/* Pure helpers for the private stream editor. No DOM and no network.
+   Draft decisions mutate only the bucket object the caller passes in. */
 (function (root, factory) {
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -613,6 +614,188 @@
     return 'השליחה נכשלה (רשת או CORS, אין סטטוס HTTP). אפשר להוריד את הקובץ במקום.';
   }
 
+  var DRAFT_STORAGE_KEY = 'flood-stream-editor-draft-v2';
+  var DRAFT_LEGACY_KEY = 'flood-stream-editor-v1';
+  var DRAFT_IDB_MARKER = '{"backend":"indexeddb","v":2}';
+  var DRAFT_DB_NAME = 'flood-stream-editor';
+  var DRAFT_DB_STORE = 'drafts';
+  var DRAFT_DB_RECORD = 'current';
+  var DRAFT_LOCAL_LIMIT = 4 * 1024 * 1024;
+  var DRAFT_QUOTA_TEXT = 'האחסון המקומי מלא. השינויים נשמרו במאגר הדפדפן של המכשיר.';
+  var DRAFT_SAVE_FAILED_TEXT = 'לא הצלחתי לשמור את השינויים במכשיר. הם עלולים ללכת לאיבוד אם סוגרים את העמוד.';
+  var DRAFT_CLEAR_TEXT = 'לנקות את כל השינויים שלא נשלחו? הם יימחקו מהמכשיר ואי אפשר לשחזר אותם.';
+
+  function draftByteLength(text) {
+    var json = String(text == null ? '' : text);
+    if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(json).length;
+    var bytes = 0;
+    for (var i = 0; i < json.length; i++) {
+      var code = json.charCodeAt(i);
+      if (code < 0x80) bytes += 1;
+      else if (code < 0x800) bytes += 2;
+      else if (code >= 0xD800 && code <= 0xDBFF) {
+        bytes += 4;
+        i += 1;
+      } else bytes += 3;
+    }
+    return bytes;
+  }
+
+  function draftWritePlan(byteLength) {
+    var size = Number(byteLength);
+    if (isFinite(size) && size > DRAFT_LOCAL_LIMIT) return 'indexeddb';
+    return 'local';
+  }
+
+  function encodeDraft(draft) {
+    var saved = draft && Array.isArray(draft.saved) ? draft.saved : [];
+    var originals = draft && draft.originals && typeof draft.originals === 'object' && !Array.isArray(draft.originals)
+      ? draft.originals : {};
+    var fileNote = draft && typeof draft.fileNote === 'string' ? draft.fileNote : '';
+    return JSON.stringify({saved: saved, originals: originals, fileNote: fileNote});
+  }
+
+  function parseDraft(raw) {
+    if (typeof raw !== 'string' || !raw || raw === DRAFT_IDB_MARKER) return null;
+    var data;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      return null;
+    }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    if (data.backend === 'indexeddb' && !Array.isArray(data.saved)) return null;
+    if (!Array.isArray(data.saved) && typeof data.fileNote !== 'string') return null;
+    return {
+      saved: Array.isArray(data.saved) ? data.saved : [],
+      originals: data.originals && typeof data.originals === 'object' && !Array.isArray(data.originals) ? data.originals : {},
+      fileNote: typeof data.fileNote === 'string' ? data.fileNote : ''
+    };
+  }
+
+  function draftHasChanges(draft) {
+    if (!draft || typeof draft !== 'object') return false;
+    if (Array.isArray(draft.saved) && draft.saved.length > 0) return true;
+    return typeof draft.fileNote === 'string' && draft.fileNote.trim().length > 0;
+  }
+
+  function restoredDraftNotice(draft) {
+    if (!draft || !Array.isArray(draft.saved)) return '';
+    var count = draft.saved.length;
+    if (count === 1) return 'שוחזר שינוי אחד שלא נשלח';
+    if (count > 1) return 'שוחזרו ' + count + ' שינויים שלא נשלחו';
+    if (typeof draft.fileNote === 'string' && draft.fileNote.trim()) return 'שוחזרה הערה שלא נשלחה';
+    return '';
+  }
+
+  function isQuotaError(err) {
+    if (!err) return false;
+    var name = String(err.name || '');
+    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
+    return err.code === 22 || err.code === 1014;
+  }
+
+  function shouldClearDraft(action) {
+    return action === 'send-success' || action === 'clear-changes';
+  }
+
+  function hasStoredText(raw) {
+    return typeof raw === 'string' && raw.length > 0;
+  }
+
+  function draftRestoreDecision(localRaw, legacyRaw, idbRaw, idbChecked) {
+    var local = parseDraft(localRaw);
+    if (local) {
+      return {
+        draft: local,
+        notice: restoredDraftNotice(local),
+        needsIndexedDb: false,
+        migrate: false,
+        dropLegacy: hasStoredText(legacyRaw)
+      };
+    }
+    if (!idbChecked) {
+      return {draft: null, notice: '', needsIndexedDb: true, migrate: false, dropLegacy: false};
+    }
+    var stored = parseDraft(idbRaw);
+    if (stored) {
+      return {
+        draft: stored,
+        notice: restoredDraftNotice(stored),
+        needsIndexedDb: false,
+        migrate: false,
+        dropLegacy: hasStoredText(legacyRaw)
+      };
+    }
+    var legacy = parseDraft(legacyRaw);
+    if (legacy) {
+      return {
+        draft: legacy,
+        notice: restoredDraftNotice(legacy),
+        needsIndexedDb: false,
+        migrate: true,
+        dropLegacy: true
+      };
+    }
+    return {
+      draft: null,
+      notice: '',
+      needsIndexedDb: false,
+      migrate: false,
+      dropLegacy: hasStoredText(legacyRaw)
+    };
+  }
+
+  function commitDraft(bucket, draft) {
+    var warnings = [];
+    if (!draftHasChanges(draft)) {
+      bucket.local = null;
+      bucket.session = null;
+      bucket.idb = null;
+      return {ok: true, target: 'cleared', warnings: warnings, json: ''};
+    }
+    var json = encodeDraft(draft);
+    var overLimit = draftWritePlan(draftByteLength(json)) === 'indexeddb';
+    var overQuota = bucket.localQuota != null && draftByteLength(json) > bucket.localQuota;
+    if (!overLimit && !bucket.failLocal && !overQuota) {
+      bucket.local = json;
+      bucket.idb = null;
+      bucket.session = null;
+      return {ok: true, target: 'local', warnings: warnings, json: json};
+    }
+    if (!overLimit) {
+      warnings.push(bucket.failLocal === 'other' ? DRAFT_SAVE_FAILED_TEXT : DRAFT_QUOTA_TEXT);
+    }
+    if (bucket.failIdb) {
+      if (warnings.indexOf(DRAFT_SAVE_FAILED_TEXT) < 0) warnings.push(DRAFT_SAVE_FAILED_TEXT);
+      return {ok: false, target: null, warnings: warnings, json: json};
+    }
+    bucket.idb = json;
+    bucket.local = DRAFT_IDB_MARKER;
+    bucket.session = null;
+    return {ok: true, target: 'indexeddb', warnings: warnings, json: json};
+  }
+
+  function loadDraft(bucket) {
+    var decision = draftRestoreDecision(bucket.local, bucket.session, bucket.idb, false);
+    if (decision.needsIndexedDb) {
+      decision = draftRestoreDecision(bucket.local, bucket.session, bucket.idb, true);
+    }
+    if (decision.migrate && decision.draft) commitDraft(bucket, decision.draft);
+    else if (decision.dropLegacy) bucket.session = null;
+    if (decision.draft && bucket.local && bucket.local !== DRAFT_IDB_MARKER && !decision.migrate) {
+      bucket.idb = null;
+    }
+    return decision;
+  }
+
+  function clearDraftBucket(bucket) {
+    bucket.local = null;
+    bucket.session = null;
+    bucket.idb = null;
+    return {ok: true, target: 'cleared', warnings: []};
+  }
+
   function mergeLines(a, b) {
     var A = dropDuplicates(a);
     var B = dropDuplicates(b);
@@ -681,6 +864,28 @@
     normalizeAuthorization: normalizeAuthorization,
     webhookUrl: webhookUrl,
     sendConfirmLabel: sendConfirmLabel,
-    sendFailureText: sendFailureText
+    sendFailureText: sendFailureText,
+    DRAFT_STORAGE_KEY: DRAFT_STORAGE_KEY,
+    DRAFT_LEGACY_KEY: DRAFT_LEGACY_KEY,
+    DRAFT_IDB_MARKER: DRAFT_IDB_MARKER,
+    DRAFT_DB_NAME: DRAFT_DB_NAME,
+    DRAFT_DB_STORE: DRAFT_DB_STORE,
+    DRAFT_DB_RECORD: DRAFT_DB_RECORD,
+    DRAFT_LOCAL_LIMIT: DRAFT_LOCAL_LIMIT,
+    DRAFT_QUOTA_TEXT: DRAFT_QUOTA_TEXT,
+    DRAFT_SAVE_FAILED_TEXT: DRAFT_SAVE_FAILED_TEXT,
+    DRAFT_CLEAR_TEXT: DRAFT_CLEAR_TEXT,
+    draftByteLength: draftByteLength,
+    draftWritePlan: draftWritePlan,
+    encodeDraft: encodeDraft,
+    parseDraft: parseDraft,
+    draftHasChanges: draftHasChanges,
+    restoredDraftNotice: restoredDraftNotice,
+    isQuotaError: isQuotaError,
+    shouldClearDraft: shouldClearDraft,
+    draftRestoreDecision: draftRestoreDecision,
+    commitDraft: commitDraft,
+    loadDraft: loadDraft,
+    clearDraftBucket: clearDraftBucket
   };
 });

@@ -188,6 +188,21 @@ button.icon-btn {
 }
 .send-status.error { color: #8f1d1d; font-weight: 700; }
 .send-status.ok { color: #0b3944; font-weight: 700; }
+.draft-notice {
+  margin: 0;
+  font-size: 14px;
+  color: var(--teal-dark);
+  background: #e7f2f4;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.draft-warning {
+  margin: 0;
+  font-size: 14px;
+  color: #8f1d1d;
+  font-weight: 700;
+}
 .prompt .field {
   display: flex;
   flex-direction: column;
