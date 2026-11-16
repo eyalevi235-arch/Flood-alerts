@@ -23,6 +23,19 @@
   <button type="button" class="btn" id="gate-ok">הבנתי, זה כלי עזר בלבד</button>
  </div>
 </div>
+<div id="editor-gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="editor-gate-title" hidden>
+ <form class="card" id="editor-gate-form" method="post" autocomplete="off">
+  <h2 id="editor-gate-title">כניסה לעורך</h2>
+  <label class="field" for="editor-pass">סיסמה
+   <input id="editor-pass" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+  </label>
+  <p id="editor-gate-err" class="editor-gate-err" hidden>סיסמה שגויה</p>
+  <div class="editor-gate-actions">
+   <button type="submit" class="btn" id="editor-gate-go">כניסה</button>
+   <button type="button" class="btn alt" id="editor-gate-cancel">ביטול</button>
+  </div>
+ </form>
+</div>
 <header><span>🌊 שיטפון בדרך</span><small id="hdr"></small></header>
 <p class="ims-credit" id="ims-credit"><a class="ims-credit-full" href="https://ims.gov.il/he/ObservationDataAPI" rel="noopener" target="_blank">החישוב עשוי להסתמך בין השאר על נתוני מכ״ם ותחנות מטאורולוגיות שמקורם בשירות המטאורולוגי לישראל. השירות המטאורולוגי אינו נושא באחריות לתחזיות או להסתברויות המוצגות כאן, שהן עיבוד עצמאי של הפרויקט.</a><a class="ims-credit-short" href="https://ims.gov.il/he/ObservationDataAPI" rel="noopener" target="_blank">מקור אפשרי לנתוני מכ״ם ותחנות: השירות המטאורולוגי לישראל, שאינו נושא באחריות לתחזיות האתר.</a></p>
 <main>
@@ -32,6 +45,7 @@
 <section id="p-points" class="page"><input id="q" class="search" placeholder="חיפוש נקודה או נחל…"><div id="unsub-msg" class="muted"></div><div id="plist"></div></section>
 <section id="p-alerts" class="page"><div id="alist"></div></section>
 <section id="p-set" class="page">
+ <div class="card"><button type="button" class="editor-row" id="open-editor">🔒 עורך נחלים</button></div>
  <div class="card"><h3>הנקודות שלי</h3><div id="mypoints" class="muted">הקישו על המפה ושמרו נקודה. היא תיכנס להתראות.</div></div>
  <div class="card"><h3>מועדפים</h3><div id="favs" class="muted"></div><div class="muted">מוסיפים מועדפים בכוכב ⭐ בכרטיס הנקודה.</div>
  <p>הוספת נחל שלם: <input id="snew" class="stream-input" placeholder="למשל: נחל צין"> <button type="button" class="btn" id="add-stream">הוסף</button></p></div>
@@ -125,5 +139,7 @@
 <script src="./tap.js"></script>
 <script src="./flow_marker.js"></script>
 <script src="./reports.js"></script>
-<script src="./collapse.js"></script><script data-goatcounter="https://flood-alerts.goatcounter.com/count" async src="https://gc.zgo.at/count.v5.js" crossorigin="anonymous" integrity="sha384-atnOLvQb9t+jTSipvd75X2yginT4PjVbqDdlJAmxMm+wYElFmeR6EmLP5bYeoRVQ"></script>
+<script src="./collapse.js"></script>
+<script src="./editor_gate.js"></script>
+<script data-goatcounter="https://flood-alerts.goatcounter.com/count" async src="https://gc.zgo.at/count.v5.js" crossorigin="anonymous" integrity="sha384-atnOLvQb9t+jTSipvd75X2yginT4PjVbqDdlJAmxMm+wYElFmeR6EmLP5bYeoRVQ"></script>
 </body></html>
