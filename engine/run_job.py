@@ -11,6 +11,24 @@ def _load_engine(v): return importlib.import_module('flood_engine' if v=='v1' el
 fe=_load_engine(ENGINE_VERSION)
 _CALJ=json.load(open(f'{fe.ROOT}/model/calibration.json')); DESERT_THR=float((_CALJ.get('selected') or _CALJ).get('alert_thr') or 0.3)
 ROOT=fe.ROOT; SITE=f'{ROOT}/site/data'; os.makedirs(SITE,exist_ok=True); os.makedirs(f'{ROOT}/state',exist_ok=True)
+def _publish_output(ok, reason=None):
+    '''Tell the Actions workflow whether to deploy. On failure, do not write site files.'''
+    flag='true' if ok else 'false'
+    out=os.environ.get('GITHUB_OUTPUT')
+    if out:
+        try:
+            with open(out,'a',encoding='utf-8') as f: f.write(f'publish={flag}\n')
+        except OSError: pass
+    summ=os.environ.get('GITHUB_STEP_SUMMARY')
+    if summ and not ok:
+        try:
+            with open(summ,'a',encoding='utf-8') as f:
+                f.write('## Open-Meteo: forecast not published\n\n')
+                f.write(f'{reason or "no data"}\n\n')
+                f.write('The previous site forecast was left unchanged.\n')
+        except OSError: pass
+    if not ok: print('WARNING: publish=false;', reason or 'no data')
+
 def vapid_public():
     """Actions secret when set; otherwise the published vapid_public_key.txt. Never logs the key."""
     k=os.environ.get('VAPID_PUBLIC_KEY','').strip()
@@ -44,9 +62,20 @@ def _main():
     if os.environ.get('USE_IMS_RADAR','0')=='1': print('USE_IMS_RADAR=1 ignored: radar input not supported in the Actions engine (needs IMS token + regridding)')
     for m in [os.environ.get('FORECAST_MODEL','icon_seamless'),'ecmwf_ifs025']:
         try: g=fe.openmeteo_grid(m); break
-        except Exception as e: err=e; traceback.print_exc()
+        except Exception as e:
+            err=e; traceback.print_exc()
+            if isinstance(e, getattr(fe,'DailyLimitExceeded',())):
+                print('Open-Meteo daily limit exceeded; not trying another model')
+                break
+    try:
+        import om_client
+        print(om_client.stats_line())
+    except Exception:
+        pass
     if g is None:
-        out=dict(issued=dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%d %H:%M UTC'),source=f'stub ({type(err).__name__})',stub=True,alerts=[]); jsave(f'{SITE}/alerts_latest.json',out); return 1
+        reason=f'Open-Meteo unavailable ({type(err).__name__ if err else "unknown"}: {err}); leaving the previous forecast on the site'
+        _publish_output(False, reason)
+        return 0
     print(f'grid {g.name} {g.t[0]}..{g.t[-1]} max cell total {float(g.cs[-1].max()):.1f} mm ({time.time()-t0:.0f}s)')
     A=fe.evaluate_points(g,now); out=dict(issued=fe.il(now),source=f'flood_engine/{g.name}',stub=False,alerts=A); jsave(f'{SITE}/alerts_latest.json',out,1)
     try:
@@ -109,7 +138,7 @@ def _main():
     pub=vapid_public()
     jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3e',desert_geom_version='v8p',desert_alert_thr=DESERT_THR),1)
     nal=sum(a['prob']>=(0.3 if a.get('region')=='north_center' else DESERT_THR) for a in A); print(f'alerts: {len(A)} points, {nal} with prob>={DESERT_THR} (engine {fe.__name__}); risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
-    notify(A,g,now); return 0
+    notify(A,g,now); _publish_output(True); return 0
 # Same 60 m cap as site/tap_basin.js NORTH_RESNAP_M / snapToleranceMeters. No zoom on the server.
 NORTH_SNAP_M=60
 _NORTH_SEGS=None

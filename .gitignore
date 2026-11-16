@@ -21,3 +21,6 @@ radar/
 *.tgz
 *.tmp.geojson
 tmp/
+
+# Local / Actions Open-Meteo HTTP cache (public forecast data; never commit).
+.om_cache/

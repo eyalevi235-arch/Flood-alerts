@@ -7,6 +7,7 @@ using precomputed per-point tables (data/catchments.json) on the fixed Open-Mete
 Pipeline: Open-Meteo hourly precip grid -> basin rain features -> LightGBM (desert PDIR-feature model) + Platt -> dry gate
           -> rain-weighted time-area routing with SCS-CN -> first wave / peak ETA."""
 import os,json,time,numpy as np,pandas as pd,requests,lightgbm as lgb
+import om_client
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT=json.load(open(f'{ROOT}/data/catchments.json'))
 LAT=np.array(CAT['grid']['lat']); LON=np.array(CAT['grid']['lon']); RES=CAT['grid']['res']; P=CAT['routing_params']
@@ -50,22 +51,14 @@ class Grid:
     def wsum(s,T,h):
         if h<s.step: return None
         b=s.t.searchsorted(pd.Timestamp(T),'right'); a=s.t.searchsorted(pd.Timestamp(T)-pd.Timedelta(hours=h),'right'); return s.cs[b]-s.cs[a]
+DailyLimitExceeded=om_client.DailyLimitExceeded
 def _get(url,params,tries=4):
-    for k in range(tries):
-        try:
-            r=requests.get(url,params=params,timeout=60)
-            if r.status_code==200: return r.json()
-        except requests.RequestException: pass
-        time.sleep(5*(k+1))
-    r.raise_for_status()
+    return om_client.get(url,params,tries=tries)
 def openmeteo_grid(model='icon_seamless',days=3,chunk=150,past_days=None):
     past_days=int(os.environ.get('OM_PAST_DAYS',31)) if past_days is None else past_days   # v2: ante30 needs 30 days
-    la,lo=np.meshgrid(LAT,LON,indexing='ij'); la=la.ravel(); lo=lo.ravel(); out=[]
-    for i in range(0,len(la),chunk):
-        p=dict(latitude=','.join(map(str,la[i:i+chunk])),longitude=','.join(map(str,lo[i:i+chunk])),hourly='precipitation',models=model,timezone='GMT',forecast_days=days,past_days=int(past_days))
-        j=_get('https://api.open-meteo.com/v1/forecast',p); j=j if isinstance(j,list) else [j]
-        out+=[np.array([np.nan if v is None else v for v in x['hourly']['precipitation']],dtype='float32') for x in j]; t=pd.to_datetime(j[0]['hourly']['time'])
-    R=np.stack(out,1).reshape(len(t),len(LAT),len(LON)); R[~np.isfinite(R)]=0
+    la,lo=np.meshgrid(LAT,LON,indexing='ij'); la=la.ravel(); lo=lo.ravel()
+    t,R,src=om_client.precip_grid(_get,la,lo,len(LAT),len(LON),model,days,past_days,chunk)
+    R=np.asarray(R,dtype='float32'); R[~np.isfinite(R)]=0
     name=f'openmeteo_{model}'
     if os.environ.get('USE_IMS_RADAR','0')=='1':
         global RADAR_STATUS
