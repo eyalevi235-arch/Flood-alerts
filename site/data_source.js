@@ -105,7 +105,7 @@
       q.risk = B.risk[i];
       if (desert) { q.risk_live = B.risk[i]; q.eta_peak_rain = null; }
       else { q.alert = !!(B.alert && B.alert[i]); q.strong = !!(B.strong && B.strong[i]); q.risk_raw = null; q.p_sig = null; }
-      if (Array.isArray(B.rcov)) q.radar_cov = !!B.rcov[i];
+      if (Array.isArray(B.rcov) && typeof B.rcov[i] === 'boolean') q.radar_cov = B.rcov[i];
       return {type: f.type, geometry: f.geometry, properties: q};
     });
     return out;
