@@ -17,7 +17,7 @@
 <link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect fill='%23e65100' width='16' height='16'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../vendor/leaflet.css">
-<link rel="stylesheet" href="./editor.css">
+<link rel="stylesheet" href="./editor.css?v=2">
 </head>
 <body>
 <header>
@@ -76,7 +76,7 @@
       <span><i class="sw basin"></i>אגן</span>
       <span><i class="sw edit"></i>עריכה</span>
     </div>
-    <p class="hint">בלשונית נחלים בוחרים נחל, ובלשונית אגנים בוחרים אגן. גררו קודקוד כדי להזיז. נקודה מקווקוות באמצע צלע מוסיפה קודקוד, ולחיצה ארוכה מוחקת. «סיים עריכה» שומר לרשימה ומשחרר את הבחירה. מעבר לשונית באמצע שינוי שואל אם לשמור.</p>
+    <p class="hint">בלשונית נחלים הקשה בוחרת את הנחל כולו, מהמקור עד הסוף, כולל פיצולים. גרירת קודקוד מזיזה גם כל קודקוד שנוגע בו, כדי שלא ייפתח נתק. נקודה מקווקוות באמצע צלע מוסיפה קודקוד, ולחיצה ארוכה מוחקת. «סיים עריכה» שומר לרשימה ומשחרר את הבחירה. מעבר לשונית באמצע שינוי שואל אם לשמור.</p>
     <div id="stream-tools" class="tools" hidden>
       <button type="button" id="btn-extend-end">הארך מהסוף</button>
       <button type="button" id="btn-extend-start">הארך מההתחלה</button>
@@ -192,8 +192,8 @@
   </div>
 </div>
 <script src="../vendor/leaflet.js"></script>
-<script src="./edit_logic.js"></script>
-<script src="./static_catalog.js"></script>
-<script src="./editor.js"></script>
+<script src="./edit_logic.js?v=2"></script>
+<script src="./static_catalog.js?v=2"></script>
+<script src="./editor.js?v=2"></script>
 </body>
 </html>

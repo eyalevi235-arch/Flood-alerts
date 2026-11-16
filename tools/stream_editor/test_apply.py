@@ -484,6 +484,92 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual([seg["id"] for seg in blob["segments"]], [1, 2, 3, 9])
         self.assert_untouched_model()
 
+    def test_shared_junction_round_trip_has_no_new_gap(self) -> None:
+        """A shared-vertex edit must update every segment that meets there."""
+        site = load(self.dir / "site/data/channel_segments.geojson")
+        site["features"][1]["properties"]["name"] = "צין"
+        site["features"][1]["geometry"]["coordinates"] = [[35.2, 30.6], [35.15, 30.55], [35.3, 30.7]]
+        dump(self.dir / "site/data/channel_segments.geojson", site)
+        data = load(self.dir / "data/channel_segments.geojson")
+        data["features"][0]["geometry"]["coordinates"] = [[35.1, 30.5], [35.2, 30.6]]
+        data["features"][1]["properties"]["name"] = "צין"
+        data["features"][1]["geometry"]["coordinates"] = [[35.2, 30.6], [35.15, 30.55], [35.3, 30.7]]
+        dump(self.dir / "data/channel_segments.geojson", data)
+        north = load(self.dir / "site/data/channel_segments_nondesert.geojson")
+        north["features"][0]["properties"]["name"] = "יובל"
+        north["features"][0]["properties"]["p"] = 1
+        north["features"][0]["geometry"]["coordinates"] = [[35.2, 30.6], [35.21, 30.55]]
+        dump(self.dir / "site/data/channel_segments_nondesert.geojson", north)
+        dump(self.dir / "data/channel_segments_nondesert.geojson", north)
+        moved = [35.201, 30.601]
+        def shifted(coords: list, index: int) -> list:
+            out = [list(point) for point in coords]
+            out[index] = moved
+            return out
+        old_main = [[35.1, 30.5], [35.2, 30.6]]
+        old_stem = [[35.2, 30.6], [35.15, 30.55], [35.3, 30.7]]
+        old_trib = [[35.2, 30.6], [35.21, 30.55]]
+        doc = {
+            "format": apply_change.FORMAT,
+            "version": 1,
+            "changes": [
+                {
+                    "op": "update_stream",
+                    "layer": "desert",
+                    "id": 1,
+                    "note": "הזזת חיבור של הנחל כולו",
+                    "old_geometry": {"type": "LineString", "coordinates": old_main},
+                    "new_geometry": {"type": "LineString", "coordinates": shifted(old_main, 1)},
+                    "old_basin": "10",
+                    "new_basin": "10",
+                },
+                {
+                    "op": "update_stream",
+                    "layer": "desert",
+                    "id": 2,
+                    "note": "הזזת חיבור של הנחל כולו",
+                    "old_geometry": {"type": "LineString", "coordinates": old_stem},
+                    "new_geometry": {"type": "LineString", "coordinates": shifted(old_stem, 0)},
+                    "old_basin": "10",
+                    "new_basin": "10",
+                },
+                {
+                    "op": "update_stream",
+                    "layer": "nondesert",
+                    "id": 7,
+                    "note": "הזזת חיבור של נחל איתן שנוגע",
+                    "old_geometry": {"type": "LineString", "coordinates": old_trib},
+                    "new_geometry": {"type": "LineString", "coordinates": shifted(old_trib, 0)},
+                    "old_basin": "11",
+                    "new_basin": "11",
+                },
+            ],
+        }
+        result = apply_change.apply_document(self.dir, doc, write=True)
+        self.assertTrue(result["wrote"])
+        desert = load(self.dir / "site/data/channel_segments.geojson")
+        north_out = load(self.dir / "site/data/channel_segments_nondesert.geojson")
+        lines = [
+            desert["features"][0]["geometry"]["coordinates"],
+            desert["features"][1]["geometry"]["coordinates"],
+            north_out["features"][0]["geometry"]["coordinates"],
+        ]
+        self.assertEqual(lines[0][1], moved)
+        self.assertEqual(lines[1][0], moved)
+        self.assertEqual(lines[2][0], moved)
+        self.assertEqual(lines[1][1], [35.15, 30.55])
+        self.assertNotIn([35.2, 30.6], [lines[0][0], lines[0][-1], lines[1][0], lines[2][0]])
+        blob = load(self.dir / "data/channel_segments.json.gz")
+        kept = blob["segments"][0]
+        self.assertEqual(kept["coords"][1], moved)
+        self.assertEqual(kept["lat"], 30.6)
+        self.assertEqual(kept["lon"], 35.2)
+        self.assertEqual(kept["cells"], [[3, 4, 1.0]])
+        north_blob = load(self.dir / "data/channel_segments_nondesert.json.gz")
+        self.assertEqual(north_blob["segments"][0]["coords"][0], moved)
+        self.assertEqual(north_blob["segments"][0]["lat"], 32.1)
+        self.assert_untouched_model()
+
 
 class ServerTests(unittest.TestCase):
     def test_public_site_does_not_reference_editor(self) -> None:
