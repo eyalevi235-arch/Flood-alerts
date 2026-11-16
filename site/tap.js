@@ -38,16 +38,16 @@ function myPointsPayload() {
 }
 function loadTapData() {
   if (tapCache) return tapCache;
-  function geo(url) { return fetch(url, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {features: []}; }); }
+  function geo(url) { return floodFetch(url, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {features: []}; }); }
   tapCache = Promise.all([
     geo('data/risk_live.geojson'),
     geo('data/channel_segments.geojson'),
-    fetch('data/segment_risk.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    floodFetch('data/segment_risk.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
     geo('data/channel_segments_nondesert.geojson'),
-    fetch('data/segment_risk_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    floodFetch('data/segment_risk_nondesert.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
     fetch('data/id_map_nondesert_v2_to_v3b.json', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }),
     geo('data/coverage.geojson'),
-    fetch('data/risk_nondesert.geojson', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+    floodFetch('data/risk_nondesert.geojson', {cache: 'no-cache'}).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
       if (!t) return {features: []};
       try { return JSON.parse(t.replace(/\bNaN\b/g, 'null')); } catch (e) { return {features: []}; }
     }).catch(function () { return {features: []}; }),
@@ -588,7 +588,7 @@ function resnapNorthPoints() {
 // Light: only the two risk arrays load first; channel names/geometry load only if something is above 70%.
 var HOT_THR = 0.7, hotGen = 0;
 function hotRiskOnly() {
-  function j(u) { return fetch(u, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
+  function j(u) { return floodFetch(u, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
   return Promise.all([j('data/segment_risk.json'), northEnabled() ? j('data/segment_risk_nondesert.json') : Promise.resolve(null)]);
 }
 function anyHot(r) {

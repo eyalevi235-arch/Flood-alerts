@@ -24,3 +24,8 @@ tmp/
 
 # Local / Actions Open-Meteo HTTP cache (public forecast data; never commit).
 .om_cache/
+
+# radar-live: the workflow fetches the branch file here (never committed).
+.radar_live/
+# Internal radar rain grids (IMS) never go in the public repo.
+radar_rain_grid*

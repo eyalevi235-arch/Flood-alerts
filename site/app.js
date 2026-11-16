@@ -143,7 +143,7 @@ function setMainBase(kind){
  baseL=addBasemap(map,kind);
  raiseOverlays();
 }
-const api=p=>fetch(p,{cache:'no-cache'}).then(r=>{if(!r.ok)throw r.status;return r.json()});
+const api=p=>floodFetch(p,{cache:'no-cache'}).then(r=>{if(!r.ok)throw r.status;return r.json()});
 const jget=(p,d)=>api(p).catch(()=>d);
 const PAGES=['map','points','alerts','report','feedback','set'];
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n;}
@@ -193,6 +193,8 @@ function navLinks(lat,lon){
 }
 async function init(){
  CFG=await jget('data/config.json',{vapid_public:'',live:null,subscribe_url:''});
+ await FloodData.configure(CFG);
+ FloodData.onChange(onDataSourceChange);
  PREFS=loadPrefs();
  {const dt=num(CFG.desert_alert_thr);if(dt!=null&&dt>=0.05&&dt<=0.9)DESERT_THR=dt;try{OWN_THR=JSON.parse(localStorage.prefs||'{}').threshold!=null;}catch(e){}}
  map=L.map('map',{zoomControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:120,scrollWheelZoom:true,attributionControl:false}).setView([30.9,35.0],8);
@@ -226,12 +228,21 @@ async function init(){
  if(SRC==='demo'){const A=await allAlerts();const m={};(A.alerts||[]).forEach(a=>{if(a&&a.point)m[a.point]=a;});VPS.forEach(v=>{if(m[v.id])v.current=m[v.id];});}
  drawVP();renderPoints();renderSet();
  $('#q').oninput=renderPoints;
- $('#hdr').textContent='עודכן '+new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+ if(FloodData.state().mode!=='on'){const t=Date.parse(CFG.now||'');$('#hdr').textContent='עודכן '+(Number.isFinite(t)?new Date(t):new Date()).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jerusalem'});}
  const hash=location.hash.slice(1);if(PAGES.includes(hash))show(hash);
  if(typeof bindTap==='function')bindTap(map);
  if(typeof drawMyPoints==='function')drawMyPoints();
  if(typeof resnapNorthPoints==='function')resnapNorthPoints();
  if(typeof renderHot==='function'){renderHot();$('#per').addEventListener('change',renderHot);if(north)north.addEventListener('change',renderHot);}
+}
+// radar-live (data_source.js, mode on only): new radar file or a source switch -> reload the risk layers and lists.
+function onDataSourceChange(){
+ ALL=null;if(typeof tapCache!=='undefined')tapCache=null;
+ loadRisk();loadNorth();
+ jget('data/viewpoints.json',null).then(v=>{if(Array.isArray(v)){VPS=v;drawVP();renderPoints();}});
+ if(typeof renderHot==='function')renderHot();
+ const pa=$('#p-alerts');if(pa&&pa.classList.contains('on'))loadAlerts();
+ window.dispatchEvent(new Event('flood-data-changed'));
 }
 async function loadRisk(){
  let g0=await jget('data/risk_live.geojson',null)||await jget('data/basins.geojson',{type:'FeatureCollection',features:[]});
@@ -370,7 +381,7 @@ async function loadAlerts(){
  }
  mine.sort((x,y)=>(num(y.prob)||0)-(num(x.prob)||0));
  const host=$('#alist');clear(host);
- const head=el('div','muted','תחזית מ-'+txt(L.issued,'—')+' · מקור: '+txt(L.source,'—')+(L.stub?' · מצב הדגמה (מנוע התחזית עוד לא זמין)':''));
+ const head=el('div','muted','תחזית מ-'+txt(L.issued,'—')+' · מקור: '+(String(L.source||'').startsWith('radar_live')?'מכ״ם בזמן אמת':txt(L.source,'—'))+(L.stub?' · מצב הדגמה (מנוע התחזית עוד לא זמין)':''));
  host.appendChild(head);
  if(!mine.length && !(typeof loadMyPoints==='function' && loadMyPoints().length)){host.appendChild(el('div','card','אין נקודות מועדפות. סמנו ⭐ בנקודות, הוסיפו נחל, או הקישו על המפה ושמרו נקודה.'));return;}
  const conf={low:'נמוכה',medium:'בינונית',high:'גבוהה'};

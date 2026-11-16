@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions: {contents: write}
+    env:
+      # radar-live switch (repo variable). Unset/off = today's behaviour. shadow = validate + log only. on = the site reads
+      # radar_live/latest.json from the radar-live branch in the browser and falls back to this forecast with a banner.
+      RADAR_LIVE_MODE: ${{ vars.RADAR_LIVE_MODE || 'off' }}
     outputs:
       publish: ${{ steps.forecast.outputs.publish }}
     steps:
@@ -29,6 +33,15 @@ jobs:
       - name: Fail-fast strict JSON/GeoJSON check (before model)
         run: python tools/check_json_strict.py site/data
       - run: python -m pip install --require-hashes -r requirements.txt
+      - name: Fetch radar-live (git only; no Open-Meteo calls)
+        if: env.RADAR_LIVE_MODE == 'shadow' || env.RADAR_LIVE_MODE == 'on'
+        continue-on-error: true
+        run: |
+          mkdir -p .radar_live
+          rm -f .radar_live/latest.json
+          if git fetch --no-tags --depth 1 origin refs/heads/radar-live; then
+            git show FETCH_HEAD:radar_live/latest.json > .radar_live/latest.json || rm -f .radar_live/latest.json
+          fi
       - name: Forecast + alerts + push
         id: forecast
         env:
@@ -46,7 +59,13 @@ jobs:
           OM_HISTORY_H: '24'
           OM_SHORT_PAST_DAYS: '2'
           OM_RETRY_BUDGET_S: '480'
+          RADAR_LIVE_FILE: ${{ github.workspace }}/.radar_live/latest.json
+          RADAR_LIVE_MAX_ISSUE_AGE_MIN: '40'
+          RADAR_LIVE_MAX_FRAME_AGE_MIN: '60'
         run: python engine/run_job.py
+      - name: Public data guard (no rain/mm keys, no internal radar rain grid)
+        if: steps.forecast.outputs.publish == 'true'
+        run: python tools/check_public_no_rain.py site/data .
       - name: Persist push de-dup state
         if: steps.forecast.outputs.publish == 'true'
         run: |

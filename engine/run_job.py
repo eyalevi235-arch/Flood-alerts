@@ -59,7 +59,7 @@ def jsave(p,o,indent=None):
 norm=lambda x:str(x).replace('נחל ','').strip()
 def _main():
     t0=time.time(); now=pd.Timestamp.now('UTC').tz_localize(None).floor('h'); g=None; err=None
-    if os.environ.get('USE_IMS_RADAR','0')=='1': print('USE_IMS_RADAR=1 ignored: radar input not supported in the Actions engine (needs IMS token + regridding)')
+    if os.environ.get('USE_IMS_RADAR','0')=='1': print('USE_IMS_RADAR=1 in Actions: the raw radar grid is never in this public repo; radar reaches the site only via radar-live (RADAR_LIVE_MODE)')
     for m in [os.environ.get('FORECAST_MODEL','icon_seamless'),'ecmwf_ifs025']:
         try: g=fe.openmeteo_grid(m); break
         except Exception as e:
@@ -136,9 +136,37 @@ def _main():
     jsave(f'{SITE}/viewpoints.json',V)
     dates=sorted(os.path.basename(p)[5:15] for p in glob.glob(f'{SITE}/risk_20*.geojson'))
     pub=vapid_public()
-    jsave(f'{SITE}/config.json',dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3e',desert_geom_version='v8p',desert_alert_thr=DESERT_THR),1)
+    cfg=dict(vapid_public=pub,risk_dates=dates,live=out['issued'],subscribe_url=os.environ.get('SUBSCRIBE_URL',''),now=dt.datetime.now(dt.timezone.utc).isoformat(),nd_geom_version='v3e',desert_geom_version='v8p',desert_alert_thr=DESERT_THR)
+    rl_block=radar_live_step(out['issued'])
+    if rl_block: cfg['radar_live']=rl_block
+    jsave(f'{SITE}/config.json',cfg,1)
     nal=sum(a['prob']>=(0.3 if a.get('region')=='north_center' else DESERT_THR) for a in A); print(f'alerts: {len(A)} points, {nal} with prob>={DESERT_THR} (engine {fe.__name__}); risk: {n} basins scored; vapid_public={"secret" if os.environ.get("VAPID_PUBLIC_KEY","").strip() else ("file" if pub else "missing")}; {time.time()-t0:.0f}s')
     notify(A,g,now); _publish_output(True); return 0
+def radar_live_step(forecast_issued):
+    """RADAR_LIVE_MODE=off (default): nothing. shadow: validate .radar_live/latest.json and log only.
+    on: also write site/data/source_status.json + a validated copy site/data/radar_live.json (browser fallback)
+    and return the config.json block that turns the browser radar path on. No network, no Open-Meteo.
+    Push is unchanged: alerts still come from this job's Open-Meteo run (radar-mode threshold not chosen)."""
+    try:
+        import radar_live as rl
+        m=rl.mode()
+        if m=='off': return None
+        path=os.environ.get('RADAR_LIVE_FILE') or f'{ROOT}/.radar_live/latest.json'
+        st,J=rl.evaluate(path); st['forecast_issued']=forecast_issued
+        print('RADAR_LIVE',json.dumps(st,ensure_ascii=False,default=str))
+        summ=os.environ.get('GITHUB_STEP_SUMMARY')
+        if summ:
+            try:
+                with open(summ,'a',encoding='utf-8') as f:
+                    f.write(f"## radar-live ({m})\n\nchoice: **{st.get('server_choice')}**, reason: {st.get('reason')} {st.get('detail') or ''}\n\n")
+            except OSError: pass
+        if m!='on': return None
+        jsave(f'{SITE}/source_status.json',st,1)
+        if J is not None: jsave(f'{SITE}/radar_live.json',J)
+        return rl.site_config()
+    except Exception:
+        traceback.print_exc(); print('radar-live step failed; site stays on the forecast')
+        return None
 # Same 60 m cap as site/tap_basin.js NORTH_RESNAP_M / snapToleranceMeters. No zoom on the server.
 NORTH_SNAP_M=60
 _NORTH_SEGS=None

@@ -8,7 +8,7 @@
   'use strict';
   var FLOW_THR = 0.7, FLOW_MAX = 30, LOOP_MS = 5000, gen = 0, raf = 0, layer = null, runs = [];
   var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  function j(u) { return fetch(u, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
+  function j(u) { return floodFetch(u, {cache: 'no-cache'}).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
   function flowAny(r) {
     if (!r || !r.p) return false;
     for (var i = 0; i < r.p.length; i++) { var v = Number(r.p[i]); if (isFinite(v) && v >= FLOW_THR) return true; }
@@ -106,6 +106,7 @@
     }).catch(function () {});
   }
   document.addEventListener('visibilitychange', start);
+  window.addEventListener('flood-data-changed', refresh);
   window.addEventListener('hashchange', function () { setTimeout(start, 60); });
   var tries = 0;
   (function wait() {
