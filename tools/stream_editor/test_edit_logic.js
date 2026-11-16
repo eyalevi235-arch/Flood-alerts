@@ -192,4 +192,133 @@ assert.ok(Logic.sendFailureText(null).indexOf('403') < 0);
 assert.strictEqual(Logic.SEND_URL_KEY, 'flood-editor-send-url');
 assert.strictEqual(Logic.SEND_AUTH_KEY, 'flood-editor-send-auth');
 
+assert.strictEqual(Logic.DRAFT_STORAGE_KEY, 'flood-stream-editor-draft-v2');
+assert.strictEqual(Logic.DRAFT_LEGACY_KEY, 'flood-stream-editor-v1');
+assert.strictEqual(Logic.DRAFT_LOCAL_LIMIT, 4 * 1024 * 1024);
+assert.strictEqual(Logic.draftWritePlan(Logic.DRAFT_LOCAL_LIMIT), 'local');
+assert.strictEqual(Logic.draftWritePlan(Logic.DRAFT_LOCAL_LIMIT + 1), 'indexeddb');
+assert.strictEqual(Logic.parseDraft(Logic.DRAFT_IDB_MARKER), null);
+assert.strictEqual(Logic.parseDraft('{'), null);
+assert.strictEqual(Logic.isQuotaError({name: 'QuotaExceededError'}), true);
+assert.strictEqual(Logic.isQuotaError({name: 'NS_ERROR_DOM_QUOTA_REACHED'}), true);
+assert.strictEqual(Logic.isQuotaError({code: 22}), true);
+assert.strictEqual(Logic.isQuotaError({code: 1014}), true);
+assert.strictEqual(Logic.isQuotaError(new Error('no')), false);
+assert.strictEqual(Logic.isQuotaError(null), false);
+assert.strictEqual(Logic.shouldClearDraft('download'), false);
+assert.strictEqual(Logic.shouldClearDraft('send-failure'), false);
+assert.strictEqual(Logic.shouldClearDraft('send-success'), true);
+assert.strictEqual(Logic.shouldClearDraft('clear-changes'), true);
+assert.strictEqual(Logic.DRAFT_CLEAR_TEXT.indexOf('שינויים שלא נשלחו') > 0, true);
+
+const sample = {
+  saved: [{op: 'update_stream', id: 4}],
+  originals: {k: {geometry: {type: 'LineString', coordinates: [[35, 30], [35.1, 30]]}}},
+  fileNote: 'טיוטה'
+};
+const draftBucket = {local: null, session: null, idb: null};
+const keptResult = Logic.commitDraft(draftBucket, sample);
+assert.strictEqual(keptResult.ok, true);
+assert.strictEqual(keptResult.target, 'local');
+assert.ok(draftBucket.local.indexOf('"id":4') > 0);
+assert.strictEqual(draftBucket.session, null);
+assert.strictEqual(draftBucket.idb, null);
+const beforeDownload = draftBucket.local;
+assert.strictEqual(Logic.shouldClearDraft('download'), false);
+assert.strictEqual(draftBucket.local, beforeDownload);
+const restored = Logic.loadDraft(draftBucket);
+assert.strictEqual(restored.draft.saved[0].id, 4);
+assert.strictEqual(restored.draft.fileNote, 'טיוטה');
+assert.strictEqual(restored.draft.originals.k.geometry.type, 'LineString');
+assert.strictEqual(restored.notice, 'שוחזר שינוי אחד שלא נשלח');
+assert.strictEqual(restored.migrate, false);
+if (Logic.shouldClearDraft('send-success')) Logic.clearDraftBucket(draftBucket);
+assert.strictEqual(Logic.loadDraft(draftBucket).draft, null);
+assert.strictEqual(draftBucket.local, null);
+assert.strictEqual(draftBucket.idb, null);
+
+const legacy = {
+  local: null,
+  idb: null,
+  session: JSON.stringify({
+    saved: [{op: 'update_basin', id: 7}, {op: 'update_basin', id: 8}],
+    originals: {b: 1},
+    fileNote: 'ישן'
+  })
+};
+const migrated = Logic.loadDraft(legacy);
+assert.strictEqual(migrated.migrate, true);
+assert.strictEqual(migrated.draft.saved.length, 2);
+assert.strictEqual(migrated.notice, 'שוחזרו 2 שינויים שלא נשלחו');
+assert.strictEqual(legacy.session, null);
+assert.ok(legacy.local.indexOf('"id":7') > 0);
+const migratedAgain = Logic.loadDraft(legacy);
+assert.strictEqual(migratedAgain.draft.saved.length, 2);
+assert.strictEqual(migratedAgain.migrate, false);
+assert.strictEqual(migratedAgain.draft.fileNote, 'ישן');
+
+const both = {
+  local: Logic.encodeDraft({saved: [{op: 'update_basin', id: 1}], originals: {}, fileNote: ''}),
+  session: Logic.encodeDraft({saved: [{op: 'update_basin', id: 2}, {op: 'update_basin', id: 3}], originals: {}, fileNote: ''}),
+  idb: Logic.encodeDraft({saved: [{op: 'update_basin', id: 9}], originals: {}, fileNote: ''})
+};
+const picked = Logic.loadDraft(both);
+assert.strictEqual(picked.draft.saved[0].id, 1);
+assert.strictEqual(picked.notice, 'שוחזר שינוי אחד שלא נשלח');
+assert.strictEqual(both.session, null);
+assert.strictEqual(both.idb, null);
+assert.ok(both.local.indexOf('"id":1') > 0);
+
+const broken = {local: '{', session: '{', idb: null};
+assert.strictEqual(Logic.loadDraft(broken).draft, null);
+assert.strictEqual(broken.session, null);
+
+const quotaBucket = {local: 'old', session: 'legacy', idb: null, failLocal: true};
+const quotaResult = Logic.commitDraft(quotaBucket, {saved: [{op: 'update_basin', id: 5}], originals: {}, fileNote: 'א'});
+assert.strictEqual(quotaResult.ok, true);
+assert.strictEqual(quotaResult.target, 'indexeddb');
+assert.ok(quotaResult.warnings.indexOf(Logic.DRAFT_QUOTA_TEXT) >= 0);
+assert.strictEqual(quotaBucket.local, Logic.DRAFT_IDB_MARKER);
+assert.strictEqual(quotaBucket.session, null);
+assert.ok(quotaBucket.idb.indexOf('"id":5') > 0);
+const fromIdb = Logic.loadDraft(quotaBucket);
+assert.strictEqual(fromIdb.draft.saved[0].id, 5);
+assert.strictEqual(fromIdb.draft.fileNote, 'א');
+assert.strictEqual(fromIdb.notice, 'שוחזר שינוי אחד שלא נשלח');
+
+const denied = {failLocal: true, failIdb: true, local: 'keep-me', session: 'keep-session', idb: null};
+const deniedResult = Logic.commitDraft(denied, {saved: [{op: 'update_basin', id: 1}], originals: {}, fileNote: ''});
+assert.strictEqual(deniedResult.ok, false);
+assert.strictEqual(deniedResult.target, null);
+assert.ok(deniedResult.warnings.indexOf(Logic.DRAFT_QUOTA_TEXT) >= 0);
+assert.ok(deniedResult.warnings.indexOf(Logic.DRAFT_SAVE_FAILED_TEXT) >= 0);
+assert.strictEqual(denied.local, 'keep-me');
+assert.strictEqual(denied.session, 'keep-session');
+
+const otherDenied = {failLocal: 'other', failIdb: true, local: null, session: null, idb: null};
+const otherResult = Logic.commitDraft(otherDenied, sample);
+assert.strictEqual(otherResult.ok, false);
+assert.ok(otherResult.warnings.indexOf(Logic.DRAFT_SAVE_FAILED_TEXT) >= 0);
+assert.strictEqual(otherResult.warnings.indexOf(Logic.DRAFT_QUOTA_TEXT), -1);
+
+const heavyNote = 'a'.repeat(Logic.DRAFT_LOCAL_LIMIT);
+const heavy = {local: null, session: 'legacy-session', idb: null};
+const heavyResult = Logic.commitDraft(heavy, {saved: [], originals: {}, fileNote: heavyNote});
+assert.strictEqual(heavyResult.ok, true);
+assert.strictEqual(heavyResult.target, 'indexeddb');
+assert.strictEqual(heavyResult.warnings.length, 0);
+assert.strictEqual(heavy.local, Logic.DRAFT_IDB_MARKER);
+assert.strictEqual(heavy.session, null);
+assert.strictEqual(Logic.draftByteLength(heavy.idb) > Logic.DRAFT_LOCAL_LIMIT, true);
+const heavyLoad = Logic.loadDraft(heavy);
+assert.strictEqual(heavyLoad.draft.fileNote.length, Logic.DRAFT_LOCAL_LIMIT);
+assert.strictEqual(heavyLoad.draft.saved.length, 0);
+assert.strictEqual(heavyLoad.notice, 'שוחזרה הערה שלא נשלחה');
+Logic.commitDraft(heavy, {saved: [], originals: {x: 1}, fileNote: '   '});
+assert.strictEqual(heavy.local, null);
+assert.strictEqual(heavy.idb, null);
+assert.strictEqual(heavy.session, null);
+assert.strictEqual(Logic.draftHasChanges({saved: [], originals: {x: 1}, fileNote: '  '}), false);
+assert.strictEqual(Logic.restoredDraftNotice({saved: [], fileNote: ''}), '');
+
 console.log('edit logic ok');

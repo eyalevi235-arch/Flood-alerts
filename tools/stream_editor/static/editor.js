@@ -54,8 +54,14 @@
     dragging: false,
     suppressClick: false,
     mode: 'streams',
-    sending: false
+    sending: false,
+    draftReady: false,
+    draftTouched: false,
+    draftResolved: false,
+    draftSeq: 0
   };
+
+  var draftWriteChain = Promise.resolve();
 
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
@@ -209,25 +215,276 @@
     if (state.undo.length > 30) state.undo.shift();
   }
 
+  function showDraftNotice(text) {
+    var el = $('draft-notice');
+    if (!el) return;
+    if (!text) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    el.hidden = false;
+    el.textContent = text;
+  }
+
+  function showDraftWarning(text) {
+    var el = $('draft-warning');
+    if (!el || !text) return;
+    el.hidden = false;
+    el.textContent = text;
+  }
+
+  function clearDraftWarning() {
+    var el = $('draft-warning');
+    if (!el) return;
+    el.hidden = true;
+    el.textContent = '';
+  }
+
+  function currentDraft() {
+    var note = $('file-note');
+    return {
+      saved: state.saved,
+      originals: state.originals,
+      fileNote: note ? note.value : ''
+    };
+  }
+
+  function enqueueDraftOp(token, op) {
+    var run = draftWriteChain.then(function () {
+      if (token !== state.draftSeq) return null;
+      return op();
+    }, function () {
+      if (token !== state.draftSeq) return null;
+      return op();
+    });
+    draftWriteChain = run.then(function () { return null; }, function () { return null; });
+    return run;
+  }
+
+  function withDraftDb(mode, op) {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error('no-idb'));
+        return;
+      }
+      var openReq;
+      try {
+        openReq = window.indexedDB.open(Logic.DRAFT_DB_NAME, 1);
+      } catch (err) {
+        reject(err);
+        return;
+      }
+      openReq.onupgradeneeded = function () {
+        var db = openReq.result;
+        if (!db.objectStoreNames.contains(Logic.DRAFT_DB_STORE)) db.createObjectStore(Logic.DRAFT_DB_STORE);
+      };
+      openReq.onerror = function () { reject(openReq.error || new Error('idb-open')); };
+      openReq.onsuccess = function () {
+        var db = openReq.result;
+        var tx;
+        try {
+          tx = db.transaction(Logic.DRAFT_DB_STORE, mode);
+        } catch (err) {
+          db.close();
+          reject(err);
+          return;
+        }
+        var store = tx.objectStore(Logic.DRAFT_DB_STORE);
+        var value = null;
+        var req;
+        try {
+          req = op(store);
+        } catch (err) {
+          db.close();
+          reject(err);
+          return;
+        }
+        if (req) req.onsuccess = function () { value = req.result; };
+        tx.oncomplete = function () {
+          db.close();
+          resolve(value);
+        };
+        tx.onerror = function () {
+          db.close();
+          reject(tx.error || new Error('idb'));
+        };
+        tx.onabort = function () {
+          db.close();
+          reject(tx.error || new Error('idb-abort'));
+        };
+      };
+    });
+  }
+
+  function eraseDraftStores() {
+    var token = ++state.draftSeq;
+    try { localStorage.removeItem(Logic.DRAFT_STORAGE_KEY); } catch (err) { /* private mode can refuse storage */ }
+    try { sessionStorage.removeItem(Logic.DRAFT_LEGACY_KEY); } catch (err) { /* ignore */ }
+    if (!window.indexedDB) return;
+    enqueueDraftOp(token, function () {
+      return withDraftDb('readwrite', function (store) {
+        return store.delete(Logic.DRAFT_DB_RECORD);
+      });
+    }).catch(function () { /* quota or private mode */ });
+  }
+
+  function storeLargeDraft(json, successWarning) {
+    var token = ++state.draftSeq;
+    if (!window.indexedDB) {
+      showDraftWarning(Logic.DRAFT_SAVE_FAILED_TEXT);
+      return;
+    }
+    enqueueDraftOp(token, function () {
+      return withDraftDb('readwrite', function (store) {
+        return store.put(json, Logic.DRAFT_DB_RECORD);
+      }).then(function () {
+        if (token !== state.draftSeq) return;
+        try {
+          localStorage.setItem(Logic.DRAFT_STORAGE_KEY, Logic.DRAFT_IDB_MARKER);
+        } catch (err) {
+          try { localStorage.removeItem(Logic.DRAFT_STORAGE_KEY); } catch (e) { /* ignore */ }
+        }
+        try { sessionStorage.removeItem(Logic.DRAFT_LEGACY_KEY); } catch (err) { /* ignore */ }
+        if (successWarning) showDraftWarning(successWarning);
+        else clearDraftWarning();
+      });
+    }).catch(function () {
+      if (token !== state.draftSeq) return;
+      showDraftWarning(Logic.DRAFT_SAVE_FAILED_TEXT);
+    });
+  }
+
+  function rememberLocalDraft(json) {
+    localStorage.setItem(Logic.DRAFT_STORAGE_KEY, json);
+    try { sessionStorage.removeItem(Logic.DRAFT_LEGACY_KEY); } catch (err) { /* ignore */ }
+    var token = ++state.draftSeq;
+    if (window.indexedDB) {
+      enqueueDraftOp(token, function () {
+        return withDraftDb('readwrite', function (store) {
+          return store.delete(Logic.DRAFT_DB_RECORD);
+        });
+      }).catch(function () { /* ignore */ });
+    }
+    clearDraftWarning();
+  }
+
   function persist() {
+    if (!state.draftReady) {
+      if (Logic.draftHasChanges(currentDraft())) state.draftTouched = true;
+      return;
+    }
+    var draft = currentDraft();
+    var bucket = {local: null, session: null, idb: null, failIdb: !window.indexedDB};
+    var result;
     try {
-      sessionStorage.setItem('flood-stream-editor-v1', JSON.stringify({
-        saved: state.saved,
-        originals: state.originals,
-        fileNote: $('file-note').value
-      }));
-    } catch (err) { /* private mode can refuse storage */ }
+      result = Logic.commitDraft(bucket, draft);
+    } catch (err) {
+      showDraftWarning(Logic.DRAFT_SAVE_FAILED_TEXT);
+      return;
+    }
+    if (result.target === 'cleared') {
+      eraseDraftStores();
+      clearDraftWarning();
+      return;
+    }
+    if (result.target === 'indexeddb') {
+      var planned = result.warnings.length ? result.warnings[result.warnings.length - 1] : '';
+      storeLargeDraft(result.json, planned);
+      return;
+    }
+    if (result.target !== 'local') {
+      showDraftWarning(result.warnings.length ? result.warnings[result.warnings.length - 1] : Logic.DRAFT_SAVE_FAILED_TEXT);
+      return;
+    }
+    try {
+      rememberLocalDraft(result.json);
+    } catch (err) {
+      var quota = Logic.isQuotaError(err);
+      if (quota) {
+        try { localStorage.removeItem(Logic.DRAFT_STORAGE_KEY); } catch (e) { /* ignore */ }
+        try {
+          rememberLocalDraft(result.json);
+          return;
+        } catch (err2) { /* still over the quota */ }
+      }
+      bucket.failLocal = quota ? true : 'other';
+      var fallback;
+      try {
+        fallback = Logic.commitDraft(bucket, draft);
+      } catch (e) {
+        showDraftWarning(Logic.DRAFT_SAVE_FAILED_TEXT);
+        return;
+      }
+      if (fallback.target === 'indexeddb') {
+        storeLargeDraft(fallback.json, fallback.warnings.length ? fallback.warnings[fallback.warnings.length - 1] : Logic.DRAFT_QUOTA_TEXT);
+        return;
+      }
+      showDraftWarning(fallback.warnings.length ? fallback.warnings[fallback.warnings.length - 1] : Logic.DRAFT_SAVE_FAILED_TEXT);
+    }
+  }
+
+  function applyDraft(draft) {
+    if (!draft) return;
+    if (Array.isArray(draft.saved)) state.saved = draft.saved;
+    if (draft.originals && typeof draft.originals === 'object' && !Array.isArray(draft.originals)) {
+      state.originals = draft.originals;
+    }
+    if (typeof draft.fileNote === 'string' && $('file-note')) $('file-note').value = draft.fileNote;
+  }
+
+  function finishRestore(decision) {
+    if (state.draftResolved) return;
+    state.draftResolved = true;
+    if (!state.draftTouched && decision && decision.draft) {
+      applyDraft(decision.draft);
+      showDraftNotice(decision.notice);
+    }
+    state.draftReady = true;
+    if (decision && (decision.migrate || state.draftTouched)) persist();
+    else if (decision && decision.dropLegacy) {
+      try { sessionStorage.removeItem(Logic.DRAFT_LEGACY_KEY); } catch (err) { /* ignore */ }
+    }
+    if (state.map && state.streamLayer) {
+      renderList();
+      redraw();
+    }
   }
 
   function restore() {
-    try {
-      var raw = sessionStorage.getItem('flood-stream-editor-v1');
-      if (!raw) return;
-      var data = JSON.parse(raw);
-      if (Array.isArray(data.saved)) state.saved = data.saved;
-      if (data.originals && typeof data.originals === 'object') state.originals = data.originals;
-      if (typeof data.fileNote === 'string') $('file-note').value = data.fileNote;
-    } catch (err) { /* ignore a broken draft */ }
+    var localRaw = null;
+    var legacyRaw = null;
+    try { localRaw = localStorage.getItem(Logic.DRAFT_STORAGE_KEY); } catch (err) { /* ignore */ }
+    try { legacyRaw = sessionStorage.getItem(Logic.DRAFT_LEGACY_KEY); } catch (err) { /* ignore */ }
+    var decision = Logic.draftRestoreDecision(localRaw, legacyRaw, null, false);
+    if (!decision.needsIndexedDb) {
+      finishRestore(decision);
+      return;
+    }
+    if (!window.indexedDB) {
+      finishRestore(Logic.draftRestoreDecision(localRaw, legacyRaw, null, true));
+      return;
+    }
+    withDraftDb('readonly', function (store) {
+      return store.get(Logic.DRAFT_DB_RECORD);
+    }).then(function (idbRaw) {
+      var raw = idbRaw == null ? null : String(idbRaw);
+      finishRestore(Logic.draftRestoreDecision(localRaw, legacyRaw, raw, true));
+    }).catch(function () {
+      finishRestore(Logic.draftRestoreDecision(localRaw, legacyRaw, null, true));
+    });
+  }
+
+  function clearUnsentDraft() {
+    state.saved = [];
+    state.undo = [];
+    if ($('file-note')) $('file-note').value = '';
+    showDraftNotice('');
+    state.draftReady = true;
+    state.draftTouched = false;
+    eraseDraftStores();
+    if ($('change-list')) renderList();
+    if (state.map && state.streamLayer) redraw();
   }
 
   function buildDocument() {
@@ -1404,8 +1661,9 @@
       body: json
     }).then(function (res) {
       if (res.ok) {
+        if (Logic.shouldClearDraft('send-success')) clearUnsentDraft();
         setSendStatus(Logic.SEND_OK_TEXT, 'ok');
-        setStatus(Logic.SEND_OK_TEXT);
+        setStatus('נשלח ✓ השינויים נוקו מהמכשיר.');
         $('send-done').hidden = false;
         $('btn-send-keep').focus();
         return;
@@ -1729,16 +1987,25 @@
     });
     $('btn-send-keep').addEventListener('click', function () {
       $('send-done').hidden = true;
-      setStatus('נשלח ✓ הרשימה נשארה במכשיר.');
     });
-    $('btn-send-clear-list').addEventListener('click', function () {
-      $('send-done').hidden = true;
-      if (!state.saved.length) return;
-      pushUndo();
-      state.saved = [];
-      renderList();
-      redraw();
-      setStatus('נשלח ✓ הרשימה נוקתה במכשיר הזה. המאגר לא השתנה.');
+    $('btn-clear-draft').addEventListener('click', function () {
+      if (!Logic.draftHasChanges(currentDraft())) {
+        setStatus('אין שינויים שלא נשלחו.');
+        return;
+      }
+      $('draft-clear-text').textContent = Logic.DRAFT_CLEAR_TEXT;
+      $('draft-clear-prompt').hidden = false;
+      $('btn-clear-draft-confirm').focus();
+    });
+    $('btn-clear-draft-confirm').addEventListener('click', function () {
+      $('draft-clear-prompt').hidden = true;
+      if (!Logic.shouldClearDraft('clear-changes')) return;
+      clearUnsentDraft();
+      setStatus('השינויים שלא נשלחו נוקו מהמכשיר. המאגר לא השתנה.');
+    });
+    $('btn-clear-draft-cancel').addEventListener('click', function () {
+      $('draft-clear-prompt').hidden = true;
+      setStatus('השינויים נשארו במכשיר.');
     });
     $('btn-undo').addEventListener('click', function () {
       var prev = state.undo.pop();
@@ -1758,6 +2025,10 @@
       setStatus('הרשימה נוקתה במכשיר הזה. המאגר לא השתנה.');
     });
     $('file-note').addEventListener('input', persist);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') persist();
+    });
+    window.addEventListener('pagehide', persist);
     $('tab-streams').addEventListener('click', function () { switchMode('streams'); });
     $('tab-basins').addEventListener('click', function () { switchMode('basins'); });
     $('sheet-toggle').addEventListener('click', function () {
@@ -1772,6 +2043,7 @@
       $('sheet-toggle').setAttribute('aria-expanded', 'false');
       $('sheet-toggle').textContent = 'כלים';
     }
+    renderList();
     api('/api/basins').then(function (data) {
       state.basins = data.basins || [];
       drawBasins();

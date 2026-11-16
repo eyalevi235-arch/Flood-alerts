@@ -116,6 +116,8 @@
       <button type="button" id="btn-discard" class="wide">בטל עריכה פתוחה</button>
     </div>
     <div class="block">
+      <p id="draft-notice" class="draft-notice" role="status" hidden></p>
+      <p id="draft-warning" class="draft-warning" role="alert" hidden></p>
       <div class="row">
         <strong>רשימת שינויים</strong>
         <span id="change-count" class="muted">0</span>
@@ -137,8 +139,9 @@
         <p id="send-status" class="send-status" role="status" aria-live="polite" hidden></p>
         <button type="button" id="btn-undo">בטל אחרון</button>
         <button type="button" id="btn-clear">נקה רשימה</button>
+        <button type="button" id="btn-clear-draft" class="wide">נקה שינויים</button>
       </div>
-      <p class="hint">ההורדה נשארת אצלכם. «שלח לפרוייקטור» שולח את אותו קובץ לכתובת שתדביקו בהגדרת השליחה. הכתובת והמפתח נשמרים רק במכשיר הזה. כדי לעדכן את המאגר אחר כך, ורק אחרי אישור, מריצים את <span dir="ltr">apply_change.py</span> עם <span dir="ltr">--write --yes</span>.</p>
+      <p class="hint">שינויים שלא נשלחו נשמרים במכשיר גם אחרי סגירת העמוד, עד שליחה שהצליחה או לחיצה על «נקה שינויים». ההורדה לא מוחקת אותם. «שלח לפרוייקטור» שולח את אותו קובץ לכתובת שתדביקו בהגדרת השליחה. הכתובת והמפתח נשמרים רק במכשיר הזה. כדי לעדכן את המאגר אחר כך, ורק אחרי אישור, מריצים את <span dir="ltr">apply_change.py</span> עם <span dir="ltr">--write --yes</span>.</p>
     </div>
     <details id="preview-wrap">
       <summary>תצוגת הקובץ</summary>
@@ -170,10 +173,16 @@
 </div>
 <div id="send-done" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="send-done-title">
   <p id="send-done-title"><strong>נשלח ✓</strong></p>
-  <p>אפשר לנקות את רשימת השינויים במכשיר. הרשימה נשארת אם לא תבחרו בזה.</p>
+  <p>השינויים שלא נשלחו נוקו מהמכשיר. המאגר לא השתנה.</p>
   <div class="tools">
-    <button type="button" id="btn-send-keep" class="primary wide">השאר את הרשימה</button>
-    <button type="button" id="btn-send-clear-list" class="wide">נקה רשימה</button>
+    <button type="button" id="btn-send-keep" class="primary wide">סגור</button>
+  </div>
+</div>
+<div id="draft-clear-prompt" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="draft-clear-text">
+  <p id="draft-clear-text">לנקות את כל השינויים שלא נשלחו? הם יימחקו מהמכשיר ואי אפשר לשחזר אותם.</p>
+  <div class="tools">
+    <button type="button" id="btn-clear-draft-confirm" class="danger wide">נקה שינויים</button>
+    <button type="button" id="btn-clear-draft-cancel" class="wide">ביטול</button>
   </div>
 </div>
 <div id="delete-prompt" class="prompt" hidden role="dialog" aria-modal="true" aria-labelledby="delete-prompt-text">
@@ -192,8 +201,8 @@
   </div>
 </div>
 <script src="../vendor/leaflet.js"></script>
-<script src="./edit_logic.js"></script>
+<script src="./edit_logic.js?v=2"></script>
 <script src="./static_catalog.js"></script>
-<script src="./editor.js"></script>
+<script src="./editor.js?v=2"></script>
 </body>
 </html>
