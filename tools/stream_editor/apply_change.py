@@ -7,6 +7,8 @@ catchment rasters, rain cells, or travel-time fields.
 
 Segment ids stay as they are. A merge keeps both ids in the model table; the
 absorbed id is marked hidden and is removed only from the display GeoJSON.
+A whole-stream edit is several ``update_stream`` rows: every segment whose
+vertex moved, including a neighboring stream that only shares the junction.
 ``delete_stream`` removes that id from the display layers and from the model
 table. Other ids are not renumbered. Upstream ``ds`` pointers skip to the
 deleted segment's downstream id. Rain cells, travel times, ``lat`` and ``lon``
@@ -27,7 +29,7 @@ from typing import Any, Iterable
 
 
 FORMAT = "flood-alerts-geometry-patch"
-MAX_CHANGES = 200
+MAX_CHANGES = 4000
 MAX_VERTICES = 4000
 LON_MIN, LON_MAX = 34.0, 37.2
 LAT_MIN, LAT_MAX = 29.2, 34.2

@@ -275,6 +275,278 @@
     return null;
   }
 
+  var JUNCTION_TOL_DEG = 1e-7;
+  var SNAP_DEG = 1e-5;
+
+  function normStreamName(text) {
+    var value = String(text || '').replace(/־/g, ' ').replace(/-/g, ' ');
+    value = value.split(/\s+/).filter(Boolean).join(' ');
+    var prefixes = ['נחל ', 'ואדי ', 'נהר '];
+    for (var i = 0; i < prefixes.length; i++) {
+      if (value.indexOf(prefixes[i]) === 0) value = value.slice(prefixes[i].length);
+    }
+    return value.toLowerCase();
+  }
+
+  function streamIdentity(item) {
+    if (!item) return '';
+    var local = normStreamName(item.name_he);
+    if (local) return local;
+    return normStreamName(item.name);
+  }
+
+  function coordsCoincide(a, b) {
+    if (!a || !b || a.length < 2 || b.length < 2) return false;
+    var dlon = Math.abs(Number(a[0]) - Number(b[0]));
+    var dlat = Math.abs(Number(a[1]) - Number(b[1]));
+    if (dlon <= JUNCTION_TOL_DEG && dlat <= JUNCTION_TOL_DEG) return true;
+    var ra = roundCoord(a);
+    var rb = roundCoord(b);
+    return ra[0] === rb[0] && ra[1] === rb[1];
+  }
+
+  function vertexSnapKey(coord) {
+    var snapped = roundCoord(coord);
+    return snapped[0].toFixed(5) + ',' + snapped[1].toFixed(5);
+  }
+
+  function findParent(parent, index) {
+    var cursor = index;
+    while (parent[cursor] !== cursor) {
+      parent[cursor] = parent[parent[cursor]];
+      cursor = parent[cursor];
+    }
+    return cursor;
+  }
+
+  function groupStream(segments, anchorLayer, anchorId) {
+    if (!Array.isArray(segments)) return null;
+    var anchor = -1;
+    for (var i = 0; i < segments.length; i++) {
+      var item = segments[i];
+      if (item && item.layer === anchorLayer && item.id === anchorId) {
+        anchor = i;
+        break;
+      }
+    }
+    if (anchor < 0) return null;
+    var identity = streamIdentity(segments[anchor]);
+    var parent = new Array(segments.length);
+    for (var p = 0; p < segments.length; p++) parent[p] = p;
+    var buckets = {};
+    for (var s = 0; s < segments.length; s++) {
+      if (streamIdentity(segments[s]) !== identity) continue;
+      var coords = segments[s].coordinates || [];
+      for (var v = 0; v < coords.length; v++) {
+        var key = vertexSnapKey(coords[v]);
+        var list = buckets[key];
+        if (!list) {
+          list = [];
+          buckets[key] = list;
+        }
+        if (list.indexOf(s) < 0) list.push(s);
+      }
+    }
+    var keys = Object.keys(buckets);
+    for (var k = 0; k < keys.length; k++) {
+      var ids = buckets[keys[k]];
+      var head = findParent(parent, ids[0]);
+      for (var j = 1; j < ids.length; j++) {
+        var other = findParent(parent, ids[j]);
+        if (head !== other) parent[other] = head;
+      }
+    }
+    var root = findParent(parent, anchor);
+    var memberSet = {};
+    var members = [];
+    for (var m = 0; m < segments.length; m++) {
+      if (streamIdentity(segments[m]) !== identity) continue;
+      if (findParent(parent, m) !== root) continue;
+      memberSet[m] = true;
+      members.push(m);
+    }
+    for (var e = 0; e < segments.length; e++) {
+      if (memberSet[e]) continue;
+      var ext = segments[e];
+      if (ext.src_seg == null || ext.src_layer == null || ext.src_layer === '') continue;
+      var linked = false;
+      for (var n = 0; n < members.length; n++) {
+        var src = segments[members[n]];
+        if (src.layer === ext.src_layer && src.id === ext.src_seg) {
+          linked = true;
+          break;
+        }
+      }
+      if (!linked) continue;
+      var extIdentity = streamIdentity(ext);
+      if (extIdentity && extIdentity !== identity) continue;
+      memberSet[e] = true;
+      members.push(e);
+    }
+    var memberKeys = {};
+    for (var a = 0; a < members.length; a++) {
+      var memberCoords = segments[members[a]].coordinates || [];
+      for (var b = 0; b < memberCoords.length; b++) {
+        memberKeys[vertexSnapKey(memberCoords[b])] = true;
+      }
+    }
+    var neighbors = [];
+    for (var q = 0; q < segments.length; q++) {
+      if (memberSet[q]) continue;
+      var otherCoords = segments[q].coordinates || [];
+      for (var t = 0; t < otherCoords.length; t++) {
+        if (memberKeys[vertexSnapKey(otherCoords[t])]) {
+          neighbors.push(q);
+          break;
+        }
+      }
+    }
+    function byId(left, right) {
+      if (left.layer < right.layer) return -1;
+      if (left.layer > right.layer) return 1;
+      return left.id - right.id;
+    }
+    var memberItems = members.map(function (index) { return segments[index]; });
+    var neighborItems = neighbors.map(function (index) { return segments[index]; });
+    memberItems.sort(byId);
+    neighborItems.sort(byId);
+    return {identity: identity, members: memberItems, neighbors: neighborItems};
+  }
+
+  function sharedRefs(parts, coord) {
+    var refs = [];
+    if (!Array.isArray(parts)) return refs;
+    for (var p = 0; p < parts.length; p++) {
+      var coords = parts[p] && parts[p].coordinates;
+      if (!coords) continue;
+      for (var i = 0; i < coords.length; i++) {
+        if (coordsCoincide(coords[i], coord)) refs.push({part: p, index: i});
+      }
+    }
+    return refs;
+  }
+
+  function applySharedMove(parts, refs, coord, snap) {
+    var next = snap ? roundCoord(coord) : [Number(coord[0]), Number(coord[1])];
+    if (!Array.isArray(refs)) return next;
+    for (var i = 0; i < refs.length; i++) {
+      var ref = refs[i];
+      var part = parts[ref.part];
+      if (!part || !part.coordinates || ref.index < 0 || ref.index >= part.coordinates.length) continue;
+      part.coordinates[ref.index] = [next[0], next[1]];
+    }
+    return next;
+  }
+
+  function vertexIsShared(parts, partIndex, vertexIndex) {
+    var part = parts && parts[partIndex];
+    if (!part || !part.coordinates || vertexIndex < 0 || vertexIndex >= part.coordinates.length) return false;
+    var refs = sharedRefs(parts, part.coordinates[vertexIndex]);
+    for (var i = 0; i < refs.length; i++) {
+      if (refs[i].part !== partIndex) return true;
+    }
+    return false;
+  }
+
+  function partsTouch(a, b) {
+    if (!a || !b) return false;
+    for (var i = 0; i < a.length; i++) {
+      for (var k = 0; k < b.length; k++) {
+        if (coordsCoincide(a[i], b[k])) return true;
+      }
+    }
+    return false;
+  }
+
+  function touchingPairs(parts) {
+    var count = 0;
+    if (!Array.isArray(parts)) return count;
+    for (var i = 0; i < parts.length; i++) {
+      for (var j = i + 1; j < parts.length; j++) {
+        var left = parts[i].coordinates || parts[i];
+        var right = parts[j].coordinates || parts[j];
+        if (partsTouch(left, right)) count += 1;
+      }
+    }
+    return count;
+  }
+
+  function removeSharedVertex(parts, partIndex, vertexIndex, minKeep) {
+    if (vertexIsShared(parts, partIndex, vertexIndex)) return null;
+    var part = parts[partIndex];
+    return removeIndex(part.coordinates, vertexIndex, minKeep == null ? 2 : minKeep);
+  }
+
+  function shortenShared(parts, partIndex, atEnd) {
+    var part = parts && parts[partIndex];
+    if (!part || !part.coordinates) return null;
+    var index = atEnd ? part.coordinates.length - 1 : 0;
+    if (vertexIsShared(parts, partIndex, index)) return null;
+    return shorten(part.coordinates, atEnd);
+  }
+
+  function reviewStreamChanges(parts, note, actions) {
+    var text = typeof note === 'string' ? note.trim() : '';
+    if (!text || text.length > 500 || !Array.isArray(parts)) return [];
+    var changes = [];
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i];
+      if (!part || !part.coordinates || part.coordinates.length < 2) continue;
+      if (typeof part.layer !== 'string' || !part.layer || part.layer === 'basin') continue;
+      if (typeof part.id !== 'number' || !isFinite(part.id)) continue;
+      var next = dropDuplicates(part.coordinates);
+      if (next.length < 2) continue;
+      var original = part.original || part.coordinates;
+      var geometrySame = sameLine(next, original);
+      var oldBasin = part.originalBasin == null || part.originalBasin === '' ? null : String(part.originalBasin);
+      var newBasin = part.basin == null || part.basin === '' ? null : String(part.basin);
+      if (geometrySame && oldBasin === newBasin) continue;
+      changes.push({
+        op: 'update_stream',
+        layer: part.layer,
+        id: part.id,
+        name: part.name || part.name_he || '',
+        note: text,
+        actions: Array.isArray(actions) ? actions.slice() : [],
+        old_geometry: {type: 'LineString', coordinates: original.map(function (point) {
+          return [Number(point[0]), Number(point[1])];
+        })},
+        new_geometry: {type: 'LineString', coordinates: next},
+        old_basin: oldBasin,
+        new_basin: newBasin
+      });
+    }
+    return changes;
+  }
+
+  function deleteStreamChanges(members, note) {
+    if (!Array.isArray(members) || !members.length) return null;
+    var ordered = members.slice().sort(function (a, b) {
+      var aExt = String(a.layer || '').indexOf('extension') >= 0 ? 0 : 1;
+      var bExt = String(b.layer || '').indexOf('extension') >= 0 ? 0 : 1;
+      if (aExt !== bExt) return aExt - bExt;
+      if (a.layer < b.layer) return -1;
+      if (a.layer > b.layer) return 1;
+      return a.id - b.id;
+    });
+    var changes = [];
+    for (var i = 0; i < ordered.length; i++) {
+      var item = ordered[i];
+      var change = deleteStreamChange({
+        mode: 'streams',
+        layer: item.layer,
+        id: item.id,
+        name: item.name || item.name_he || '',
+        note: note,
+        coordinates: item.coordinates,
+        basin: item.basin
+      });
+      if (!change) return null;
+      changes.push(change);
+    }
+    return changes;
+  }
+
   function deleteStreamChange(spec) {
     if (!spec || spec.mode !== 'streams') return null;
     if (typeof spec.layer !== 'string' || !spec.layer || spec.layer === 'basin') return null;
@@ -570,6 +842,22 @@
     streamChrome: streamChrome,
     mergeLines: mergeLines,
     deleteStreamChange: deleteStreamChange,
+    JUNCTION_TOL_DEG: JUNCTION_TOL_DEG,
+    SNAP_DEG: SNAP_DEG,
+    normStreamName: normStreamName,
+    streamIdentity: streamIdentity,
+    coordsCoincide: coordsCoincide,
+    vertexSnapKey: vertexSnapKey,
+    groupStream: groupStream,
+    sharedRefs: sharedRefs,
+    applySharedMove: applySharedMove,
+    vertexIsShared: vertexIsShared,
+    partsTouch: partsTouch,
+    touchingPairs: touchingPairs,
+    removeSharedVertex: removeSharedVertex,
+    shortenShared: shortenShared,
+    reviewStreamChanges: reviewStreamChanges,
+    deleteStreamChanges: deleteStreamChanges,
     SEND_URL_KEY: SEND_URL_KEY,
     SEND_AUTH_KEY: SEND_AUTH_KEY,
     SEND_OK_TEXT: SEND_OK_TEXT,

@@ -321,4 +321,88 @@ assert.strictEqual(heavy.session, null);
 assert.strictEqual(Logic.draftHasChanges({saved: [], originals: {x: 1}, fileNote: '  '}), false);
 assert.strictEqual(Logic.restoredDraftNotice({saved: [], fileNote: ''}), '');
 
+assert.strictEqual(Logic.streamIdentity({name_he: 'נחל צין', name: 'בשור'}), 'צין');
+assert.strictEqual(Logic.streamIdentity({name_he: '', name: 'נחל־פארן'}), 'פארן');
+assert.strictEqual(Logic.streamIdentity({name_he: null, name: ''}), '');
+assert.ok(Logic.coordsCoincide([35.1, 30.1], [35.1 + 4e-8, 30.1]));
+assert.ok(Logic.coordsCoincide([35.100004, 30.100004], [35.1, 30.1]));
+assert.ok(!Logic.coordsCoincide([35.10002, 30.10002], [35.1, 30.1]));
+
+var segments = [
+  {layer: 'desert', id: 1, name: 'צין', name_he: 'נחל צין', perennial: false, coordinates: [[35, 30], [35.1, 30.1]]},
+  {layer: 'desert', id: 2, name: 'צין', name_he: 'נחל צין', perennial: false, coordinates: [[35.1, 30.1], [35.2, 30.2]]},
+  {layer: 'desert', id: 3, name: 'צין', name_he: 'נחל צין', perennial: false, coordinates: [[35.1, 30.1], [35.1, 30.3]]},
+  {layer: 'desert', id: 4, name: 'צין', name_he: 'נחל צין', perennial: false, coordinates: [[36, 31], [36.1, 31]]},
+  {layer: 'nondesert', id: 8, name: 'צין', name_he: 'נחל צין', perennial: true, coordinates: [[35, 30], [34.9, 29.9]]},
+  {layer: 'nondesert', id: 9, name: 'יובל', name_he: 'נחל יובל', perennial: true, coordinates: [[35.2, 30.2], [35.3, 30.4]]},
+  {layer: 'desert', id: 5, name: 'צין', name_he: '', perennial: false, coordinates: [[35.2, 30.2], [35.25, 30.25]]},
+  {layer: 'desert', id: 6, name: 'אחר', name_he: 'נחל אחר', perennial: false, coordinates: [[35.100004, 30.100004], [35.4, 30.4]]},
+  {layer: 'desert_extension', id: 10, name: '', name_he: '', src_layer: 'desert', src_seg: 2, coordinates: [[35.25, 30.25], [35.26, 30.26]]}
+];
+var group = Logic.groupStream(segments, 'desert', 1);
+assert.strictEqual(group.identity, 'צין');
+var memberIds = group.members.map(function (item) { return item.layer + ':' + item.id; }).sort();
+assert.deepStrictEqual(memberIds, ['desert:1', 'desert:2', 'desert:3', 'desert:5', 'desert_extension:10', 'nondesert:8']);
+assert.ok(memberIds.indexOf('desert:4') < 0, 'disconnected same name stays out');
+assert.ok(memberIds.indexOf('nondesert:9') < 0, 'other stream at the junction stays out');
+assert.ok(memberIds.indexOf('desert:6') < 0, 'different name is not the same stream');
+var neighborIds = group.neighbors.map(function (item) { return item.id; }).sort();
+assert.ok(neighborIds.indexOf(9) >= 0);
+assert.ok(neighborIds.indexOf(6) >= 0);
+assert.ok(group.members.some(function (item) { return item.perennial; }));
+assert.ok(group.members.some(function (item) { return !item.perennial; }));
+
+var parts = [
+  {layer: 'desert', id: 1, name: 'צין', basin: '10', originalBasin: '10', original: [[35, 30], [35.1, 30.1]], coordinates: [[35, 30], [35.1, 30.1]]},
+  {layer: 'desert', id: 2, name: 'צין', basin: '10', originalBasin: '10', original: [[35.1, 30.1], [35.15, 30.15], [35.2, 30.2]], coordinates: [[35.1, 30.1], [35.15, 30.15], [35.2, 30.2]]},
+  {layer: 'nondesert', id: 9, name: 'יובל', name_he: 'נחל יובל', perennial: true, basin: '11', originalBasin: '11', original: [[35.1, 30.1], [35.15, 30.3]], coordinates: [[35.1, 30.1], [35.15, 30.3]]}
+];
+var beforePairs = Logic.touchingPairs(parts);
+var refs = Logic.sharedRefs(parts, [35.1, 30.1]);
+assert.strictEqual(refs.length, 3);
+Logic.applySharedMove(parts, refs, [35.11, 30.12], true);
+var moved = Logic.roundCoord([35.11, 30.12]);
+assert.deepStrictEqual(parts[0].coordinates[1], moved);
+assert.deepStrictEqual(parts[1].coordinates[0], moved);
+assert.deepStrictEqual(parts[2].coordinates[0], moved);
+assert.deepStrictEqual(parts[0].coordinates[0], [35, 30]);
+assert.deepStrictEqual(parts[1].coordinates[parts[1].coordinates.length - 1], [35.2, 30.2]);
+assert.strictEqual(Logic.touchingPairs(parts), beforePairs);
+assert.ok(Logic.partsTouch(parts[0].coordinates, parts[2].coordinates));
+assert.strictEqual(Logic.removeSharedVertex(parts, 0, 1, 2), null);
+assert.strictEqual(Logic.shortenShared(parts, 1, false), null);
+var trimmed = Logic.removeSharedVertex(parts, 1, 1, 2);
+assert.ok(trimmed);
+assert.deepStrictEqual(trimmed[0], moved);
+assert.strictEqual(Logic.touchingPairs([
+  {coordinates: parts[0].coordinates},
+  {coordinates: trimmed},
+  {coordinates: parts[2].coordinates}
+]), 3);
+
+var reviewed = Logic.reviewStreamChanges(parts, 'הזזת חיבור', ['move']);
+assert.strictEqual(reviewed.length, 3);
+var reviewIds = reviewed.map(function (change) { return change.layer + ':' + change.id; }).sort();
+assert.deepStrictEqual(reviewIds, ['desert:1', 'desert:2', 'nondesert:9']);
+reviewed.forEach(function (change) {
+  var line = change.new_geometry.coordinates;
+  assert.ok(line.some(function (point) { return point[0] === moved[0] && point[1] === moved[1]; }));
+});
+assert.strictEqual(Logic.touchingPairs(reviewed.map(function (change) {
+  return {coordinates: change.new_geometry.coordinates};
+})), 3);
+
+var redrawnJunction = Logic.redrawSection(parts[0].coordinates, 0, 1, [[35.05, 30.05]]);
+assert.deepStrictEqual(redrawnJunction[0], parts[0].coordinates[0]);
+assert.deepStrictEqual(redrawnJunction[redrawnJunction.length - 1], parts[0].coordinates[parts[0].coordinates.length - 1]);
+
+var deletedWhole = Logic.deleteStreamChanges([
+  {layer: 'desert', id: 2, name: 'צין', coordinates: [[35.1, 30.1], [35.2, 30.2]], basin: '10'},
+  {layer: 'desert_extension', id: 10, name: '', coordinates: [[35.25, 30.25], [35.26, 30.26]], basin: '10'}
+], 'מחיקת הנחל כולו');
+assert.strictEqual(deletedWhole.length, 2);
+assert.strictEqual(deletedWhole[0].layer, 'desert_extension');
+assert.strictEqual(deletedWhole[1].op, 'delete_stream');
+assert.strictEqual(deletedWhole[1].id, 2);
+
 console.log('edit logic ok');

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -74,6 +75,122 @@ def _simplify(coords: list[list[float]], step: int) -> list[list[float]]:
     return out
 
 
+def _js_round5(value: float) -> float:
+    """Match JavaScript Math.round(value * 1e5) / 1e5, including halfway cases."""
+    scaled = float(value) * 100000.0
+    return math.floor(scaled + 0.5) / 100000.0
+
+
+def _snap_key(point: list[float] | tuple[float, ...]) -> tuple[float, float]:
+    return (_js_round5(point[0]), _js_round5(point[1]))
+
+
+def stream_identity(item: dict[str, Any]) -> str:
+    local = _norm(str(item.get("name_he") or ""))
+    if local:
+        return local
+    return _norm(str(item.get("name") or ""))
+
+
+def _find(parent: list[int], index: int) -> int:
+    cursor = index
+    while parent[cursor] != cursor:
+        parent[cursor] = parent[parent[cursor]]
+        cursor = parent[cursor]
+    return cursor
+
+
+def group_stream(segments: list[dict[str, Any]], anchor_layer: str, anchor_id: int) -> dict[str, Any] | None:
+    """Whole stream: same local name, joined where vertices snap together.
+
+    ``name_he`` is the segment's own name. ``name`` is the fallback when the
+    local name is missing (main-stem label). Segments that only share a
+    junction but have a different name stay neighbors, so a perennial tributary
+    and an ephemeral stem move together without becoming one selection.
+    """
+    anchor = -1
+    for index, item in enumerate(segments):
+        if item.get("layer") == anchor_layer and item.get("id") == anchor_id:
+            anchor = index
+            break
+    if anchor < 0:
+        return None
+    identity = stream_identity(segments[anchor])
+    parent = list(range(len(segments)))
+    buckets: dict[tuple[float, float], list[int]] = {}
+    for index, item in enumerate(segments):
+        if stream_identity(item) != identity:
+            continue
+        for point in item.get("coordinates") or []:
+            buckets.setdefault(_snap_key(point), []).append(index)
+    for ids in buckets.values():
+        if len(ids) < 2:
+            continue
+        head = _find(parent, ids[0])
+        seen = {ids[0]}
+        for other in ids[1:]:
+            if other in seen:
+                continue
+            seen.add(other)
+            root = _find(parent, other)
+            if root != head:
+                parent[root] = head
+    root = _find(parent, anchor)
+    member_set: set[int] = set()
+    members: list[int] = []
+    for index, item in enumerate(segments):
+        if stream_identity(item) != identity:
+            continue
+        if _find(parent, index) != root:
+            continue
+        member_set.add(index)
+        members.append(index)
+    for index, item in enumerate(segments):
+        if index in member_set:
+            continue
+        src_layer = item.get("src_layer") or ""
+        src_seg = item.get("src_seg")
+        if src_seg is None or not src_layer:
+            continue
+        linked = False
+        for member_index in members:
+            src = segments[member_index]
+            if src.get("layer") == src_layer and src.get("id") == src_seg:
+                linked = True
+                break
+        if not linked:
+            continue
+        ext_identity = stream_identity(item)
+        if ext_identity and ext_identity != identity:
+            continue
+        member_set.add(index)
+        members.append(index)
+    member_keys: set[tuple[float, float]] = set()
+    for member_index in members:
+        for point in segments[member_index].get("coordinates") or []:
+            member_keys.add(_snap_key(point))
+    neighbors: list[int] = []
+    for index, item in enumerate(segments):
+        if index in member_set:
+            continue
+        for point in item.get("coordinates") or []:
+            if _snap_key(point) in member_keys:
+                neighbors.append(index)
+                break
+
+    def sort_key(index: int) -> tuple[str, int]:
+        item = segments[index]
+        return (str(item.get("layer") or ""), int(item.get("id") or 0))
+
+    members.sort(key=sort_key)
+    neighbors.sort(key=sort_key)
+    return {
+        "identity": identity,
+        "members": [segments[index] for index in members],
+        "neighbors": [segments[index] for index in neighbors],
+    }
+
+
 def _norm(text: str) -> str:
     value = " ".join((text or "").replace("־", " ").replace("-", " ").split())
     for prefix in ("נחל ", "ואדי ", "נהר "):
@@ -125,6 +242,8 @@ class Catalog:
                     "area": float(props.get("a") or 0),
                     "perennial": bool(props.get("perennial") or props.get("p")),
                     "extension": extension or int(props.get("ext") or 0) == 1,
+                    "src_layer": props.get("src_layer") if isinstance(props.get("src_layer"), str) else "",
+                    "src_seg": _maybe_int(props.get("src_seg")) if props.get("src_seg") is not None else None,
                     "bbox": _bbox(coords),
                     "coordinates": coords,
                     "hay": _norm(_title_parts(props)),
@@ -240,6 +359,31 @@ class Catalog:
                 "coordinates": _simplify(item["coordinates"], step),
             })
         return {"streams": streams, "truncated": truncated, "min_area": minimum}
+
+    def _segment_record(self, item: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "layer": item["layer"],
+            "id": item["id"],
+            "name": item.get("name") or "",
+            "name_he": item.get("name_he") or "",
+            "perennial": bool(item.get("perennial")),
+            "src_layer": item.get("src_layer") or "",
+            "src_seg": item.get("src_seg"),
+            "coordinates": item["coordinates"],
+        }
+
+    def stream_group(self, layer: str, ident: int) -> dict[str, Any] | None:
+        if (layer, ident) not in self.by_key or layer == "basin":
+            return None
+        grouped = group_stream([self._segment_record(item) for item in self.streams], layer, ident)
+        if grouped is None:
+            return None
+        return {
+            "identity": grouped["identity"],
+            "anchor": self.feature(layer, ident),
+            "members": [self.feature(item["layer"], int(item["id"])) for item in grouped["members"]],
+            "neighbors": [self.feature(item["layer"], int(item["id"])) for item in grouped["neighbors"]],
+        }
 
     def feature(self, layer: str, ident: int) -> dict[str, Any] | None:
         item = self.by_key.get((layer, ident))
@@ -405,6 +549,18 @@ def make_handler(catalog: Catalog) -> type[BaseHTTPRequestHandler]:
                     _flag(query, "ext"),
                 )
                 self._send_json(200, payload)
+                return
+            if path == "/api/stream":
+                layer = (query.get("layer") or [""])[0]
+                raw = (query.get("id") or [""])[0]
+                if layer not in {name for name, _rel, _ext in STREAM_FILES} or not raw.isdigit():
+                    self._send_json(400, {"error": "bad feature"})
+                    return
+                grouped = catalog.stream_group(layer, int(raw))
+                if grouped is None:
+                    self._send_json(404, {"error": "not found"})
+                    return
+                self._send_json(200, grouped)
                 return
             if path == "/api/feature":
                 layer = (query.get("layer") or [""])[0]
