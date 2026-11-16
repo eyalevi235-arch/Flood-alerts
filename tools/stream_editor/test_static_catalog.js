@@ -30,6 +30,7 @@ function main() {
     return catalog.view(item.west, item.south, item.east, item.north, item.zoom, item.desert, item.north_on, item.ext);
   });
   out.feature = (queries.feature || []).map(function (pair) { return catalog.feature(pair[0], pair[1]); });
+  out.stream = (queries.stream || []).map(function (pair) { return catalog.streamGroup(pair[0], pair[1]); });
   if (queries.basins) out.basins = catalog.basinsPayload();
   out.http = (queries.http || []).map(function (item) {
     return catalog.answer(item.path, new URLSearchParams(item.query || {}));

@@ -44,6 +44,7 @@
     live: null,
     merge: null,
     stream: null,
+    group: null,
     focus: null,
     basin: null,
     basinLayer: null,
@@ -60,6 +61,36 @@
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
   function keyOf(layer, id) { return layer + ':' + id; }
+
+  function featureInList(list, layer, id) {
+    return (list || []).some(function (item) {
+      return item && item.layer === layer && item.id === id;
+    });
+  }
+
+  function streamMembers() {
+    if (state.group && state.group.members && state.group.members.length && state.focus !== 'basin') {
+      return state.group.members;
+    }
+    return state.stream ? [state.stream] : [];
+  }
+
+  function inSelectedStream(layer, id) {
+    if (state.focus === 'basin') return false;
+    if (state.group && (featureInList(state.group.members, layer, id) || featureInList(state.group.neighbors, layer, id))) {
+      return true;
+    }
+    return !!(state.stream && state.stream.layer === layer && state.stream.id === id);
+  }
+
+  function selectedLineCoords() {
+    var coords = [];
+    streamMembers().forEach(function (item) {
+      var line = item.geometry ? item.geometry.coordinates : item.coordinates;
+      currentStreamCoords(item.layer, item.id, line).forEach(function (point) { coords.push(point); });
+    });
+    return coords;
+  }
 
   function streamTitle(item) {
     var raw = ((item && (item.name_he || item.name)) || '').trim();
@@ -180,8 +211,11 @@
   }
 
   function currentStreamCoords(layer, id, fallback) {
-    if (state.live && state.live.kind === 'stream' && state.live.layer === layer && state.live.id === id) {
-      return state.live.coordinates;
+    if (state.live && state.live.kind === 'stream' && state.live.parts) {
+      for (var i = 0; i < state.live.parts.length; i++) {
+        var part = state.live.parts[i];
+        if (part.layer === layer && part.id === id) return part.coordinates;
+      }
     }
     var saved = savedForStream(layer, id);
     if (saved) return saved.new_geometry.coordinates;
@@ -289,7 +323,7 @@
 
   function noteFor(action) {
     if (state.stream && state.live && state.live.kind === 'stream') {
-      return action + ' ' + streamTitle(state.stream) + ' (' + (LAYER_HE[state.stream.layer] || '') + ', מזהה ' + state.stream.id + ')';
+      return action + ' ' + streamTitle(state.stream) + ' (' + streamMembers().length + ' קטעים, ' + (LAYER_HE[state.stream.layer] || '') + ')';
     }
     if (state.basin && state.live && state.live.kind === 'basin') {
       return action + ' גבול ' + basinTitle(state.basin) + ' (מזהה ' + state.basin.id + ')';
@@ -421,27 +455,30 @@
   function drawVertices(items, handlers) {
     items.forEach(function (item) {
       var marker = L.marker([item.coord[1], item.coord[0]], {
-        icon: vertexIcon(handlers.mode(item.index)),
+        icon: vertexIcon(handlers.mode(item.index, item)),
         draggable: true,
         autoPan: true,
         keyboard: false,
         zIndexOffset: 500
       });
+      marker.on('dragstart', function () {
+        if (handlers.onArm) handlers.onArm(item);
+      });
       marker.on('drag', function (ev) {
         var ll = ev.target.getLatLng();
-        handlers.onDrag(item.index, [ll.lng, ll.lat], false);
+        handlers.onDrag(item, [ll.lng, ll.lat], false);
       });
       marker.on('dragend', function (ev) {
         state.dragging = false;
         var ll = ev.target.getLatLng();
-        handlers.onDrag(item.index, Logic.roundCoord([ll.lng, ll.lat]), true);
+        handlers.onDrag(item, [ll.lng, ll.lat], true);
       });
       marker.on('click', function (ev) {
         L.DomEvent.stop(ev);
         if (state.suppressClick) return;
-        handlers.onPick(item.index);
+        handlers.onPick(item);
       });
-      bindHoldDelete(marker, function () { handlers.onDelete(item.index); });
+      bindHoldDelete(marker, function () { handlers.onDelete(item); });
       state.editLayer.addLayer(marker);
     });
   }
@@ -478,99 +515,256 @@
     });
   }
 
-  function streamCoords() {
-    if (state.live && state.live.kind === 'stream') return state.live.coordinates;
-    return currentStreamCoords(state.stream.layer, state.stream.id, state.stream.geometry.coordinates);
+  function partFromFeature(item, member) {
+    var key = keyOf(item.layer, item.id);
+    var orig = state.originals[key];
+    var source = orig && orig.geometry ? orig.geometry.coordinates : item.geometry.coordinates;
+    var original = source.map(function (point) { return [point[0], point[1]]; });
+    var coordinates = original.map(function (point) { return [point[0], point[1]]; });
+    var basin = orig && orig.basin != null ? String(orig.basin) : (item.basin == null ? null : String(item.basin));
+    var originalBasin = basin;
+    var saved = savedForStream(item.layer, item.id);
+    if (saved && saved.new_geometry && saved.new_geometry.coordinates) {
+      coordinates = saved.new_geometry.coordinates.map(function (point) { return [point[0], point[1]]; });
+    }
+    if (saved && saved.new_basin != null) basin = String(saved.new_basin);
+    return {
+      layer: item.layer,
+      id: item.id,
+      name: item.name || (orig && orig.name) || '',
+      name_he: item.name_he || '',
+      perennial: !!item.perennial,
+      member: !!member,
+      basin: basin,
+      originalBasin: originalBasin,
+      original: original,
+      coordinates: coordinates
+    };
   }
 
-  function streamVertexMode(index) {
-    if (state.redraw && index === state.redraw.start) return 'on';
-    if (state.redraw && index === state.redraw.end) return 'end';
-    if (state.live && state.live.kind === 'stream' && state.live.vertex === index) return 'on';
+  function orderedMembers() {
+    var members = streamMembers().slice();
+    if (state.stream) {
+      members.sort(function (a, b) {
+        var aAnchor = a.layer === state.stream.layer && a.id === state.stream.id;
+        var bAnchor = b.layer === state.stream.layer && b.id === state.stream.id;
+        if (aAnchor === bAnchor) return 0;
+        return aAnchor ? -1 : 1;
+      });
+    }
+    return members;
+  }
+
+  function buildParts() {
+    var parts = [];
+    orderedMembers().forEach(function (item) { parts.push(partFromFeature(item, true)); });
+    var neighbors = state.focus === 'basin' || !state.group ? [] : (state.group.neighbors || []);
+    neighbors.forEach(function (item) {
+      if (isHidden(item.layer, item.id)) return;
+      parts.push(partFromFeature(item, false));
+    });
+    return parts;
+  }
+
+  function activePartIndex() {
+    if (!state.live || !state.live.parts || !state.live.parts.length) return 0;
+    if (state.live.vertexPart != null && state.live.parts[state.live.vertexPart] && state.live.parts[state.live.vertexPart].member) {
+      return state.live.vertexPart;
+    }
+    return 0;
+  }
+
+  function replacePartCoords(index, coords) {
+    state.live.parts[index].coordinates = coords;
+    if (!state.live.part || state.live.part === index || activePartIndex() === index) {
+      state.live.part = index;
+      state.live.coordinates = coords;
+      state.live.basin = state.live.parts[index].basin;
+    }
+  }
+
+  function partsDiffer() {
+    if (!state.live || !state.live.parts) return false;
+    return state.live.parts.some(function (part) {
+      var oldBasin = part.originalBasin == null ? '' : String(part.originalBasin);
+      var newBasin = part.basin == null ? '' : String(part.basin);
+      return !Logic.sameLine(part.coordinates, part.original) || oldBasin !== newBasin;
+    });
+  }
+
+  function paintParts(lines) {
+    lines.forEach(function (entry) {
+      var coords = state.live.parts[entry.part].coordinates;
+      if (entry.preview && state.redraw && state.redraw.phase === 'draw' && state.redraw.part === entry.part) {
+        var preview = Logic.redrawSection(coords, state.redraw.start, state.redraw.end, state.redraw.points);
+        if (preview) coords = preview;
+      }
+      entry.line.setLatLngs(latLngs(coords));
+      if (entry.hit) entry.hit.setLatLngs(latLngs(coords));
+    });
+  }
+
+  function memberHandles(parts) {
+    var seen = {};
+    var handles = [];
+    parts.forEach(function (part, partIndex) {
+      if (!part.member) return;
+      var extra = [];
+      if (state.live && state.live.vertexPart === partIndex && state.live.vertex != null) extra.push(state.live.vertex);
+      if (state.redraw && state.redraw.part === partIndex) {
+        extra.push(state.redraw.start);
+        extra.push(state.redraw.end);
+      }
+      vertexItems(part.coordinates, true, extra).forEach(function (item) {
+        var key = Logic.vertexSnapKey(item.coord);
+        if (seen[key]) return;
+        seen[key] = true;
+        handles.push({coord: item.coord, index: item.index, part: partIndex, refs: null});
+      });
+    });
+    return handles;
+  }
+
+  function streamVertexMode(index, part) {
+    if (state.redraw && state.redraw.part === part && index === state.redraw.start) return 'on';
+    if (state.redraw && state.redraw.part === part && index === state.redraw.end) return 'end';
+    if (state.live && state.live.kind === 'stream' && state.live.vertexPart === part && state.live.vertex === index) return 'on';
     return '';
   }
 
   function showStreamEditor() {
     clearEditGraphics();
     if (!state.stream) return;
-    var coords = streamCoords();
-    var display = coords;
-    if (state.redraw && state.redraw.phase === 'draw') {
-      var preview = Logic.redrawSection(coords, state.redraw.start, state.redraw.end, state.redraw.points);
-      if (preview) display = preview;
-    }
-    var line = L.polyline(latLngs(display), {color: '#e65100', weight: 5, opacity: 0.95, interactive: false});
-    var hit = L.polyline(latLngs(display), {color: '#e65100', weight: 22, opacity: 0.01, interactive: true});
-    state.editLayer.addLayer(line);
-    state.editLayer.addLayer(hit);
+    if (!state.live || state.live.kind !== 'stream' || !state.live.parts) beginStreamLive();
+    var parts = state.live.parts;
+    var lines = [];
+    var hitWeight = coarsePointer() ? Math.max(28, Logic.tapSlopPx(true)) : 18;
     var redrawing = !!(state.redraw && state.redraw.phase);
-    hit.on('click', function (ev) {
-      L.DomEvent.stop(ev);
-      if (state.redraw && state.redraw.phase === 'draw') {
-        addRedrawPoint(ev.latlng);
-        return;
+    parts.forEach(function (part, partIndex) {
+      var display = part.coordinates;
+      if (state.redraw && state.redraw.phase === 'draw' && state.redraw.part === partIndex) {
+        var preview = Logic.redrawSection(display, state.redraw.start, state.redraw.end, state.redraw.points);
+        if (preview) display = preview;
       }
-      if (redrawing) return;
-      if (!state.live || state.live.kind !== 'stream') beginStreamLive();
-      var point = [ev.latlng.lng, ev.latlng.lat];
-      var nearest = Logic.closestSegment(state.live.coordinates, point);
-      if (!nearest) return;
-      var px = state.map.latLngToContainerPoint(ev.latlng);
-      var proj = state.map.latLngToContainerPoint(L.latLng(nearest.proj[1], nearest.proj[0]));
-      if (px.distanceTo(proj) > 28) return;
-      var next = Logic.insertOnSegment(state.live.coordinates, point);
-      if (!next) return;
-      state.live.coordinates = next;
-      state.live.vertex = nearest.index + 1;
-      touchLive('insert_vertex');
-      showStreamEditor();
+      var color = part.member ? '#e65100' : (part.perennial ? '#1a365d' : '#1565c0');
+      var line = L.polyline(latLngs(display), {
+        color: color,
+        weight: part.member ? 5 : 3,
+        opacity: part.member ? 0.95 : 0.8,
+        dashArray: part.member ? null : (part.perennial ? null : '6 4'),
+        interactive: false
+      });
+      state.editLayer.addLayer(line);
+      var hit = null;
+      if (part.member) {
+        hit = L.polyline(latLngs(display), {color: color, weight: hitWeight, opacity: 0.01, interactive: true});
+        state.editLayer.addLayer(hit);
+        hit.on('click', function (ev) {
+          L.DomEvent.stop(ev);
+          if (state.redraw && state.redraw.phase === 'draw') {
+            addRedrawPoint(ev.latlng);
+            return;
+          }
+          if (redrawing) return;
+          insertOnPart(partIndex, [ev.latlng.lng, ev.latlng.lat]);
+        });
+      }
+      lines.push({part: partIndex, line: line, hit: hit, preview: part.member});
     });
-    var extra = [];
-    if (state.live && state.live.kind === 'stream') extra.push(state.live.vertex);
-    if (state.redraw) {
-      extra.push(state.redraw.start);
-      extra.push(state.redraw.end);
-    }
-    drawVertices(vertexItems(coords, true, extra), {
-      mode: streamVertexMode,
-      onDrag: function (index, coord, end) {
-        if (state.redraw && state.redraw.phase) return;
-        if (!state.live || state.live.kind !== 'stream') beginStreamLive();
-        state.live.coordinates[index] = coord;
-        line.setLatLngs(latLngs(state.live.coordinates));
-        hit.setLatLngs(latLngs(state.live.coordinates));
-        if (end) touchLive('move');
+    var handles = memberHandles(parts);
+    drawVertices(handles, {
+      mode: function (_index, item) {
+        return item ? streamVertexMode(item.index, item.part) : '';
       },
-      onPick: function (index) { pickStreamVertex(index); },
-      onDelete: function (index) { deleteStreamVertex(index); }
+      onArm: function (item) {
+        item.refs = Logic.sharedRefs(state.live.parts, item.coord);
+      },
+      onDrag: function (item, coord, end) {
+        if (state.redraw && state.redraw.phase) return;
+        if (!item.refs) item.refs = Logic.sharedRefs(state.live.parts, item.coord);
+        Logic.applySharedMove(state.live.parts, item.refs, coord, end);
+        paintParts(lines);
+        if (!end) return;
+        state.live.vertex = item.index;
+        state.live.vertexPart = item.part;
+        state.live.part = item.part;
+        state.live.coordinates = state.live.parts[item.part].coordinates;
+        if (partsDiffer()) touchLive('move');
+        else state.live.dirty = false;
+        setTimeout(function () {
+          if (state.stream && state.focus !== 'basin') showStreamEditor();
+        }, 0);
+      },
+      onPick: function (item) { pickStreamVertex(item.part, item.index); },
+      onDelete: function (item) { deleteStreamVertex(item.part, item.index); }
     });
     if (!redrawing) {
-      drawMidpoints(midpointItems(coords, false), function (mid, coord, done) {
-        placeStreamVertex(mid, coord, done, line, hit);
+      parts.forEach(function (part, partIndex) {
+        if (!part.member) return;
+        var mids = midpointItems(part.coordinates, false);
+        mids.forEach(function (mid) { mid.part = partIndex; });
+        drawMidpoints(mids, function (mid, coord, done) {
+          placeStreamVertex(mid, coord, done, lines);
+        });
       });
     }
-    var km = Logic.lengthM(display) / 1000;
-    var shown = vertexItems(coords, true, extra).length;
-    $('sel-meta').textContent = coords.length + ' קודקודים · מוצגים ' + shown + ' · ' + km.toFixed(2) + ' ק״מ · ' + (LAYER_HE[state.stream.layer] || '');
+    var members = parts.filter(function (part) { return part.member; });
+    var vertexCount = 0;
+    var meters = 0;
+    members.forEach(function (part) {
+      vertexCount += part.coordinates.length;
+      meters += Logic.lengthM(part.coordinates);
+    });
+    $('sel-meta').textContent = 'נחל שלם · ' + members.length + ' קטעים · ' + vertexCount +
+      ' קודקודים · מוצגים ' + handles.length + ' · ' + (meters / 1000).toFixed(2) + ' ק״מ';
     refreshRedrawBox();
   }
 
-  function placeStreamVertex(mid, coord, done, line, hit) {
+  function insertOnPart(partIndex, point) {
     if (!state.live || state.live.kind !== 'stream') beginStreamLive();
+    var coords = state.live.parts[partIndex].coordinates;
+    var nearest = Logic.closestSegment(coords, point);
+    if (!nearest) return;
+    var px = state.map.latLngToContainerPoint(L.latLng(point[1], point[0]));
+    var proj = state.map.latLngToContainerPoint(L.latLng(nearest.proj[1], nearest.proj[0]));
+    if (px.distanceTo(proj) > (coarsePointer() ? 32 : 28)) return;
+    var next = Logic.insertOnSegment(coords, point);
+    if (!next) return;
+    if (!Logic.coordsCoincide(next[0], coords[0]) || !Logic.coordsCoincide(next[next.length - 1], coords[coords.length - 1])) {
+      setStatus('הקצוות נשארים על החיבור.');
+      return;
+    }
+    replacePartCoords(partIndex, next);
+    state.live.vertexPart = partIndex;
+    state.live.vertex = nearest.index + 1;
+    touchLive('insert_vertex');
+    showStreamEditor();
+  }
+
+  function placeStreamVertex(mid, coord, done, lines) {
+    if (!state.live || state.live.kind !== 'stream') beginStreamLive();
+    var partIndex = mid.part || 0;
+    var coords = state.live.parts[partIndex].coordinates;
     if (mid.slot == null) {
-      var next = Logic.insertAfter(state.live.coordinates, mid.after, coord);
+      var next = Logic.insertAfter(coords, mid.after, coord);
       if (!next) {
         if (done) setStatus('לא נוסף קודקוד. התקרבו ונסו שוב.');
         return;
       }
-      state.live.coordinates = next;
+      if (!Logic.coordsCoincide(next[0], coords[0]) || !Logic.coordsCoincide(next[next.length - 1], coords[coords.length - 1])) {
+        if (done) setStatus('הקצוות נשארים על החיבור.');
+        return;
+      }
+      replacePartCoords(partIndex, next);
       mid.slot = mid.after + 1;
+      state.live.vertexPart = partIndex;
       state.live.vertex = mid.slot;
-    } else if (mid.slot >= 0 && mid.slot < state.live.coordinates.length) {
-      state.live.coordinates[mid.slot] = coord;
+    } else if (mid.slot >= 0 && mid.slot < state.live.parts[partIndex].coordinates.length) {
+      var moved = Logic.sharedRefs(state.live.parts, state.live.parts[partIndex].coordinates[mid.slot]);
+      if (moved.length > 1) Logic.applySharedMove(state.live.parts, moved, coord, done);
+      else state.live.parts[partIndex].coordinates[mid.slot] = done ? Logic.roundCoord(coord) : coord;
     }
-    line.setLatLngs(latLngs(state.live.coordinates));
-    hit.setLatLngs(latLngs(state.live.coordinates));
+    paintParts(lines);
     if (done) {
       touchLive('insert_vertex');
       showStreamEditor();
@@ -611,7 +805,8 @@
     var shown = vertexItems(outer, false, [selected]);
     drawVertices(shown, {
       mode: function (index) { return selected === index ? 'on' : ''; },
-      onDrag: function (index, coord, end) {
+      onDrag: function (item, coord, end) {
+        var index = item.index;
         if (!state.live || state.live.kind !== 'basin') beginBasinLive();
         var open = Logic.openRing(state.live.rings[0]);
         if (index < 0 || index >= open.length) return;
@@ -623,12 +818,12 @@
           touchLive('move');
         }
       },
-      onPick: function (index) {
+      onPick: function (item) {
         if (!state.live || state.live.kind !== 'basin') beginBasinLive();
-        state.live.vertex = index;
+        state.live.vertex = item.index;
         showBasinEditor();
       },
-      onDelete: function (index) { deleteBasinVertex(index); }
+      onDelete: function (item) { deleteBasinVertex(item.index); }
     });
     drawMidpoints(midpointItems(outer, true), function (mid, coord, done) {
       if (!state.live || state.live.kind !== 'basin') beginBasinLive();
@@ -659,19 +854,20 @@
   }
 
   function beginStreamLive() {
-    var coords = currentStreamCoords(state.stream.layer, state.stream.id, state.stream.geometry.coordinates);
-    var basin = state.stream.basin == null ? null : String(state.stream.basin);
-    var saved = savedForStream(state.stream.layer, state.stream.id);
-    if (saved && saved.new_basin != null) basin = String(saved.new_basin);
+    var parts = buildParts();
+    if (!parts.length) return;
     state.live = {
       kind: 'stream',
       layer: state.stream.layer,
       id: state.stream.id,
-      coordinates: coords.map(function (c) { return [c[0], c[1]]; }),
-      basin: basin,
+      parts: parts,
+      part: 0,
+      coordinates: parts[0].coordinates,
+      basin: parts[0].basin,
       actions: [],
       dirty: false,
-      vertex: null
+      vertex: null,
+      vertexPart: null
     };
   }
 
@@ -774,7 +970,7 @@
     var features = [];
     state.view.forEach(function (item) {
       if (isHidden(item.layer, item.id)) return;
-      if (state.focus !== 'basin' && state.stream && state.stream.layer === item.layer && state.stream.id === item.id) return;
+      if (inSelectedStream(item.layer, item.id)) return;
       features.push({
         type: 'Feature',
         properties: {layer: item.layer, id: item.id, extension: item.extension, perennial: item.perennial},
@@ -809,19 +1005,30 @@
     });
   }
 
-  function deleteStreamVertex(index) {
+  function deleteStreamVertex(partIndex, index) {
     if (state.redraw && state.redraw.phase) {
       setStatus('בטלו את ציור הקטע לפני מחיקת קודקוד.');
       return;
     }
     if (!ensureStreamLive()) return;
-    var next = Logic.removeIndex(state.live.coordinates, index, 2);
+    if (partIndex == null) partIndex = state.live.vertexPart;
+    if (index == null) index = state.live.vertex;
+    if (partIndex == null || index == null) {
+      setStatus('בחרו קודקוד בלחיצה, ואז מחקו אותו.');
+      return;
+    }
+    if (Logic.vertexIsShared(state.live.parts, partIndex, index)) {
+      setStatus('אי אפשר למחוק קודקוד שנוגע בקטע אחר. החיבור נשאר.');
+      return;
+    }
+    var next = Logic.removeSharedVertex(state.live.parts, partIndex, index, 2);
     if (!next) {
       setStatus('נחל חייב להישאר עם שני קודקודים לפחות.');
       return;
     }
-    state.live.coordinates = next;
+    replacePartCoords(partIndex, next);
     state.live.vertex = null;
+    state.live.vertexPart = null;
     touchLive('delete_vertex');
     showStreamEditor();
   }
@@ -841,16 +1048,21 @@
     showBasinEditor();
   }
 
-  function pickStreamVertex(index) {
+  function pickStreamVertex(partIndex, index) {
     if (!state.live || state.live.kind !== 'stream') beginStreamLive();
     if (state.redraw && state.redraw.phase === 'pick-start') {
+      state.redraw.part = partIndex;
       state.redraw.start = index;
       state.redraw.phase = 'pick-end';
-      setStatus('הקישו על קודקוד הסיום של הקטע.');
+      setStatus('הקישו על קודקוד הסיום של אותו קטע.');
       showStreamEditor();
       return;
     }
     if (state.redraw && state.redraw.phase === 'pick-end') {
+      if (partIndex !== state.redraw.part) {
+        setStatus('ציור מחדש נשאר בתוך קטע אחד, כדי שהחיבורים יישארו.');
+        return;
+      }
       if (index === state.redraw.start) {
         setStatus('בחרו קודקוד אחר לסיום הקטע.');
         return;
@@ -866,7 +1078,10 @@
       setStatus('הקישו על המפה בין הקודקודים, לא על קודקוד קיים.');
       return;
     }
+    state.live.vertexPart = partIndex;
     state.live.vertex = index;
+    state.live.part = partIndex;
+    state.live.coordinates = state.live.parts[partIndex].coordinates;
     showStreamEditor();
   }
 
@@ -879,10 +1094,17 @@
 
   function applyRedrawSection() {
     if (!state.redraw || state.redraw.phase !== 'draw' || !state.live || state.live.kind !== 'stream') return false;
-    var next = Logic.redrawSection(state.live.coordinates, state.redraw.start, state.redraw.end, state.redraw.points || []);
-    if (!next || Logic.sameLine(next, state.live.coordinates)) return false;
-    state.live.coordinates = next;
+    var partIndex = state.redraw.part || 0;
+    var coords = state.live.parts[partIndex].coordinates;
+    var next = Logic.redrawSection(coords, state.redraw.start, state.redraw.end, state.redraw.points || []);
+    if (!next || Logic.sameLine(next, coords)) return false;
+    if (!Logic.coordsCoincide(coords[0], next[0]) || !Logic.coordsCoincide(coords[coords.length - 1], next[next.length - 1])) {
+      setStatus('הקצוות נשארים על החיבור.');
+      return false;
+    }
+    replacePartCoords(partIndex, next);
     state.live.vertex = null;
+    state.live.vertexPart = null;
     touchLive('redraw_section');
     return true;
   }
@@ -910,6 +1132,7 @@
 
   function clearFeatureSelection() {
     state.stream = null;
+    state.group = null;
     state.basin = null;
     state.focus = null;
     state.live = null;
@@ -991,6 +1214,7 @@
       setStatus('אפשר למזג רק שני קטעים מאותה שכבה. המזהים נשארים יציבים.');
       return Promise.resolve();
     }
+    if (!state.merge && featureInList(streamMembers(), layer, id)) return Promise.resolve();
     if (state.merge) {
       return api('/api/feature?layer=' + encodeURIComponent(layer) + '&id=' + id).then(function (full) {
         if (isHidden(full.layer, full.id)) {
@@ -1002,23 +1226,24 @@
       }).catch(function () { setStatus('לא מצאתי את הנחל.'); });
     }
     return requestSwitch(function () {
-      return api('/api/feature?layer=' + encodeURIComponent(layer) + '&id=' + id).then(function (full) {
-      if (isHidden(full.layer, full.id)) {
-        setStatus('הקטע הזה כבר סומן למיזוג ולא מוצג.');
+      return api('/api/stream?layer=' + encodeURIComponent(layer) + '&id=' + id).then(function (group) {
+      var members = (group.members || []).filter(function (item) { return !isHidden(item.layer, item.id); });
+      if (!members.length) {
+        setStatus('הנחל הזה כבר סומן להסרה.');
         return;
       }
-      remember(full);
-      if (state.merge) {
-        armMerge(full);
-        return;
-      }
-      state.stream = full;
+      members.forEach(remember);
+      var neighbors = (group.neighbors || []).filter(function (item) { return !isHidden(item.layer, item.id); });
+      neighbors.forEach(remember);
+      var anchor = members.filter(function (item) { return item.layer === layer && item.id === id; })[0] || members[0];
+      state.group = {identity: group.identity || '', members: members, neighbors: neighbors};
+      state.stream = anchor;
       state.focus = 'stream';
       state.live = null;
       state.redraw = null;
       $('note').value = '';
       redraw();
-      setStatus('גררו קודקוד. נקודה מקווקוות מוסיפה קודקוד, לחיצה ארוכה מוחקת.');
+      setStatus('נבחר נחל שלם, ' + members.length + ' קטעים. גרירת קודקוד מזיזה גם את החיבורים.');
     }).catch(function () { setStatus('לא מצאתי את הנחל.'); });
     });
   }
@@ -1046,12 +1271,26 @@
 
   function mutateStream(action, producer) {
     if (!ensureStreamLive()) return;
-    var next = producer(state.live.coordinates.map(function (c) { return [c[0], c[1]]; }));
+    var index = activePartIndex();
+    var part = state.live.parts[index];
+    var atEnd = action === 'extend_end' || action === 'shorten_end';
+    var next = null;
+    if (action === 'shorten_end' || action === 'shorten_start') {
+      var endIndex = atEnd ? part.coordinates.length - 1 : 0;
+      if (Logic.vertexIsShared(state.live.parts, index, endIndex)) {
+        setStatus('אי אפשר לקצר קצה שנוגע בקטע אחר. החיבור נשאר.');
+        return;
+      }
+      next = Logic.shortenShared(state.live.parts, index, atEnd);
+    } else {
+      next = producer(part.coordinates.map(function (point) { return [point[0], point[1]]; }));
+    }
     if (!next || Logic.dropDuplicates(next).length < 2) {
       setStatus('נחל חייב להישאר עם שני קודקודים לפחות.');
       return;
     }
-    state.live.coordinates = next;
+    replacePartCoords(index, next);
+    state.live.vertexPart = index;
     state.live.vertex = action === 'extend_end' ? next.length - 1 : 0;
     touchLive(action);
     showStreamEditor();
@@ -1093,17 +1332,19 @@
       setStatus('אשרו או בטלו את המיזוג לפני מחיקה.');
       return;
     }
-    var stream = state.stream;
+    var members = streamMembers();
     var blocked = state.saved.some(function (change) {
-      return change.op === 'merge_streams' && change.layer === stream.layer &&
-        (change.survivor_id === stream.id || change.absorbed_id === stream.id);
+      if (change.op !== 'merge_streams') return false;
+      return members.some(function (item) {
+        return change.layer === item.layer && (change.survivor_id === item.id || change.absorbed_id === item.id);
+      });
     });
     if (blocked) {
       setStatus('הנחל מופיע במיזוג שברשימה. הסירו את המיזוג לפני המחיקה.');
       return;
     }
-    $('delete-prompt-text').textContent = 'למחוק את ' + streamTitle(stream) +
-      ' (מזהה ' + stream.id + ')? המחיקה נשמרת בקובץ הביקורת בלבד, עד שמחילים אותו.';
+    $('delete-prompt-text').textContent = 'למחוק את ' + streamTitle(state.stream) +
+      ' כולו (' + members.length + ' קטעים)? המחיקה נשמרת בקובץ הביקורת בלבד, עד שמחילים אותו.';
     $('delete-prompt').hidden = false;
   }
 
@@ -1111,36 +1352,46 @@
     $('delete-prompt').hidden = true;
     if (state.mode !== 'streams' || !state.stream) return;
     var stream = state.stream;
-    var orig = state.originals[keyOf(stream.layer, stream.id)];
-    if (!orig) {
+    var specs = [];
+    var missing = false;
+    streamMembers().forEach(function (item) {
+      var orig = state.originals[keyOf(item.layer, item.id)];
+      if (!orig) {
+        missing = true;
+        return;
+      }
+      specs.push({
+        layer: item.layer,
+        id: item.id,
+        name: item.name || item.name_he || orig.name || '',
+        coordinates: orig.geometry.coordinates,
+        basin: orig.basin
+      });
+    });
+    if (missing || !specs.length) {
       setStatus('אין גאומטריה מקורית למחיקה.');
       return;
     }
     var note = $('note').value.trim() || ('מחיקה ' + streamTitle(stream) + ' (' +
-      (LAYER_HE[stream.layer] || '') + ', מזהה ' + stream.id + ')');
-    var change = Logic.deleteStreamChange({
-      mode: 'streams',
-      layer: stream.layer,
-      id: stream.id,
-      name: stream.name || stream.name_he || orig.name || '',
-      note: note,
-      coordinates: orig.geometry.coordinates,
-      basin: orig.basin
-    });
-    if (!change) {
+      specs.length + ' קטעים, ' + (LAYER_HE[stream.layer] || '') + ')');
+    var changes = Logic.deleteStreamChanges(specs, note);
+    if (!changes || !changes.length) {
       setStatus('לא ניתן למחוק את הנחל הזה.');
       return;
     }
     pushUndo();
     state.saved = state.saved.filter(function (item) {
-      if (item.layer !== stream.layer) return true;
-      if (item.op === 'update_stream' && item.id === stream.id) return false;
-      if (item.op === 'delete_stream' && item.id === stream.id) return false;
-      return true;
+      return !specs.some(function (spec) {
+        if (item.layer !== spec.layer) return false;
+        if (item.op === 'update_stream' && item.id === spec.id) return true;
+        if (item.op === 'delete_stream' && item.id === spec.id) return true;
+        return false;
+      });
     });
-    state.saved.push(change);
+    changes.forEach(function (change) { state.saved.push(change); });
     state.live = null;
     state.stream = null;
+    state.group = null;
     state.focus = null;
     stopRedraw();
     $('note').value = '';
@@ -1184,6 +1435,7 @@
     state.live = null;
     $('note').value = '';
     state.stream = survivor;
+    state.group = {identity: state.group ? state.group.identity : '', members: [survivor], neighbors: []};
     renderList();
     redraw();
     setStatus('המיזוג נכנס לרשימה. המזהה שנשאר הוא ' + survivor.id + '.');
@@ -1196,11 +1448,8 @@
     }
     var note = $('note').value.trim() || noteFor('עדכון');
     if (state.live.kind === 'stream') {
-      var orig = state.originals[keyOf(state.live.layer, state.live.id)];
-      var coords = Logic.dropDuplicates(state.live.coordinates);
-      var same = Logic.sameLine(coords, orig.geometry.coordinates);
-      var basin = state.live.basin == null ? orig.basin : String(state.live.basin);
-      if (same && basin === orig.basin) {
+      var changes = Logic.reviewStreamChanges(state.live.parts, note, state.live.actions);
+      if (!changes.length) {
         setStatus('אין שינוי לעומת הנתונים המקוריים.');
         return false;
       }
@@ -1209,26 +1458,27 @@
       });
       pushUndo();
       if (merge) {
-        merge.new_geometry = {type: 'LineString', coordinates: coords};
-        merge.new_basin = basin;
-        merge.note = note;
-      } else {
-        state.saved = state.saved.filter(function (change) {
-          return !(change.op === 'update_stream' && change.layer === state.live.layer && change.id === state.live.id);
+        var anchorChange = null;
+        changes = changes.filter(function (change) {
+          if (change.layer === merge.layer && change.id === merge.survivor_id) {
+            anchorChange = change;
+            return false;
+          }
+          return true;
         });
-        state.saved.push({
-          op: 'update_stream',
-          layer: state.live.layer,
-          id: state.live.id,
-          name: state.stream.name || '',
-          note: note,
-          actions: state.live.actions.slice(),
-          old_geometry: clone(orig.geometry),
-          new_geometry: {type: 'LineString', coordinates: coords},
-          old_basin: orig.basin,
-          new_basin: basin
-        });
+        if (anchorChange) {
+          merge.new_geometry = anchorChange.new_geometry;
+          merge.new_basin = anchorChange.new_basin;
+          merge.note = note;
+        }
       }
+      state.saved = state.saved.filter(function (change) {
+        if (change.op !== 'update_stream') return true;
+        return !changes.some(function (next) {
+          return next.layer === change.layer && next.id === change.id;
+        });
+      });
+      changes.forEach(function (change) { state.saved.push(change); });
     } else {
       var origBasin = state.originals[keyOf('basin', state.live.id)];
       var rings = state.live.rings.slice();
@@ -1488,7 +1738,9 @@
         go.then(function () {
           var target = item.layer === 'basin' ? state.basin : state.stream;
           if (!target) return;
-          var coords = target.geometry.type === 'Polygon' ? Logic.openRing(target.geometry.coordinates[0]) : target.geometry.coordinates;
+          var coords = target.geometry.type === 'Polygon'
+            ? Logic.openRing(target.geometry.coordinates[0])
+            : selectedLineCoords();
           fitCoords(coords);
         });
       });
@@ -1593,12 +1845,12 @@
         setStatus('בחרו קודקוד בלחיצה, ואז מחקו אותו.');
         return;
       }
-      deleteStreamVertex(state.live.vertex);
+      deleteStreamVertex(state.live.vertexPart, state.live.vertex);
     });
     $('btn-redraw').addEventListener('click', function () {
       if (!state.stream) return;
       if (!ensureStreamLive()) return;
-      state.redraw = {phase: 'pick-start', start: null, end: null, points: []};
+      state.redraw = {phase: 'pick-start', part: activePartIndex(), start: null, end: null, points: []};
       showStreamEditor();
       setStatus('הקישו על קודקוד ההתחלה של הקטע.');
     });
@@ -1644,35 +1896,54 @@
         setStatus('שמרו או בטלו את העריכה הפתוחה לפני שיוך.');
         return;
       }
-      var orig = state.originals[keyOf(state.stream.layer, state.stream.id)];
-      var next = String(state.basin.id);
-      var saved = savedForStream(state.stream.layer, state.stream.id);
-      var current = saved && saved.new_basin != null ? String(saved.new_basin) : (orig.basin == null ? null : String(orig.basin));
-      if (current === next) {
+      var nextBasin = String(state.basin.id);
+      var pending = [];
+      streamMembers().forEach(function (item) {
+        var orig = state.originals[keyOf(item.layer, item.id)];
+        if (!orig) return;
+        var saved = savedForStream(item.layer, item.id);
+        var current = saved && saved.new_basin != null ? String(saved.new_basin) : (orig.basin == null ? null : String(orig.basin));
+        if (current === nextBasin) return;
+        pending.push({item: item, orig: orig, saved: saved});
+      });
+      if (!pending.length) {
         setStatus('הנחל כבר משויך לאגן הזה.');
         return;
       }
       pushUndo();
       var note = 'שיוך ' + streamTitle(state.stream) + ' לאגן ' + basinTitle(state.basin);
-      if (saved && saved.op === 'merge_streams') {
-        saved.new_basin = next;
-        saved.note = note;
-      } else if (saved && saved.op === 'update_stream') {
-        saved.new_basin = next;
-        saved.note = note;
-        if (saved.actions.indexOf('reassign_basin') < 0) saved.actions.push('reassign_basin');
-      } else {
+      pending.forEach(function (row) {
+        var saved = row.saved;
+        if (saved && saved.op === 'merge_streams') {
+          saved.new_basin = nextBasin;
+          saved.note = note;
+          return;
+        }
+        if (saved && saved.op === 'update_stream') {
+          saved.new_basin = nextBasin;
+          saved.note = note;
+          if (saved.actions.indexOf('reassign_basin') < 0) saved.actions.push('reassign_basin');
+          return;
+        }
         state.saved.push({
           op: 'update_stream',
-          layer: state.stream.layer,
-          id: state.stream.id,
-          name: state.stream.name || '',
+          layer: row.item.layer,
+          id: row.item.id,
+          name: row.item.name || '',
           note: note,
           actions: ['reassign_basin'],
-          old_geometry: clone(orig.geometry),
-          new_geometry: clone(orig.geometry),
-          old_basin: orig.basin,
-          new_basin: next
+          old_geometry: clone(row.orig.geometry),
+          new_geometry: clone(row.orig.geometry),
+          old_basin: row.orig.basin,
+          new_basin: nextBasin
+        });
+      });
+      if (state.live && state.live.kind === 'stream' && state.live.parts) {
+        state.live.parts.forEach(function (part) {
+          if (!part.member) return;
+          if (pending.some(function (row) { return row.item.layer === part.layer && row.item.id === part.id; })) {
+            part.basin = nextBasin;
+          }
         });
       }
       renderList();
@@ -1694,7 +1965,7 @@
     });
     $('btn-fit').addEventListener('click', function () {
       if (!state.stream) return;
-      fitCoords(currentStreamCoords(state.stream.layer, state.stream.id, state.stream.geometry.coordinates));
+      fitCoords(selectedLineCoords());
     });
     $('btn-fit-basin').addEventListener('click', function () {
       if (!state.basin) return;

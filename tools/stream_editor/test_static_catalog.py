@@ -143,6 +143,26 @@ class StaticCatalogTests(unittest.TestCase):
         self.assertTrue(stream_hits)
         self.assertTrue(all(item["layer"] != "basin" for item in stream_hits))
 
+    def test_whole_stream_group_matches_javascript(self) -> None:
+        catalog = server.Catalog(ROOT)
+        catalog.load()
+        grouped = catalog.stream_group("nondesert", 27)
+        self.assertIsNotNone(grouped)
+        self.assertEqual(grouped["identity"], "גזר")
+        ids = sorted((item["layer"], item["id"]) for item in grouped["members"])
+        self.assertEqual(ids, [("nondesert", 27), ("nondesert", 38), ("nondesert", 1083)])
+        flags = {bool(item["perennial"]) for item in grouped["members"]}
+        self.assertEqual(flags, {False, True})
+        self.assertTrue(all(item["id"] != 27 or item["layer"] == "nondesert" for item in grouped["neighbors"]))
+        got = node_catalog(ROOT, {"stream": [["nondesert", 27]]})
+        node_group = got["stream"][0]
+        node_ids = sorted((item["layer"], item["id"]) for item in node_group["members"])
+        node_neighbors = sorted((item["layer"], item["id"]) for item in node_group["neighbors"])
+        py_neighbors = sorted((item["layer"], item["id"]) for item in grouped["neighbors"])
+        self.assertEqual(node_ids, ids)
+        self.assertEqual(node_neighbors, py_neighbors)
+        self.assertTrue(py_neighbors, "a junction with another stream stays a neighbor")
+
 
 class HiddenPageTests(unittest.TestCase):
     def test_page_matches_sources_and_stays_unlinked(self) -> None:

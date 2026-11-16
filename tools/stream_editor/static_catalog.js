@@ -159,6 +159,8 @@
           area: asNumber(props.a),
           perennial: !!(props.perennial || props.p),
           extension: !!entry.extension || asInt(props.ext) === 1,
+          src_layer: asString(props.src_layer),
+          src_seg: asId(props.src_seg),
           bbox: bbox(coords),
           coordinates: coords,
           hay: norm(titleParts(props))
@@ -277,6 +279,42 @@
       };
     }
 
+    function editLogic() {
+      if (typeof require === 'function') {
+        try { return require('./static/edit_logic.js'); } catch (err) { /* browser bundle has no module */ }
+      }
+      return typeof self !== 'undefined' ? self.EditLogic : null;
+    }
+
+    function segmentRecord(item) {
+      return {
+        layer: item.layer,
+        id: item.id,
+        name: item.name,
+        name_he: item.name_he,
+        perennial: item.perennial,
+        src_layer: item.src_layer || '',
+        src_seg: item.src_seg,
+        coordinates: item.coordinates
+      };
+    }
+
+    function streamGroup(layer, ident) {
+      var Logic = editLogic();
+      if (!Logic || typeof Logic.groupStream !== 'function') return null;
+      var anchor = byKey.get(layer + ':' + ident);
+      if (!anchor) return null;
+      var records = streams.map(segmentRecord);
+      var grouped = Logic.groupStream(records, layer, ident);
+      if (!grouped) return null;
+      return {
+        identity: grouped.identity,
+        anchor: feature(layer, ident),
+        members: grouped.members.map(function (item) { return feature(item.layer, item.id); }),
+        neighbors: grouped.neighbors.map(function (item) { return feature(item.layer, item.id); })
+      };
+    }
+
     function feature(layer, ident) {
       var item = byKey.get(layer + ':' + ident);
       if (!item) return null;
@@ -372,6 +410,16 @@
           body: view(west, south, east, north, zoom, flag(params, 'desert'), flag(params, 'north_on'), flag(params, 'ext'))
         };
       }
+      if (pathname === '/api/stream') {
+        var streamLayer = params.get('layer') || '';
+        var streamRaw = params.get('id') || '';
+        if (!LAYERS[streamLayer] || streamLayer === 'basin' || !/^\d+$/.test(streamRaw)) {
+          return {status: 400, body: {error: 'bad feature'}};
+        }
+        var grouped = streamGroup(streamLayer, parseInt(streamRaw, 10));
+        if (!grouped) return {status: 404, body: {error: 'not found'}};
+        return {status: 200, body: grouped};
+      }
       if (pathname === '/api/feature') {
         var layer = params.get('layer') || '';
         var raw = params.get('id') || '';
@@ -389,6 +437,7 @@
       search: search,
       view: view,
       feature: feature,
+      streamGroup: streamGroup,
       basinsPayload: basinsPayload,
       health: health,
       answer: answer
